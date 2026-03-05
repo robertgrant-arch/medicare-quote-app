@@ -1,0 +1,527 @@
+// Medicare Advantage Quote Engine — Plans Results Page
+// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Layout: Sticky top bar + horizontal quick filters + 2-col plan grid + left filter sidebar
+
+import { useState, useMemo, useEffect } from "react";
+import { useSearch, useLocation } from "wouter";
+import {
+  MapPin,
+  Pill,
+  UserRound,
+  Heart,
+  ArrowLeft,
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  LayoutGrid,
+  List,
+  Search,
+} from "lucide-react";
+import { toast } from "sonner";
+import Header from "@/components/Header";
+import PlanCard from "@/components/PlanCard";
+import FilterSidebar from "@/components/FilterSidebar";
+import RxDrugsModal from "@/components/RxDrugsModal";
+import DoctorsModal from "@/components/DoctorsModal";
+import EnrollModal from "@/components/EnrollModal";
+import { MOCK_PLANS } from "@/lib/mockData";
+import type { FilterState, MedicarePlan, RxDrug, Doctor } from "@/lib/types";
+import { Link } from "wouter";
+
+const DEFAULT_FILTERS: FilterState = {
+  planType: [],
+  carriers: [],
+  premiumRange: [0, 200],
+  benefits: [],
+  quickFilter: "all",
+  sortBy: "best-match",
+};
+
+const QUICK_FILTERS = [
+  { key: "all", label: "All Plans", count: 24 },
+  { key: "ppo", label: "PPO", count: 10 },
+  { key: "zero-premium", label: "$0 Premium", count: 20 },
+  { key: "hmo", label: "HMO", count: 12 },
+] as const;
+
+function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan[] {
+  let result = [...plans];
+
+  // Quick filter
+  if (filters.quickFilter === "ppo") {
+    result = result.filter((p) => p.planType === "PPO");
+  } else if (filters.quickFilter === "hmo") {
+    result = result.filter((p) => p.planType === "HMO");
+  } else if (filters.quickFilter === "zero-premium") {
+    result = result.filter((p) => p.premium === 0);
+  }
+
+  // Plan type
+  if (filters.planType.length > 0) {
+    result = result.filter((p) => filters.planType.includes(p.planType));
+  }
+
+  // Carriers
+  if (filters.carriers.length > 0) {
+    result = result.filter((p) => filters.carriers.includes(p.carrier));
+  }
+
+  // Premium range
+  result = result.filter(
+    (p) => p.premium >= filters.premiumRange[0] && p.premium <= filters.premiumRange[1]
+  );
+
+  // Benefits
+  if (filters.benefits.length > 0) {
+    result = result.filter((p) =>
+      filters.benefits.every(
+        (b) => p.extraBenefits[b as keyof typeof p.extraBenefits]?.covered
+      )
+    );
+  }
+
+  // Sort
+  switch (filters.sortBy) {
+    case "premium-low":
+      result.sort((a, b) => a.premium - b.premium);
+      break;
+    case "premium-high":
+      result.sort((a, b) => b.premium - a.premium);
+      break;
+    case "star-rating":
+      result.sort((a, b) => b.starRating.overall - a.starRating.overall);
+      break;
+    case "moop-low":
+      result.sort((a, b) => a.maxOutOfPocket - b.maxOutOfPocket);
+      break;
+    default:
+      // best-match: best match first, then most popular, then by star rating
+      result.sort((a, b) => {
+        if (a.isBestMatch && !b.isBestMatch) return -1;
+        if (!a.isBestMatch && b.isBestMatch) return 1;
+        if (a.isMostPopular && !b.isMostPopular) return -1;
+        if (!a.isMostPopular && b.isMostPopular) return 1;
+        return b.starRating.overall - a.starRating.overall;
+      });
+  }
+
+  return result;
+}
+
+export default function Plans() {
+  const searchStr = useSearch();
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(searchStr);
+  const zip = params.get("zip") || "64106";
+
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [rxDrugs, setRxDrugs] = useState<RxDrug[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [rxModalOpen, setRxModalOpen] = useState(false);
+  const [doctorsModalOpen, setDoctorsModalOpen] = useState(false);
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
+  const [enrollPlan, setEnrollPlan] = useState<MedicarePlan | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [zipInput, setZipInput] = useState(zip);
+
+  // Determine city from ZIP
+  const cityName = zip === "64106" ? "Kansas City, MO" : `ZIP ${zip}`;
+  const countyName = "Jackson County, MO";
+
+  const filteredPlans = useMemo(() => {
+    let plans = applyFilters(MOCK_PLANS, filters);
+    if (showFavoritesOnly) {
+      plans = plans.filter((p) => favorites.has(p.id));
+    }
+    return plans;
+  }, [filters, showFavoritesOnly, favorites]);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        toast.success("Plan removed from saved plans");
+      } else {
+        next.add(id);
+        toast.success("Plan saved!", {
+          description: "View your saved plans anytime",
+          icon: "❤️",
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleEnroll = (plan: MedicarePlan) => {
+    setEnrollPlan(plan);
+    setEnrollModalOpen(true);
+  };
+
+  const handleZipSearch = () => {
+    if (/^\d{5}$/.test(zipInput.trim())) {
+      navigate(`/plans?zip=${zipInput.trim()}`);
+    }
+  };
+
+  const activeFilterCount =
+    filters.planType.length +
+    filters.carriers.length +
+    filters.benefits.length +
+    (filters.premiumRange[1] < 200 ? 1 : 0);
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+      <Header />
+
+      {/* ── Results Header Bar ────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100 shadow-sm">
+        <div className="container py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Breadcrumb + location */}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-700 transition-colors no-underline font-medium"
+              >
+                <ArrowLeft size={15} />
+                <span className="hidden sm:inline">Back</span>
+              </Link>
+              <div className="w-px h-4 bg-gray-200" />
+              <div className="flex items-center gap-1.5">
+                <MapPin size={15} style={{ color: "#006B3F" }} />
+                <span className="text-sm font-semibold text-gray-800">
+                  {cityName} · {countyName}
+                </span>
+              </div>
+            </div>
+
+            {/* ZIP change + tools */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* ZIP input */}
+              <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={zipInput}
+                  onChange={(e) => setZipInput(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => e.key === "Enter" && handleZipSearch()}
+                  className="w-20 px-2.5 py-1.5 text-sm font-semibold text-gray-700 focus:outline-none"
+                  style={{ fontFamily: "'DM Sans', sans-serif" }}
+                />
+                <button
+                  onClick={handleZipSearch}
+                  className="px-2.5 py-1.5 text-white text-xs font-semibold"
+                  style={{ backgroundColor: "#006B3F" }}
+                >
+                  <Search size={13} />
+                </button>
+              </div>
+
+              {/* Add Rx */}
+              <button
+                onClick={() => setRxModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
+                style={{
+                  borderColor: rxDrugs.length > 0 ? "#006B3F" : "#E5E7EB",
+                  color: rxDrugs.length > 0 ? "#006B3F" : "#374151",
+                  backgroundColor: rxDrugs.length > 0 ? "#E8F5EE" : "white",
+                }}
+              >
+                <Pill size={13} />
+                {rxDrugs.length > 0 ? `${rxDrugs.length} Drug${rxDrugs.length > 1 ? "s" : ""}` : "Add Rx Drugs"}
+              </button>
+
+              {/* Add Doctors */}
+              <button
+                onClick={() => setDoctorsModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
+                style={{
+                  borderColor: doctors.length > 0 ? "#006B3F" : "#E5E7EB",
+                  color: doctors.length > 0 ? "#006B3F" : "#374151",
+                  backgroundColor: doctors.length > 0 ? "#E8F5EE" : "white",
+                }}
+              >
+                <UserRound size={13} />
+                {doctors.length > 0 ? `${doctors.length} Doctor${doctors.length > 1 ? "s" : ""}` : "Add Doctors"}
+              </button>
+
+              {/* Saved plans */}
+              <button
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
+                style={{
+                  borderColor: showFavoritesOnly ? "#EF4444" : "#E5E7EB",
+                  color: showFavoritesOnly ? "#EF4444" : "#374151",
+                  backgroundColor: showFavoritesOnly ? "#FEF2F2" : "white",
+                }}
+              >
+                <Heart
+                  size={13}
+                  className={showFavoritesOnly ? "fill-red-500 text-red-500" : ""}
+                />
+                {favorites.size > 0 ? `Saved (${favorites.size})` : "Saved"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Quick Filter Tabs ─────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="container">
+          <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
+            {QUICK_FILTERS.map((qf) => (
+              <button
+                key={qf.key}
+                onClick={() => setFilters({ ...filters, quickFilter: qf.key })}
+                className={`quick-filter-tab whitespace-nowrap ${filters.quickFilter === qf.key ? "active" : ""}`}
+              >
+                {qf.label}
+                <span
+                  className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: filters.quickFilter === qf.key ? "rgba(255,255,255,0.25)" : "#F3F4F6",
+                    color: filters.quickFilter === qf.key ? "white" : "#6B7280",
+                  }}
+                >
+                  {qf.count}
+                </span>
+              </button>
+            ))}
+
+            <div className="ml-auto flex items-center gap-2 shrink-0">
+              {/* Mobile filter toggle */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700"
+              >
+                <SlidersHorizontal size={13} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span
+                    className="w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
+                    style={{ backgroundColor: "#006B3F" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {/* View mode toggle */}
+              <div className="hidden sm:flex border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className="p-1.5 transition-colors"
+                  style={{
+                    backgroundColor: viewMode === "grid" ? "#006B3F" : "white",
+                    color: viewMode === "grid" ? "white" : "#6B7280",
+                  }}
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className="p-1.5 transition-colors"
+                  style={{
+                    backgroundColor: viewMode === "list" ? "#006B3F" : "white",
+                    color: viewMode === "list" ? "white" : "#6B7280",
+                  }}
+                >
+                  <List size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Content ──────────────────────────────────────────────────── */}
+      <div className="container py-6">
+        <div className="flex gap-6">
+          {/* ── Left Sidebar ──────────────────────────────────────────────── */}
+          <aside className="hidden lg:block w-64 shrink-0">
+            <FilterSidebar
+              filters={filters}
+              onChange={setFilters}
+              totalCount={MOCK_PLANS.length}
+              filteredCount={filteredPlans.length}
+            />
+          </aside>
+
+          {/* ── Plan Grid ─────────────────────────────────────────────────── */}
+          <main className="flex-1 min-w-0">
+            {/* Results summary */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1
+                  className="text-xl font-bold text-gray-900"
+                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                >
+                  {showFavoritesOnly ? "Saved Plans" : "Medicare Advantage Plans"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {filteredPlans.length} plan{filteredPlans.length !== 1 ? "s" : ""} available
+                  {showFavoritesOnly ? " (saved)" : ` in ${countyName}`}
+                  {activeFilterCount > 0 && (
+                    <span className="ml-2 text-xs font-semibold" style={{ color: "#006B3F" }}>
+                      · {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} applied
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* Active filter chips */}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                >
+                  <X size={12} />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            {/* Personalization banner */}
+            {(rxDrugs.length > 0 || doctors.length > 0) && (
+              <div
+                className="rounded-xl p-3 mb-4 flex items-center gap-3 border"
+                style={{ backgroundColor: "#E8F5EE", borderColor: "#C3E6D4" }}
+              >
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "#006B3F" }}
+                >
+                  <span className="text-white text-xs font-bold">✓</span>
+                </div>
+                <div className="text-sm text-gray-700">
+                  <span className="font-semibold">Personalized for you:</span>{" "}
+                  {rxDrugs.length > 0 && `${rxDrugs.length} medication${rxDrugs.length > 1 ? "s" : ""}`}
+                  {rxDrugs.length > 0 && doctors.length > 0 && " · "}
+                  {doctors.length > 0 && `${doctors.length} doctor${doctors.length > 1 ? "s" : ""}`}
+                  <span className="text-gray-500"> added to your profile</span>
+                </div>
+                <button
+                  onClick={() => { setRxDrugs([]); setDoctors([]); }}
+                  className="ml-auto text-xs text-gray-500 hover:text-red-500 transition-colors"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
+            {/* No results */}
+            {filteredPlans.length === 0 ? (
+              <div className="text-center py-16">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: "#E8F5EE" }}
+                >
+                  <Search size={28} style={{ color: "#006B3F" }} />
+                </div>
+                <h3
+                  className="text-xl font-bold text-gray-800 mb-2"
+                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                >
+                  No plans match your filters
+                </h3>
+                <p className="text-gray-500 mb-6">
+                  Try adjusting your filters or clearing them to see all available plans.
+                </p>
+                <button
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+                  style={{ backgroundColor: "#006B3F" }}
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 xl:grid-cols-2 gap-5"
+                    : "flex flex-col gap-4"
+                }
+              >
+                {filteredPlans.map((plan, i) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isFavorited={favorites.has(plan.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onEnroll={handleEnroll}
+                    animationDelay={Math.min(i * 60, 400)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Bottom disclaimer */}
+            <div className="mt-8 p-4 rounded-xl border border-gray-100 bg-white">
+              <p className="text-xs text-gray-400 leading-relaxed">
+                <strong className="text-gray-500">Disclaimer:</strong> Plan information shown is
+                mock data for demonstration purposes only. Actual plan benefits, premiums, and
+                availability may vary. Always verify plan details with the insurance carrier before
+                enrolling. Medicare has neither reviewed nor endorsed this information.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* ── Mobile Filter Drawer ──────────────────────────────────────────── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <span className="font-bold text-gray-900">Filter Plans</span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4">
+              <FilterSidebar
+                filters={filters}
+                onChange={(f) => { setFilters(f); setSidebarOpen(false); }}
+                totalCount={MOCK_PLANS.length}
+                filteredCount={filteredPlans.length}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modals ────────────────────────────────────────────────────────── */}
+      <RxDrugsModal
+        open={rxModalOpen}
+        onClose={() => setRxModalOpen(false)}
+        selectedDrugs={rxDrugs}
+        onSave={setRxDrugs}
+      />
+      <DoctorsModal
+        open={doctorsModalOpen}
+        onClose={() => setDoctorsModalOpen(false)}
+        selectedDoctors={doctors}
+        onSave={setDoctors}
+      />
+      <EnrollModal
+        open={enrollModalOpen}
+        onClose={() => setEnrollModalOpen(false)}
+        plan={enrollPlan}
+      />
+    </div>
+  );
+}
