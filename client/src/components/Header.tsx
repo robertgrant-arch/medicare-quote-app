@@ -287,6 +287,21 @@ export default function Header() {
               <Sparkles size={13} />
               AI Compare
             </Link>
+
+            {/* Plan Recommender — highlighted link */}
+            <Link
+              href="/plan-recommender"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-md transition-all no-underline"
+              style={{
+                color: location === "/plan-recommender" ? "white" : "#7C3AED",
+                backgroundColor: location === "/plan-recommender" ? "#7C3AED" : "#F5F3FF",
+                border: `1.5px solid ${location === "/plan-recommender" ? "#7C3AED" : "#7C3AED"}30`,
+              }}
+              onClick={closeDropdown}
+            >
+              <Sparkles size={13} />
+              Plan Recommender
+            </Link>
           </nav>
 
           {/* Right actions */}
@@ -360,6 +375,17 @@ export default function Header() {
             >
               <Sparkles size={14} />
               AI Compare
+            </Link>
+
+            {/* Plan Recommender mobile link */}
+            <Link
+              href="/plan-recommender"
+              className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-bold rounded-md no-underline transition-colors"
+              style={{ color: "#7C3AED", backgroundColor: "#F5F3FF" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Sparkles size={14} />
+              Plan Recommender
             </Link>
 
             <div className="pt-2 border-t border-gray-100 flex gap-2">

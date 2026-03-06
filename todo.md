@@ -154,3 +154,25 @@
 - [x] Both sections toggle independently (click to open/close each)
 - [x] Add to Resources dropdown nav
 - [x] Register route in App.tsx
+
+## AI Compare 3-Plan Update
+- [x] Update plan selector from 2 to 3 plans ("Select Three Plans to Compare")
+- [x] Add third plan dropdown "ANOTHER PLAN YOU'RE CONSIDERING"
+- [x] Update comparison table to 3 columns (Current Plan, New Plan 1, New Plan 2) — remove CHANGE column
+- [x] Update plan summary cards to show 3 cards
+- [x] Update localStorage cache key to use 3 sorted plan IDs
+- [x] Update compare-stream endpoint to accept 3 plans and compare all three
+- [x] Update AI prompt to compare all 3 plans (no better/worse column, AI handles analysis)
+
+## Plan Recommender Page
+- [x] Create /plan-recommender route and nav link (purple accent in header)
+- [x] Section 1: General Health Profile (health status, chronic conditions, planned surgery)
+- [x] Section 2: Expected Utilization (PCP, specialist, ER, urgent care visits/year)
+- [x] Section 3: Prescription Drug Needs (Rx count, brand/specialty drugs, monthly spend)
+- [x] Section 4: Benefits Priorities (dental, vision, hearing, transport, OTC, fitness)
+- [x] Section 5: Provider & Plan Preferences (keep doctors, HMO vs PPO, what matters most)
+- [x] Cost calculation engine: premium×12 + copay×visits + drug cost estimate per plan
+- [x] Rank all 24 plans and show top 3 recommended with estimated annual cost breakdown
+- [x] /api/recommend-stream SSE endpoint using Claude Haiku for personalized narrative
+- [x] Results page: top-3 cards with cost breakdown, why recommended, AI narrative streaming
+- [x] Match existing app styling (green header, card layouts, orange accents)

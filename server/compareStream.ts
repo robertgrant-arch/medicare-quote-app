@@ -2,7 +2,7 @@
  * Streaming AI Plan Comparison — Express SSE endpoint
  * POST /api/compare-stream
  *
- * Accepts two plan objects, calls Claude claude-haiku-4-5 with streaming,
+ * Accepts two or three plan objects, calls Claude claude-haiku-4-5 with streaming,
  * and forwards each text delta as a Server-Sent Events (SSE) stream.
  *
  * The client-side comparison TABLE is built instantly from plan data (no API wait).
@@ -12,7 +12,7 @@
 import { Router, Request, Response, type Express } from "express";
 import { z } from "zod";
 
-// ── Shared plan schema (mirrors compareRouter.ts) ─────────────────────────────
+// ── Shared plan schema ────────────────────────────────────────────────────────
 
 const BenefitDetailSchema = z.object({
   covered: z.boolean(),
@@ -74,39 +74,37 @@ const PlanInputSchema = z.object({
 
 type PlanInput = z.infer<typeof PlanInputSchema>;
 
-// ── Prompt builder — SHORT version for Haiku ─────────────────────────────────
-// The full side-by-side table is already rendered client-side, so we only need
-// the AI narrative: Quick Summary, Key Differences, Recommendation.
+// ── Prompt builders ───────────────────────────────────────────────────────────
 
-function buildShortPrompt(current: PlanInput, newPlan: PlanInput): string {
-  const benefitList = (p: PlanInput) => {
-    const benefits: string[] = [];
-    if (p.extraBenefits.dental.covered) benefits.push(`Dental (${p.extraBenefits.dental.details})`);
-    if (p.extraBenefits.vision.covered) benefits.push(`Vision (${p.extraBenefits.vision.details})`);
-    if (p.extraBenefits.hearing.covered) benefits.push(`Hearing (${p.extraBenefits.hearing.details})`);
-    if (p.extraBenefits.otc.covered) benefits.push(`OTC (${p.extraBenefits.otc.details})`);
-    if (p.extraBenefits.fitness.covered) benefits.push("Fitness");
-    if (p.extraBenefits.transportation.covered) benefits.push("Transportation");
-    if (p.extraBenefits.telehealth.covered) benefits.push("Telehealth");
-    if (p.extraBenefits.meals.covered) benefits.push("Meals after hospital");
-    return benefits.join(", ") || "None";
-  };
+function benefitList(p: PlanInput): string {
+  const benefits: string[] = [];
+  if (p.extraBenefits.dental.covered) benefits.push(`Dental (${p.extraBenefits.dental.details})`);
+  if (p.extraBenefits.vision.covered) benefits.push(`Vision (${p.extraBenefits.vision.details})`);
+  if (p.extraBenefits.hearing.covered) benefits.push(`Hearing (${p.extraBenefits.hearing.details})`);
+  if (p.extraBenefits.otc.covered) benefits.push(`OTC (${p.extraBenefits.otc.details})`);
+  if (p.extraBenefits.fitness.covered) benefits.push("Fitness");
+  if (p.extraBenefits.transportation.covered) benefits.push("Transportation");
+  if (p.extraBenefits.telehealth.covered) benefits.push("Telehealth");
+  if (p.extraBenefits.meals.covered) benefits.push("Meals after hospital");
+  return benefits.join(", ") || "None";
+}
 
+function planSummary(p: PlanInput, label: string): string {
+  return `${label}: ${p.planName} (${p.carrier}, ${p.planType})
+- Premium: $${p.premium}/mo | Deductible: $${p.deductible} | MOOP: $${p.maxOutOfPocket.toLocaleString()}
+- PCP: ${p.copays.primaryCare} | Specialist: ${p.copays.specialist} | ER: ${p.copays.emergency}
+- Rx: T1 ${p.rxDrugs.tier1} / T2 ${p.rxDrugs.tier2} / T3 ${p.rxDrugs.tier3} / T4 ${p.rxDrugs.tier4} | Gap: ${p.rxDrugs.gap ? "Yes" : "No"}
+- Stars: ${p.starRating.overall}/5 | Network: ${p.networkSize.toLocaleString()}+ providers
+- Extra benefits: ${benefitList(p)}`;
+}
+
+/** 2-plan prompt (backward-compatible) */
+function build2PlanPrompt(current: PlanInput, newPlan: PlanInput): string {
   return `You are a Medicare Advantage expert. Compare these two plans concisely. The user already sees a full data table — provide ONLY the narrative analysis below.
 
-CURRENT PLAN: ${current.planName} (${current.carrier}, ${current.planType})
-- Premium: $${current.premium}/mo | Deductible: $${current.deductible} | MOOP: $${current.maxOutOfPocket.toLocaleString()}
-- PCP: ${current.copays.primaryCare} | Specialist: ${current.copays.specialist} | ER: ${current.copays.emergency}
-- Rx: T1 ${current.rxDrugs.tier1} / T2 ${current.rxDrugs.tier2} / T3 ${current.rxDrugs.tier3} / T4 ${current.rxDrugs.tier4} | Gap: ${current.rxDrugs.gap ? "Yes" : "No"}
-- Stars: ${current.starRating.overall}/5 | Network: ${current.networkSize.toLocaleString()}+ providers
-- Extra benefits: ${benefitList(current)}
+${planSummary(current, "CURRENT PLAN")}
 
-NEW PLAN: ${newPlan.planName} (${newPlan.carrier}, ${newPlan.planType})
-- Premium: $${newPlan.premium}/mo | Deductible: $${newPlan.deductible} | MOOP: $${newPlan.maxOutOfPocket.toLocaleString()}
-- PCP: ${newPlan.copays.primaryCare} | Specialist: ${newPlan.copays.specialist} | ER: ${newPlan.copays.emergency}
-- Rx: T1 ${newPlan.rxDrugs.tier1} / T2 ${newPlan.rxDrugs.tier2} / T3 ${newPlan.rxDrugs.tier3} / T4 ${newPlan.rxDrugs.tier4} | Gap: ${newPlan.rxDrugs.gap ? "Yes" : "No"}
-- Stars: ${newPlan.starRating.overall}/5 | Network: ${newPlan.networkSize.toLocaleString()}+ providers
-- Extra benefits: ${benefitList(newPlan)}
+${planSummary(newPlan, "NEW PLAN")}
 
 Respond in EXACTLY this markdown format (keep each section brief):
 
@@ -124,6 +122,32 @@ Respond in EXACTLY this markdown format (keep each section brief):
 1 short paragraph with a clear recommendation. Who should switch? Who should stay? Be specific.`;
 }
 
+/** 3-plan prompt */
+function build3PlanPrompt(current: PlanInput, plan2: PlanInput, plan3: PlanInput): string {
+  return `You are a Medicare Advantage expert. Compare these three plans concisely. The user already sees a full side-by-side data table — provide ONLY the narrative analysis below.
+
+${planSummary(current, "PLAN 1 (Current Plan)")}
+
+${planSummary(plan2, "PLAN 2 (New Plan 1)")}
+
+${planSummary(plan3, "PLAN 3 (New Plan 2)")}
+
+Respond in EXACTLY this markdown format (keep each section brief):
+
+## Quick Summary
+2-3 sentences summarizing the overall landscape across all three plans.
+
+## Key Differences
+- **Cost:** [Compare premiums, deductibles, and MOOP across all three]
+- **Rx Drugs:** [Drug coverage differences across all three]
+- **Extra Benefits:** [Notable differences in dental, vision, OTC, fitness, etc.]
+- **Network:** [HMO/PPO differences and network size comparison]
+- **Quality:** [Star rating comparison across all three plans]
+
+## Recommendation
+1 short paragraph naming which plan is best and for whom. Be specific — mention the plan names and the type of beneficiary each suits best.`;
+}
+
 // ── SSE streaming helper ──────────────────────────────────────────────────────
 
 function sendSSE(res: Response, event: string, data: string) {
@@ -136,9 +160,13 @@ export function registerCompareStreamRoute(app: Express) {
   const streamRouter = Router();
 
   streamRouter.post("/", async (req: Request, res: Response) => {
-    // Validate input
+    // Validate input — thirdPlan is optional for backward compatibility
     const parseResult = z
-      .object({ currentPlan: PlanInputSchema, newPlan: PlanInputSchema })
+      .object({
+        currentPlan: PlanInputSchema,
+        newPlan: PlanInputSchema,
+        thirdPlan: PlanInputSchema.optional(),
+      })
       .safeParse(req.body);
 
     if (!parseResult.success) {
@@ -146,10 +174,15 @@ export function registerCompareStreamRoute(app: Express) {
       return;
     }
 
-    const { currentPlan, newPlan } = parseResult.data;
+    const { currentPlan, newPlan, thirdPlan } = parseResult.data;
 
     if (currentPlan.id === newPlan.id) {
-      res.status(400).json({ error: "Please select two different plans to compare." });
+      res.status(400).json({ error: "Please select different plans to compare." });
+      return;
+    }
+
+    if (thirdPlan && (thirdPlan.id === currentPlan.id || thirdPlan.id === newPlan.id)) {
+      res.status(400).json({ error: "Please select three different plans to compare." });
       return;
     }
 
@@ -167,7 +200,9 @@ export function registerCompareStreamRoute(app: Express) {
     res.flushHeaders();
 
     try {
-      const prompt = buildShortPrompt(currentPlan, newPlan);
+      const prompt = thirdPlan
+        ? build3PlanPrompt(currentPlan, newPlan, thirdPlan)
+        : build2PlanPrompt(currentPlan, newPlan);
 
       // Call Anthropic streaming API
       const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -178,8 +213,8 @@ export function registerCompareStreamRoute(app: Express) {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5", // Fast model for streaming (Haiku 4.5)
-          max_tokens: 1024,
+          model: "claude-haiku-4-5",
+          max_tokens: thirdPlan ? 1280 : 1024, // slightly more tokens for 3-plan analysis
           stream: true,
           messages: [{ role: "user", content: prompt }],
         }),

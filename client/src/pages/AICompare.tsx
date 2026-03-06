@@ -1,12 +1,12 @@
 /**
- * AI Plan Compare Page — Optimized for Speed
+ * AI Plan Compare Page — 3-Plan Side-by-Side
  * Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
  *
  * Performance optimizations:
  * 1. Side-by-side comparison table renders INSTANTLY from client-side plan data
  * 2. Claude claude-3-5-haiku-20241022 (2-3x faster than Sonnet)
  * 3. Streaming SSE — AI text appears token-by-token as Claude generates it
- * 4. localStorage cache keyed by sorted plan IDs — instant replay for same pair
+ * 4. localStorage cache keyed by sorted plan IDs — instant replay for same trio
  * 5. Progressive UX — table shows immediately, AI streams below
  */
 
@@ -19,15 +19,10 @@ import {
   AlertCircle,
   RotateCcw,
   Star,
-  TrendingDown,
-  TrendingUp,
-  Minus,
-  CheckCircle2,
-  XCircle,
-  Info,
   RefreshCw,
   Zap,
   Clock,
+  Info,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
 import Header from "@/components/Header";
@@ -38,22 +33,21 @@ import type { MedicarePlan } from "@/lib/types";
 
 // ── localStorage cache helpers ────────────────────────────────────────────────
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 
-function getCacheKey(idA: string, idB: string): string {
-  return `medicare-compare-${CACHE_VERSION}-${[idA, idB].sort().join("__")}`;
+function getCacheKey(ids: string[]): string {
+  return `medicare-compare-${CACHE_VERSION}-${[...ids].sort().join("__")}`;
 }
 
 interface CachedResult {
   analysis: string;
   generatedAt: string;
-  currentPlanId: string;
-  newPlanId: string;
+  planIds: string[];
 }
 
-function loadCache(idA: string, idB: string): CachedResult | null {
+function loadCache(ids: string[]): CachedResult | null {
   try {
-    const raw = localStorage.getItem(getCacheKey(idA, idB));
+    const raw = localStorage.getItem(getCacheKey(ids));
     if (!raw) return null;
     return JSON.parse(raw) as CachedResult;
   } catch {
@@ -61,17 +55,17 @@ function loadCache(idA: string, idB: string): CachedResult | null {
   }
 }
 
-function saveCache(idA: string, idB: string, result: CachedResult): void {
+function saveCache(ids: string[], result: CachedResult): void {
   try {
-    localStorage.setItem(getCacheKey(idA, idB), JSON.stringify(result));
+    localStorage.setItem(getCacheKey(ids), JSON.stringify(result));
   } catch {
     // ignore storage errors
   }
 }
 
-function clearCache(idA: string, idB: string): void {
+function clearCache(ids: string[]): void {
   try {
-    localStorage.removeItem(getCacheKey(idA, idB));
+    localStorage.removeItem(getCacheKey(ids));
   } catch {
     // ignore
   }
@@ -135,11 +129,11 @@ interface PlanSelectorProps {
   sublabel: string;
   value: string;
   onChange: (id: string) => void;
-  excludeId?: string;
+  excludeIds?: string[];
   accentColor: string;
 }
 
-function PlanSelector({ label, sublabel, value, onChange, excludeId, accentColor }: PlanSelectorProps) {
+function PlanSelector({ label, sublabel, value, onChange, excludeIds = [], accentColor }: PlanSelectorProps) {
   const [open, setOpen] = useState(false);
   const selectedPlan = MOCK_PLANS.find((p) => p.id === value);
 
@@ -147,12 +141,22 @@ function PlanSelector({ label, sublabel, value, onChange, excludeId, accentColor
     const carriers = Array.from(new Set(MOCK_PLANS.map((p) => p.carrier)));
     return carriers.map((carrier) => ({
       carrier,
-      plans: MOCK_PLANS.filter((p) => p.carrier === carrier && p.id !== excludeId),
+      plans: MOCK_PLANS.filter((p) => p.carrier === carrier && !excludeIds.includes(p.id)),
     }));
-  }, [excludeId]);
+  }, [excludeIds]);
+
+  // Close on outside click
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <div className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: accentColor }}>
         {label}
       </div>
@@ -254,15 +258,15 @@ function PlanSelector({ label, sublabel, value, onChange, excludeId, accentColor
 
 function PlanMiniCard({ plan, label, color }: { plan: MedicarePlan; label: string; color: string }) {
   return (
-    <div className="flex-1 bg-white rounded-2xl border-2 p-4 shadow-sm" style={{ borderColor: color }}>
+    <div className="flex-1 bg-white rounded-2xl border-2 p-4 shadow-sm min-w-0" style={{ borderColor: color }}>
       <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color }}>
         {label}
       </div>
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 mb-3">
         <CarrierLogo carrier={plan.carrier} size="sm" />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-gray-900 leading-snug truncate">{plan.planName}</div>
-          <div className="text-xs text-gray-500">{plan.carrier}</div>
+          <div className="text-xs text-gray-500 truncate">{plan.carrier}</div>
         </div>
       </div>
       <div className="flex items-center gap-2 mb-2">
@@ -294,176 +298,202 @@ function PlanMiniCard({ plan, label, color }: { plan: MedicarePlan; label: strin
   );
 }
 
-// ── Instant Client-Side Comparison Table ─────────────────────────────────────
+// ── 3-Plan Comparison Table ───────────────────────────────────────────────────
 
-function DiffIndicator({ a, b, lowerIsBetter = true }: { a: number; b: number; lowerIsBetter?: boolean }) {
-  if (a === b) return <Minus size={12} className="text-gray-400 inline ml-1" />;
-  const better = lowerIsBetter ? b < a : b > a;
-  return better ? (
-    <TrendingDown size={12} className="text-green-600 inline ml-1" />
-  ) : (
-    <TrendingUp size={12} className="text-red-500 inline ml-1" />
-  );
-}
+function CompareTable3({ plans, labels, colors }: {
+  plans: [MedicarePlan, MedicarePlan, MedicarePlan];
+  labels: [string, string, string];
+  colors: [string, string, string];
+}) {
+  const [p1, p2, p3] = plans;
 
-function BenefitCompare({ current, newVal }: { current: boolean; newVal: boolean }) {
-  if (current === newVal) return null;
-  if (!current && newVal) return <span className="text-[10px] font-bold text-green-600 ml-1">+GAINED</span>;
-  if (current && !newVal) return <span className="text-[10px] font-bold text-red-500 ml-1">-LOST</span>;
-  return null;
-}
+  type RowDef = {
+    label: string;
+    vals: [string, string, string];
+    nums?: [number, number, number];
+    lowerIsBetter?: boolean;
+  };
 
-function CompareTable({ current, newPlan }: { current: MedicarePlan; newPlan: MedicarePlan }) {
-  const rows = [
+  const rows: RowDef[] = [
     {
       label: "Monthly Premium",
-      current: current.premium === 0 ? "$0" : `$${current.premium}`,
-      newVal: newPlan.premium === 0 ? "$0" : `$${newPlan.premium}`,
-      diff: <DiffIndicator a={current.premium} b={newPlan.premium} lowerIsBetter />,
+      vals: [
+        p1.premium === 0 ? "$0" : `$${p1.premium}`,
+        p2.premium === 0 ? "$0" : `$${p2.premium}`,
+        p3.premium === 0 ? "$0" : `$${p3.premium}`,
+      ],
+      nums: [p1.premium, p2.premium, p3.premium],
+      lowerIsBetter: true,
     },
     {
       label: "Part B Reduction",
-      current: current.partBPremiumReduction > 0 ? `+$${current.partBPremiumReduction}/mo` : "None",
-      newVal: newPlan.partBPremiumReduction > 0 ? `+$${newPlan.partBPremiumReduction}/mo` : "None",
-      diff: <DiffIndicator a={current.partBPremiumReduction} b={newPlan.partBPremiumReduction} lowerIsBetter={false} />,
+      vals: [
+        p1.partBPremiumReduction > 0 ? `+$${p1.partBPremiumReduction}/mo` : "None",
+        p2.partBPremiumReduction > 0 ? `+$${p2.partBPremiumReduction}/mo` : "None",
+        p3.partBPremiumReduction > 0 ? `+$${p3.partBPremiumReduction}/mo` : "None",
+      ],
+      nums: [p1.partBPremiumReduction, p2.partBPremiumReduction, p3.partBPremiumReduction],
+      lowerIsBetter: false,
     },
     {
       label: "Max Out-of-Pocket",
-      current: `$${current.maxOutOfPocket.toLocaleString()}`,
-      newVal: `$${newPlan.maxOutOfPocket.toLocaleString()}`,
-      diff: <DiffIndicator a={current.maxOutOfPocket} b={newPlan.maxOutOfPocket} lowerIsBetter />,
+      vals: [
+        `$${p1.maxOutOfPocket.toLocaleString()}`,
+        `$${p2.maxOutOfPocket.toLocaleString()}`,
+        `$${p3.maxOutOfPocket.toLocaleString()}`,
+      ],
+      nums: [p1.maxOutOfPocket, p2.maxOutOfPocket, p3.maxOutOfPocket],
+      lowerIsBetter: true,
     },
     {
       label: "Annual Deductible",
-      current: `$${current.deductible}`,
-      newVal: `$${newPlan.deductible}`,
-      diff: <DiffIndicator a={current.deductible} b={newPlan.deductible} lowerIsBetter />,
+      vals: [`$${p1.deductible}`, `$${p2.deductible}`, `$${p3.deductible}`],
+      nums: [p1.deductible, p2.deductible, p3.deductible],
+      lowerIsBetter: true,
     },
     {
       label: "Plan Type",
-      current: current.planType,
-      newVal: newPlan.planType,
-      diff: null,
+      vals: [p1.planType, p2.planType, p3.planType],
     },
     {
       label: "CMS Star Rating",
-      current: `${current.starRating.overall} / 5.0`,
-      newVal: `${newPlan.starRating.overall} / 5.0`,
-      diff: <DiffIndicator a={current.starRating.overall} b={newPlan.starRating.overall} lowerIsBetter={false} />,
+      vals: [`${p1.starRating.overall}/5`, `${p2.starRating.overall}/5`, `${p3.starRating.overall}/5`],
+      nums: [p1.starRating.overall, p2.starRating.overall, p3.starRating.overall],
+      lowerIsBetter: false,
     },
     {
       label: "Primary Care Copay",
-      current: current.copays.primaryCare,
-      newVal: newPlan.copays.primaryCare,
-      diff: null,
+      vals: [p1.copays.primaryCare, p2.copays.primaryCare, p3.copays.primaryCare],
     },
     {
       label: "Specialist Copay",
-      current: current.copays.specialist,
-      newVal: newPlan.copays.specialist,
-      diff: null,
+      vals: [p1.copays.specialist, p2.copays.specialist, p3.copays.specialist],
     },
     {
       label: "Emergency Copay",
-      current: current.copays.emergency,
-      newVal: newPlan.copays.emergency,
-      diff: null,
+      vals: [p1.copays.emergency, p2.copays.emergency, p3.copays.emergency],
     },
     {
       label: "Tier 1 (Generic) Rx",
-      current: current.rxDrugs.tier1,
-      newVal: newPlan.rxDrugs.tier1,
-      diff: null,
+      vals: [p1.rxDrugs.tier1, p2.rxDrugs.tier1, p3.rxDrugs.tier1],
     },
     {
       label: "Tier 2 (Brand) Rx",
-      current: current.rxDrugs.tier2,
-      newVal: newPlan.rxDrugs.tier2,
-      diff: null,
+      vals: [p1.rxDrugs.tier2, p2.rxDrugs.tier2, p3.rxDrugs.tier2],
     },
     {
       label: "Gap Coverage",
-      current: current.rxDrugs.gap ? "✅ Yes" : "❌ No",
-      newVal: newPlan.rxDrugs.gap ? "✅ Yes" : "❌ No",
-      diff: null,
+      vals: [
+        p1.rxDrugs.gap ? "✅ Yes" : "❌ No",
+        p2.rxDrugs.gap ? "✅ Yes" : "❌ No",
+        p3.rxDrugs.gap ? "✅ Yes" : "❌ No",
+      ],
     },
     {
       label: "Dental",
-      current: current.extraBenefits.dental.covered ? "✅ Included" : "❌ None",
-      newVal: newPlan.extraBenefits.dental.covered ? "✅ Included" : "❌ None",
-      diff: <BenefitCompare current={current.extraBenefits.dental.covered} newVal={newPlan.extraBenefits.dental.covered} />,
+      vals: [
+        p1.extraBenefits.dental.covered ? "✅ Included" : "❌ None",
+        p2.extraBenefits.dental.covered ? "✅ Included" : "❌ None",
+        p3.extraBenefits.dental.covered ? "✅ Included" : "❌ None",
+      ],
     },
     {
       label: "Vision",
-      current: current.extraBenefits.vision.covered ? "✅ Included" : "❌ None",
-      newVal: newPlan.extraBenefits.vision.covered ? "✅ Included" : "❌ None",
-      diff: <BenefitCompare current={current.extraBenefits.vision.covered} newVal={newPlan.extraBenefits.vision.covered} />,
+      vals: [
+        p1.extraBenefits.vision.covered ? "✅ Included" : "❌ None",
+        p2.extraBenefits.vision.covered ? "✅ Included" : "❌ None",
+        p3.extraBenefits.vision.covered ? "✅ Included" : "❌ None",
+      ],
     },
     {
       label: "OTC Allowance",
-      current: current.extraBenefits.otc.covered ? `✅ ${current.extraBenefits.otc.annualLimit || "Yes"}` : "❌ None",
-      newVal: newPlan.extraBenefits.otc.covered ? `✅ ${newPlan.extraBenefits.otc.annualLimit || "Yes"}` : "❌ None",
-      diff: <BenefitCompare current={current.extraBenefits.otc.covered} newVal={newPlan.extraBenefits.otc.covered} />,
+      vals: [
+        p1.extraBenefits.otc.covered ? `✅ ${p1.extraBenefits.otc.annualLimit || "Yes"}` : "❌ None",
+        p2.extraBenefits.otc.covered ? `✅ ${p2.extraBenefits.otc.annualLimit || "Yes"}` : "❌ None",
+        p3.extraBenefits.otc.covered ? `✅ ${p3.extraBenefits.otc.annualLimit || "Yes"}` : "❌ None",
+      ],
     },
     {
       label: "Fitness Benefit",
-      current: current.extraBenefits.fitness.covered ? "✅ Included" : "❌ None",
-      newVal: newPlan.extraBenefits.fitness.covered ? "✅ Included" : "❌ None",
-      diff: <BenefitCompare current={current.extraBenefits.fitness.covered} newVal={newPlan.extraBenefits.fitness.covered} />,
+      vals: [
+        p1.extraBenefits.fitness.covered ? "✅ Included" : "❌ None",
+        p2.extraBenefits.fitness.covered ? "✅ Included" : "❌ None",
+        p3.extraBenefits.fitness.covered ? "✅ Included" : "❌ None",
+      ],
     },
     {
       label: "Transportation",
-      current: current.extraBenefits.transportation.covered ? "✅ Included" : "❌ None",
-      newVal: newPlan.extraBenefits.transportation.covered ? "✅ Included" : "❌ None",
-      diff: <BenefitCompare current={current.extraBenefits.transportation.covered} newVal={newPlan.extraBenefits.transportation.covered} />,
+      vals: [
+        p1.extraBenefits.transportation.covered ? "✅ Included" : "❌ None",
+        p2.extraBenefits.transportation.covered ? "✅ Included" : "❌ None",
+        p3.extraBenefits.transportation.covered ? "✅ Included" : "❌ None",
+      ],
     },
     {
       label: "Network Size",
-      current: `${current.networkSize.toLocaleString()}+ providers`,
-      newVal: `${newPlan.networkSize.toLocaleString()}+ providers`,
-      diff: <DiffIndicator a={current.networkSize} b={newPlan.networkSize} lowerIsBetter={false} />,
+      vals: [
+        `${p1.networkSize.toLocaleString()}+`,
+        `${p2.networkSize.toLocaleString()}+`,
+        `${p3.networkSize.toLocaleString()}+`,
+      ],
+      nums: [p1.networkSize, p2.networkSize, p3.networkSize],
+      lowerIsBetter: false,
     },
   ];
+
+  // Determine best value highlight for numeric rows
+  function getBestIdx(nums: [number, number, number], lowerIsBetter: boolean): number {
+    const best = lowerIsBetter ? Math.min(...nums) : Math.max(...nums);
+    return nums.indexOf(best);
+  }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b-2 border-gray-100">
-            <th className="text-left py-2 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider w-40">
+            <th className="text-left py-2 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wider w-36">
               Feature
             </th>
-            <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#006B3F" }}>
-              Current Plan
-            </th>
-            <th className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#F47920" }}>
-              New Plan
-            </th>
-            <th className="text-center py-2 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">
-              Change
-            </th>
+            {labels.map((label, i) => (
+              <th
+                key={label}
+                className="text-left py-2 px-3 text-xs font-semibold uppercase tracking-wider"
+                style={{ color: colors[i] }}
+              >
+                {label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.label} className={i % 2 === 0 ? "bg-gray-50/50" : "bg-white"}>
-              <td className="py-2.5 pr-4 text-xs font-medium text-gray-500 whitespace-nowrap">{row.label}</td>
-              <td className="py-2.5 px-3 text-xs font-semibold text-gray-800">
-                {row.current}
-              </td>
-              <td className="py-2.5 px-3 text-xs font-semibold text-gray-800">
-                {row.newVal}
-                {row.diff}
-              </td>
-              <td className="py-2.5 pl-3 text-center">
-                {row.current === row.newVal ? (
-                  <span className="text-[10px] text-gray-400 font-medium">Same</span>
-                ) : (
-                  <span className="text-[10px]">{row.diff ? "" : "—"}</span>
-                )}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row, i) => {
+            const bestIdx = row.nums ? getBestIdx(row.nums, row.lowerIsBetter ?? true) : -1;
+            return (
+              <tr key={row.label} className={i % 2 === 0 ? "bg-gray-50/50" : "bg-white"}>
+                <td className="py-2.5 pr-4 text-xs font-medium text-gray-500 whitespace-nowrap">{row.label}</td>
+                {row.vals.map((val, j) => (
+                  <td
+                    key={j}
+                    className="py-2.5 px-3 text-xs font-semibold"
+                    style={{
+                      color: bestIdx === j && row.nums && row.vals.filter((v, k) => row.vals[k] === val).length < 3
+                        ? "#065F46"
+                        : "#1F2937",
+                      backgroundColor: bestIdx === j && row.nums && new Set(row.vals).size > 1
+                        ? "#F0FDF4"
+                        : undefined,
+                    }}
+                  >
+                    {val}
+                    {bestIdx === j && row.nums && new Set(row.vals).size > 1 && (
+                      <span className="ml-1 text-[9px] font-bold text-green-700 bg-green-100 px-1 py-0.5 rounded">BEST</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -474,9 +504,11 @@ function CompareTable({ current, newPlan }: { current: MedicarePlan; newPlan: Me
 
 type ComparePhase = "idle" | "table-ready" | "streaming" | "done" | "error" | "cached";
 
+const PLAN_COLORS: [string, string, string] = ["#006B3F", "#F47920", "#7C3AED"];
+const PLAN_LABELS: [string, string, string] = ["Current Plan", "New Plan 1", "New Plan 2"];
+
 export default function AICompare() {
-  const [currentPlanId, setCurrentPlanId] = useState<string>("");
-  const [newPlanId, setNewPlanId] = useState<string>("");
+  const [planIds, setPlanIds] = useState<[string, string, string]>(["", "", ""]);
 
   // Progressive state
   const [phase, setPhase] = useState<ComparePhase>("idle");
@@ -487,18 +519,26 @@ export default function AICompare() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const currentPlan = MOCK_PLANS.find((p) => p.id === currentPlanId) ?? null;
-  const newPlan = MOCK_PLANS.find((p) => p.id === newPlanId) ?? null;
-  const canCompare = !!currentPlanId && !!newPlanId && currentPlanId !== newPlanId;
+  const plans = planIds.map((id) => MOCK_PLANS.find((p) => p.id === id) ?? null) as [
+    MedicarePlan | null,
+    MedicarePlan | null,
+    MedicarePlan | null,
+  ];
 
-  // Check if cache exists for current pair
+  const allSelected = planIds.every((id) => !!id);
+  const allUnique = new Set(planIds.filter(Boolean)).size === planIds.filter(Boolean).length;
+  const canCompare = allSelected && allUnique;
+
+  const activePlanIds = planIds.filter(Boolean);
+
+  // Check if cache exists for current trio
   const cachedResult = useMemo(() => {
-    if (!currentPlanId || !newPlanId || currentPlanId === newPlanId) return null;
-    return loadCache(currentPlanId, newPlanId);
-  }, [currentPlanId, newPlanId]);
+    if (!canCompare) return null;
+    return loadCache(planIds);
+  }, [planIds, canCompare]);
 
   const handleCompare = useCallback(async (forceRefresh = false) => {
-    if (!currentPlan || !newPlan) return;
+    if (!canCompare || !plans[0] || !plans[1] || !plans[2]) return;
 
     // Check cache first (unless forced refresh)
     if (!forceRefresh && cachedResult) {
@@ -530,8 +570,9 @@ export default function AICompare() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          currentPlan: normalizePlan(currentPlan),
-          newPlan: normalizePlan(newPlan),
+          currentPlan: normalizePlan(plans[0]),
+          newPlan: normalizePlan(plans[1]),
+          thirdPlan: normalizePlan(plans[2]),
         }),
         signal: abortRef.current.signal,
       });
@@ -559,26 +600,16 @@ export default function AICompare() {
         for (const line of lines) {
           if (line.startsWith("event: delta")) continue;
           if (line.startsWith("event: done")) {
-            // Stream complete
             const ts = new Date().toISOString();
             setGeneratedAt(ts);
             setPhase("done");
-            // Save to cache
-            saveCache(currentPlanId, newPlanId, {
-              analysis: fullText,
-              generatedAt: ts,
-              currentPlanId,
-              newPlanId,
-            });
+            saveCache(planIds, { analysis: fullText, generatedAt: ts, planIds });
             return;
           }
           if (line.startsWith("event: error")) continue;
           if (line.startsWith("data: ")) {
             try {
               const chunk = JSON.parse(line.slice(6)) as string;
-              if (line.includes('"event":"error"') || (typeof chunk === "string" && chunk.startsWith("Streaming error"))) {
-                throw new Error(chunk);
-              }
               fullText += chunk;
               setStreamedText(fullText);
             } catch {
@@ -593,19 +624,14 @@ export default function AICompare() {
       setGeneratedAt(ts);
       setPhase("done");
       if (fullText) {
-        saveCache(currentPlanId, newPlanId, {
-          analysis: fullText,
-          generatedAt: ts,
-          currentPlanId,
-          newPlanId,
-        });
+        saveCache(planIds, { analysis: fullText, generatedAt: ts, planIds });
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setErrorMsg((err as Error).message || "An unexpected error occurred.");
       setPhase("error");
     }
-  }, [currentPlan, newPlan, currentPlanId, newPlanId, cachedResult]);
+  }, [plans, planIds, canCompare, cachedResult]);
 
   const handleReset = () => {
     abortRef.current?.abort();
@@ -617,9 +643,7 @@ export default function AICompare() {
   };
 
   const handleRefresh = () => {
-    if (currentPlanId && newPlanId) {
-      clearCache(currentPlanId, newPlanId);
-    }
+    if (canCompare) clearCache(planIds);
     handleCompare(true);
   };
 
@@ -630,7 +654,7 @@ export default function AICompare() {
 
   const showResults = phase !== "idle";
   const isStreaming = phase === "streaming";
-  const isTableReady = phase === "table-ready" || phase === "streaming" || phase === "done" || phase === "cached" || phase === "error";
+  const isTableReady = ["table-ready", "streaming", "done", "cached", "error"].includes(phase);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
@@ -671,8 +695,8 @@ export default function AICompare() {
                 AI Plan Compare
               </h1>
               <p className="text-white/80 text-base max-w-2xl">
-                Select your current plan and a plan you're considering. The comparison table appears
-                instantly — then Claude AI streams in a personalized analysis with a clear recommendation.
+                Select up to three plans to compare side-by-side. The comparison table appears
+                instantly — then Claude AI streams a personalized analysis with a clear recommendation.
               </p>
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-white/60 text-xs">
@@ -702,7 +726,7 @@ export default function AICompare() {
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#E8F5EE" }}>
               <span className="text-xs font-bold" style={{ color: "#006B3F" }}>1</span>
             </div>
-            <h2 className="text-base font-bold text-gray-900">Select Two Plans to Compare</h2>
+            <h2 className="text-base font-bold text-gray-900">Select Three Plans to Compare</h2>
             {cachedResult && phase === "idle" && (
               <div className="ml-auto flex items-center gap-1.5 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
                 <Clock size={10} />
@@ -711,29 +735,37 @@ export default function AICompare() {
             )}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-5 mb-5">
+          <div className="grid md:grid-cols-3 gap-5 mb-5">
             <PlanSelector
               label="Your Current Plan"
               sublabel="The plan you're enrolled in now"
-              value={currentPlanId}
-              onChange={(id) => { setCurrentPlanId(id); handleReset(); }}
-              excludeId={newPlanId}
-              accentColor="#006B3F"
+              value={planIds[0]}
+              onChange={(id) => { setPlanIds([id, planIds[1], planIds[2]]); handleReset(); }}
+              excludeIds={[planIds[1], planIds[2]].filter(Boolean)}
+              accentColor={PLAN_COLORS[0]}
             />
             <PlanSelector
               label="Plan You're Considering"
-              sublabel="The new plan you want to switch to"
-              value={newPlanId}
-              onChange={(id) => { setNewPlanId(id); handleReset(); }}
-              excludeId={currentPlanId}
-              accentColor="#F47920"
+              sublabel="A new plan you want to compare"
+              value={planIds[1]}
+              onChange={(id) => { setPlanIds([planIds[0], id, planIds[2]]); handleReset(); }}
+              excludeIds={[planIds[0], planIds[2]].filter(Boolean)}
+              accentColor={PLAN_COLORS[1]}
+            />
+            <PlanSelector
+              label="Another Plan You're Considering"
+              sublabel="A second alternative to compare"
+              value={planIds[2]}
+              onChange={(id) => { setPlanIds([planIds[0], planIds[1], id]); handleReset(); }}
+              excludeIds={[planIds[0], planIds[1]].filter(Boolean)}
+              accentColor={PLAN_COLORS[2]}
             />
           </div>
 
-          {currentPlanId && newPlanId && currentPlanId === newPlanId && (
+          {activePlanIds.length > 1 && !allUnique && (
             <div className="flex items-center gap-2 text-amber-600 text-sm mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
               <AlertCircle size={15} />
-              Please select two different plans to compare.
+              Please select three different plans to compare.
             </div>
           )}
 
@@ -759,28 +791,28 @@ export default function AICompare() {
             )}
           </button>
 
-          {!canCompare && !currentPlanId && !newPlanId && (
+          {!canCompare && activePlanIds.length === 0 && (
             <p className="text-center text-xs text-gray-400 mt-3">
-              Select both plans above to enable the AI comparison
+              Select all three plans above to enable the AI comparison
             </p>
           )}
         </div>
 
         {/* ── Results: Instant Table + Streaming AI ────────────────────────── */}
-        {showResults && currentPlan && newPlan && (
+        {showResults && plans[0] && plans[1] && plans[2] && (
           <div className="space-y-6 animate-fade-in-up">
-            {/* VS mini cards — shown instantly */}
-            <div className="flex gap-4">
-              <PlanMiniCard plan={currentPlan} label="Current Plan" color="#006B3F" />
-              <div className="flex items-center justify-center shrink-0">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md"
-                  style={{ backgroundColor: "#F47920" }}
-                >
-                  VS
-                </div>
-              </div>
-              <PlanMiniCard plan={newPlan} label="New Plan" color="#F47920" />
+            {/* 3 mini cards — shown instantly */}
+            <div className="flex gap-3">
+              {plans.map((plan, i) =>
+                plan ? (
+                  <PlanMiniCard
+                    key={plan.id}
+                    plan={plan}
+                    label={PLAN_LABELS[i]}
+                    color={PLAN_COLORS[i]}
+                  />
+                ) : null
+              )}
             </div>
 
             {/* Side-by-side table — rendered INSTANTLY from client data */}
@@ -791,20 +823,17 @@ export default function AICompare() {
                     <Star size={14} style={{ color: "#006B3F" }} />
                   </div>
                   <h2 className="text-base font-bold text-gray-900">Side-by-Side Comparison</h2>
-                  <div className="ml-auto flex items-center gap-3 text-[10px] text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <TrendingDown size={10} className="text-green-600" /> Better
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <TrendingUp size={10} className="text-red-500" /> Worse
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Minus size={10} /> Same
-                    </span>
+                  <div className="ml-auto flex items-center gap-1.5 text-[10px] text-gray-400">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-100 border border-green-600" />
+                    Best value highlighted
                   </div>
                 </div>
                 <div className="p-4">
-                  <CompareTable current={currentPlan} newPlan={newPlan} />
+                  <CompareTable3
+                    plans={[plans[0], plans[1], plans[2]]}
+                    labels={PLAN_LABELS}
+                    colors={PLAN_COLORS}
+                  />
                 </div>
               </div>
             )}
@@ -821,7 +850,7 @@ export default function AICompare() {
                     {generatedAt && (
                       <div className="text-[10px] text-gray-400 flex items-center gap-1">
                         {fromCache && <><Clock size={9} /> Cached · </>}
-                        {new Date(generatedAt).toLocaleTimeString()} · claude-3-5-haiku-20241022
+                        {new Date(generatedAt).toLocaleTimeString()} · claude-haiku-4-5
                       </div>
                     )}
                     {isStreaming && (
@@ -860,7 +889,7 @@ export default function AICompare() {
                       className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin shrink-0"
                       style={{ borderColor: "#E8F5EE", borderTopColor: "#F47920" }}
                     />
-                    Claude is writing the analysis...
+                    Claude is analyzing all three plans...
                   </div>
                 )}
 
@@ -936,21 +965,21 @@ export default function AICompare() {
               {[
                 {
                   step: "1",
-                  title: "Select Two Plans",
-                  desc: "Choose your current plan and one you're considering switching to.",
+                  title: "Select Three Plans",
+                  desc: "Choose your current plan and two alternatives you're considering.",
                   color: "#006B3F",
                 },
                 {
                   step: "2",
                   title: "Instant Table",
-                  desc: "A full side-by-side comparison table appears immediately — no waiting.",
+                  desc: "A full 3-column comparison table appears immediately — no waiting.",
                   color: "#F47920",
                   badge: "Instant",
                 },
                 {
                   step: "3",
                   title: "AI Streams In",
-                  desc: "Claude Haiku analyzes both plans and streams a recommendation in 3-5 seconds.",
+                  desc: "Claude Haiku analyzes all three plans and streams a recommendation in 3-5 seconds.",
                   color: "#006B3F",
                   badge: "~3-5s",
                 },

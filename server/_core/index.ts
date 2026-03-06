@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerCompareStreamRoute } from "../compareStream";
+import recommendStreamRouter from "../recommendStream";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +39,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Streaming AI compare endpoint (SSE) — registered before tRPC
   registerCompareStreamRoute(app);
+  // Streaming Plan Recommender AI narrative endpoint
+  app.use("/api", recommendStreamRouter);
   // tRPC API
   app.use(
     "/api/trpc",
