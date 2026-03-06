@@ -24,6 +24,7 @@ import {
 import type { MedicarePlan } from "@/lib/types";
 import StarRating from "./StarRating";
 import CarrierLogo from "./CarrierLogo";
+import InlineCompare from "./InlineCompare";
 
 interface PlanCardProps {
   plan: MedicarePlan;
@@ -31,6 +32,8 @@ interface PlanCardProps {
   onToggleFavorite: (id: string) => void;
   onEnroll: (plan: MedicarePlan) => void;
   animationDelay?: number;
+  isCompareActive?: boolean;
+  onCompareActivate?: (planId: string | null) => void;
 }
 
 const BENEFIT_ICONS = {
@@ -61,6 +64,8 @@ export default function PlanCard({
   onToggleFavorite,
   onEnroll,
   animationDelay = 0,
+  isCompareActive = false,
+  onCompareActivate,
 }: PlanCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [heartAnimating, setHeartAnimating] = useState(false);
@@ -362,6 +367,15 @@ export default function PlanCard({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── Inline Compare ────────────────────────────────────────────── */}
+        {onCompareActivate && (
+          <InlineCompare
+            plan={plan}
+            isActive={isCompareActive}
+            onActivate={onCompareActivate}
+          />
         )}
 
         {/* ── Card Footer ───────────────────────────────────────────────── */}

@@ -126,6 +126,12 @@ export default function Plans() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [zipInput, setZipInput] = useState(zip);
+  // Inline compare: only one card can be active at a time
+  const [activeCompareId, setActiveCompareId] = useState<string | null>(null);
+
+  const handleCompareActivate = (planId: string | null) => {
+    setActiveCompareId(planId);
+  };
 
   // Determine city from ZIP
   const cityName = zip === "64106" ? "Kansas City, MO" : `ZIP ${zip}`;
@@ -468,6 +474,8 @@ export default function Plans() {
                     onToggleFavorite={toggleFavorite}
                     onEnroll={handleEnroll}
                     animationDelay={Math.min(i * 60, 400)}
+                    isCompareActive={activeCompareId === plan.id}
+                    onCompareActivate={handleCompareActivate}
                   />
                 ))}
               </div>

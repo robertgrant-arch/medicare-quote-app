@@ -68,3 +68,21 @@
 - [ ] Frontend: update subheading text
 - [ ] Frontend: update disclaimer text
 - [ ] Update vitest to match new single-field signature
+
+## Inline Compare to My Current Plan (Plan Cards)
+- [ ] InlineCompare component: checkbox "Compare to my current plan" on each plan card
+- [ ] Only one card selectable at a time (Plans page state controls activeCompareId)
+- [ ] Slide-down green-tinted panel with lock icon, Medicare ID input, consent checkbox
+- [ ] Medicare ID auto-cleared from state immediately after pVerify response (privacy)
+- [ ] Loading state: "Looking up your plan..." spinner
+- [ ] Loading state: "Analyzing plans with AI..." spinner
+- [ ] InlineCompareResult component: green checkmark banner "Comparison Complete" with X to close
+- [ ] Side-by-side color-coded table (Premium, Deductible, MOOP, PCP, Specialist, Drugs)
+- [ ] AI summary paragraph rendered inline
+- [ ] Pros/cons two-column layout
+- [ ] Estimated annual cost with orange savings callout
+- [ ] Orange-bordered recommendation box
+- [ ] Save Comparison and Talk to an Agent buttons
+- [ ] Reuse existing pverify.lookup and pverify.compare tRPC routes
+- [ ] Medicare ID never stored in DB or logs (privacy comment in component)
+- [ ] Vitest updated for new inline compare flow
