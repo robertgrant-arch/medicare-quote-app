@@ -181,3 +181,7 @@
 - [x] Add "Compare These 3 Plans with AI" button to Plan Recommender results
 - [x] Button navigates to /ai-compare?plan1=ID&plan2=ID&plan3=ID with top 3 plan IDs
 - [x] AI Compare page reads URL params on mount and pre-selects the three plans
+
+## Save & Compare to My Current Plan Button
+- [x] Add "Save & Compare to My Current Plan" button to each RankedPlanCard
+- [x] Button navigates to /ai-compare?plan2=ID leaving plan1 empty for user to select

@@ -481,15 +481,31 @@ function RankedPlanCard({ ranked }: { ranked: RankedPlan }) {
           </div>
         </div>
 
-        {/* CTA */}
-        <Link
-          href={`/plans?zip=64106`}
-          className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-white no-underline transition-opacity hover:opacity-90"
-          style={{ backgroundColor: rank === 1 ? color : "#6B7280" }}
-        >
-          View Full Plan Details
-          <ChevronRight size={14} />
-        </Link>
+        {/* CTAs */}
+        <div className="mt-4 space-y-2">
+          <Link
+            href={`/plans?zip=64106`}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-white no-underline transition-opacity hover:opacity-90"
+            style={{ backgroundColor: rank === 1 ? color : "#6B7280" }}
+          >
+            View Full Plan Details
+            <ChevronRight size={14} />
+          </Link>
+          <a
+            href={`/ai-compare?plan2=${encodeURIComponent(plan.id)}`}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors no-underline"
+            style={{
+              borderColor: color,
+              color: color,
+              backgroundColor: "transparent",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = rank === 1 ? "#E8F5EE" : "#F3F4F6"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent"; }}
+          >
+            <Sparkles size={14} />
+            Save &amp; Compare to My Current Plan
+          </a>
+        </div>
       </div>
     </div>
   );
