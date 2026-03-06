@@ -1230,6 +1230,23 @@ export default function PlanRecommender() {
               </div>
             </div>
 
+            {/* Compare with AI button */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 mb-1">Want a deeper side-by-side analysis?</h3>
+                <p className="text-sm text-gray-500">Open the AI Compare page with your top 3 plans pre-loaded for a detailed breakdown.</p>
+              </div>
+              <a
+                href={`/ai-compare?plan1=${encodeURIComponent(rankedPlans[0]?.plan.id ?? '')}&plan2=${encodeURIComponent(rankedPlans[1]?.plan.id ?? '')}&plan3=${encodeURIComponent(rankedPlans[2]?.plan.id ?? '')}`}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white shadow-md shrink-0 transition-opacity hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #006B3F 0%, #00A651 100%)" }}
+              >
+                <Sparkles size={16} />
+                Compare These 3 Plans with AI
+                <ChevronRight size={16} />
+              </a>
+            </div>
+
             {/* Disclaimer */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-700 flex items-start gap-2">
               <Info size={14} className="shrink-0 mt-0.5" />

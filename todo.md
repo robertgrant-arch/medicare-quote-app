@@ -176,3 +176,8 @@
 - [x] /api/recommend-stream SSE endpoint using Claude Haiku for personalized narrative
 - [x] Results page: top-3 cards with cost breakdown, why recommended, AI narrative streaming
 - [x] Match existing app styling (green header, card layouts, orange accents)
+
+## Plan Recommender → AI Compare Integration
+- [x] Add "Compare These 3 Plans with AI" button to Plan Recommender results
+- [x] Button navigates to /ai-compare?plan1=ID&plan2=ID&plan3=ID with top 3 plan IDs
+- [x] AI Compare page reads URL params on mount and pre-selects the three plans

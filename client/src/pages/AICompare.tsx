@@ -519,6 +519,17 @@ export default function AICompare() {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  // Pre-fill plan IDs from URL params (e.g. from Plan Recommender)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p1 = params.get("plan1") ?? "";
+    const p2 = params.get("plan2") ?? "";
+    const p3 = params.get("plan3") ?? "";
+    if (p1 || p2 || p3) {
+      setPlanIds([p1, p2, p3]);
+    }
+  }, []);
+
   const plans = planIds.map((id) => MOCK_PLANS.find((p) => p.id === id) ?? null) as [
     MedicarePlan | null,
     MedicarePlan | null,
