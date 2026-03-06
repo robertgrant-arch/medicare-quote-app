@@ -147,3 +147,10 @@
 - [x] Header NAV_DROPDOWNS hrefs updated to real routes
 - [x] Home.tsx footer links updated to real routes with Link components
 - [x] All 28 routes registered in App.tsx
+
+## Medicare Guide Page
+- [x] Create /resources/medicare-guide page with two-section accordion (Complete Medicare Guide + Extra Help)
+- [x] Complete Medicare Guide section expanded by default, Extra Help collapsed by default
+- [x] Both sections toggle independently (click to open/close each)
+- [x] Add to Resources dropdown nav
+- [x] Register route in App.tsx

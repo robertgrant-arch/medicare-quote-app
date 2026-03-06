@@ -43,6 +43,7 @@ const NAV_DROPDOWNS = [
     label: "Resources",
     activeRoutes: ["/resources", "/medicare-101", "/faq"],
     items: [
+      { label: "Medicare Guide", href: "/resources/medicare-guide" },
       { label: "Medicare 101", href: "/resources/medicare-101" },
       { label: "Enrollment Periods", href: "/resources/enrollment-periods" },
       { label: "Star Ratings Guide", href: "/resources/star-ratings" },

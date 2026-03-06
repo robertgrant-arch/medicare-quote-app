@@ -38,6 +38,7 @@ import {
   StarRatingsGuide,
   FAQ,
 } from "./pages/resources/ResourcePages";
+import MedicareGuide from "./pages/resources/MedicareGuide";
 
 // Company pages
 import {
@@ -77,6 +78,7 @@ function Router() {
       <Route path="/part-d/enrollment" component={PartDEnrollment} />
 
       {/* Resources */}
+      <Route path="/resources/medicare-guide" component={MedicareGuide} />
       <Route path="/resources/medicare-101" component={Medicare101} />
       <Route path="/resources/enrollment-periods" component={EnrollmentPeriods} />
       <Route path="/resources/star-ratings" component={StarRatingsGuide} />
