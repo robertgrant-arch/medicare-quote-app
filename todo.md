@@ -111,3 +111,12 @@
 - [x] Chevron rotates 180deg when open
 - [x] Green top border accent on dropdown panel
 - [x] Mobile accordion sections with indent + left border
+
+## Active Nav Highlighting
+- [x] Map each nav dropdown to activeRoutes (path prefixes)
+- [x] Medicare Advantage active on /plans and /medicare-advantage
+- [x] Medicare Supplement active on /medicare-supplement and /medigap
+- [x] Part D Drug Plans active on /part-d and /drug-plans
+- [x] Resources active on /resources, /medicare-101, /faq
+- [x] Bold font-weight + green color + green bg when active
+- [x] Hover styles only apply when NOT active (no flicker)

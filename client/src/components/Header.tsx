@@ -7,9 +7,11 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 
 // ── Dropdown menu definitions ────────────────────────────────────────────────
+// activeRoutes: list of path prefixes that mark this section as "active"
 const NAV_DROPDOWNS = [
   {
     label: "Medicare Advantage",
+    activeRoutes: ["/plans", "/medicare-advantage"],
     items: [
       { label: "MA HMO Plans", href: "/#" },
       { label: "MA PPO Plans", href: "/#" },
@@ -19,6 +21,7 @@ const NAV_DROPDOWNS = [
   },
   {
     label: "Medicare Supplement",
+    activeRoutes: ["/medicare-supplement", "/medigap"],
     items: [
       { label: "Medigap Plan F", href: "/#" },
       { label: "Medigap Plan G", href: "/#" },
@@ -28,6 +31,7 @@ const NAV_DROPDOWNS = [
   },
   {
     label: "Part D Drug Plans",
+    activeRoutes: ["/part-d", "/drug-plans"],
     items: [
       { label: "Compare Drug Plans", href: "/#" },
       { label: "Drug Formulary Search", href: "/#" },
@@ -37,6 +41,7 @@ const NAV_DROPDOWNS = [
   },
   {
     label: "Resources",
+    activeRoutes: ["/resources", "/medicare-101", "/faq"],
     items: [
       { label: "Medicare 101", href: "/#" },
       { label: "Enrollment Periods", href: "/#" },
@@ -46,16 +51,17 @@ const NAV_DROPDOWNS = [
   },
 ];
 
-// ── NavDropdown: single desktop dropdown button + panel ──────────────────────
+// ── NavDropdown: single desktop dropdown button + panel ──────────────────
 interface NavDropdownProps {
   label: string;
   items: { label: string; href: string }[];
   isOpen: boolean;
+  isActive: boolean;
   onToggle: () => void;
   onClose: () => void;
 }
 
-function NavDropdown({ label, items, isOpen, onToggle, onClose }: NavDropdownProps) {
+function NavDropdown({ label, items, isOpen, isActive, onToggle, onClose }: NavDropdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -86,13 +92,33 @@ function NavDropdown({ label, items, isOpen, onToggle, onClose }: NavDropdownPro
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-green-800 rounded-md hover:bg-green-50 transition-colors"
+        className="flex items-center gap-1 px-3 py-2 text-sm rounded-md transition-colors"
+        style={{
+          fontWeight: isActive ? 700 : 500,
+          color: isActive ? "#006B3F" : undefined,
+          backgroundColor: isActive ? "#E8F5EE" : undefined,
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            (e.currentTarget as HTMLButtonElement).style.color = "#14532d";
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#f0fdf4";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            (e.currentTarget as HTMLButtonElement).style.color = "";
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = "";
+          }
+        }}
       >
         {label}
         <ChevronDown
           size={13}
-          className="opacity-60 transition-transform duration-200"
-          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          className="transition-transform duration-200"
+          style={{
+            opacity: isActive ? 0.8 : 0.6,
+            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+          }}
         />
       </button>
 
@@ -225,6 +251,7 @@ export default function Header() {
                 label={nav.label}
                 items={nav.items}
                 isOpen={openDropdown === nav.label}
+                isActive={nav.activeRoutes.some((r) => location.startsWith(r))}
                 onToggle={() => toggleDropdown(nav.label)}
                 onClose={closeDropdown}
               />
