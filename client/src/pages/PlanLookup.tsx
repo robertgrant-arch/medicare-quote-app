@@ -1,6 +1,9 @@
 /**
  * Plan Lookup Tool — pVerify-powered eligibility lookup + AI plan comparison
  * Color scheme: #006B3F primary green, #F47920 CTA orange
+ *
+ * PRIVACY: Only a Medicare ID is collected. It is cleared from state immediately
+ * after the lookup completes and is never persisted to any database or log.
  */
 
 import { useState } from "react";
@@ -20,10 +23,7 @@ import {
   Phone,
   BookmarkPlus,
   Sparkles,
-  User,
-  Calendar,
-  CreditCard,
-  Building2,
+  Lock,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -141,17 +141,6 @@ const POTENTIAL_PLANS: PotentialPlan[] = [
   },
 ];
 
-const PAYERS = [
-  { id: "UHC001", name: "UnitedHealthcare" },
-  { id: "HUM001", name: "Humana" },
-  { id: "AET001", name: "Aetna" },
-  { id: "BCBS001", name: "BCBS (Blue Cross Blue Shield)" },
-  { id: "CIG001", name: "Cigna" },
-  { id: "WEL001", name: "WellCare" },
-  { id: "MOL001", name: "Molina Healthcare" },
-  { id: "CEN001", name: "Centene" },
-];
-
 // ─── Helper components ───────────────────────────────────────────────────────
 
 function FieldRow({ label, value }: { label: string; value: string | number }) {
@@ -227,7 +216,6 @@ function CompareCell({
 }
 
 function TextCompareCell({ current, potential }: { current: string; potential: string }) {
-  const isSame = current === potential;
   const currentHas = current !== "Not covered";
   const potentialHas = potential !== "Not covered";
 
@@ -248,12 +236,8 @@ function TextCompareCell({ current, potential }: { current: string; potential: s
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function PlanLookup() {
-  // Form state
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [dob, setDob] = useState("");
-  const [memberId, setMemberId] = useState("");
-  const [payerId, setPayerId] = useState("");
+  // Form state — only Medicare ID is collected, no other PII
+  const [medicareId, setMedicareId] = useState("");
   const [consent, setConsent] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -261,7 +245,6 @@ export default function PlanLookup() {
   const [currentPlan, setCurrentPlan] = useState<CurrentPlanData | null>(null);
   const [selectedPotentialId, setSelectedPotentialId] = useState<string>("");
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
-  const [showPotentialDropdown, setShowPotentialDropdown] = useState(false);
   const [savedComparison, setSavedComparison] = useState(false);
 
   // tRPC mutations
@@ -271,10 +254,15 @@ export default function PlanLookup() {
         setCurrentPlan(data.data as CurrentPlanData);
         setComparisonResult(null);
         setSelectedPotentialId("");
+        // PRIVACY: Clear the Medicare ID from state immediately after lookup completes.
+        // It is never stored in any database, log, or persistent store.
+        setMedicareId("");
       }
     },
     onError: (err) => {
       setFormError(err.message || "Lookup failed. Please try again.");
+      // PRIVACY: Clear the Medicare ID on error as well — never retain it.
+      setMedicareId("");
     },
   });
 
@@ -287,8 +275,8 @@ export default function PlanLookup() {
   });
 
   const handleLookup = () => {
-    if (!firstName.trim() || !lastName.trim() || !dob || !memberId.trim() || !payerId) {
-      setFormError("Please fill in all fields.");
+    if (!medicareId.trim()) {
+      setFormError("Please enter your Medicare ID.");
       return;
     }
     if (!consent) {
@@ -296,7 +284,7 @@ export default function PlanLookup() {
       return;
     }
     setFormError("");
-    lookupMutation.mutate({ firstName, lastName, dob, memberId, payerId });
+    lookupMutation.mutate({ medicareId });
   };
 
   const handleCompare = () => {
@@ -334,8 +322,7 @@ export default function PlanLookup() {
             </h1>
           </div>
           <p className="text-white/80 text-base max-w-xl">
-            Look up your current Medicare Advantage plan using your member information, then compare
-            it to other plans available in your area.
+            Enter your Medicare ID to look up your current plan. Your ID is never stored.
           </p>
           {/* pVerify badge */}
           <div className="inline-flex items-center gap-2 mt-4 bg-white/10 border border-white/20 rounded-full px-3 py-1.5">
@@ -358,95 +345,37 @@ export default function PlanLookup() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Look Up My Current Plan</h2>
-              <p className="text-sm text-gray-500">Enter your Medicare member information to find your current plan details.</p>
+              <p className="text-sm text-gray-500">
+                Enter your Medicare ID to look up your current plan. Your ID is never stored.
+              </p>
             </div>
           </div>
 
           <div className="p-6">
-            <div className="grid sm:grid-cols-2 gap-4 mb-4">
-              {/* First Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  <User size={13} className="inline mr-1 text-gray-400" />
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="e.g. John"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-
-              {/* Last Name */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  <User size={13} className="inline mr-1 text-gray-400" />
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="e.g. Smith"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-
-              {/* Date of Birth */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  <Calendar size={13} className="inline mr-1 text-gray-400" />
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-
-              {/* Member ID */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  <CreditCard size={13} className="inline mr-1 text-gray-400" />
-                  Member ID
-                </label>
-                <input
-                  type="text"
-                  value={memberId}
-                  onChange={(e) => setMemberId(e.target.value)}
-                  placeholder="e.g. 123456789"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-
-              {/* Payer */}
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  <Building2 size={13} className="inline mr-1 text-gray-400" />
-                  Payer / Insurance Company
-                </label>
-                <div className="relative">
-                  <select
-                    value={payerId}
-                    onChange={(e) => setPayerId(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 transition-colors appearance-none bg-white"
-                  >
-                    <option value="">Select your insurance company...</option>
-                    {PAYERS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
-                </div>
+            {/* Single Medicare ID input */}
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Medicare ID
+              </label>
+              <input
+                type="text"
+                value={medicareId}
+                onChange={(e) => {
+                  setMedicareId(e.target.value);
+                  setFormError("");
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleLookup(); }}
+                placeholder="e.g. 1EG4-TE5-MK72"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-base outline-none focus:border-green-500 transition-colors font-mono"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {/* Privacy note directly below input */}
+              <div className="flex items-center gap-1.5 mt-2">
+                <Lock size={11} className="text-gray-400 shrink-0" />
+                <span className="text-xs text-gray-400">
+                  Never stored · Purged after lookup
+                </span>
               </div>
             </div>
 
@@ -527,9 +456,6 @@ export default function PlanLookup() {
                 </h3>
                 <div className="flex flex-wrap gap-3 text-sm text-gray-500">
                   <span>Plan ID: <strong className="text-gray-700">{currentPlan.planId}</strong></span>
-                  {currentPlan.memberName && (
-                    <span>Member: <strong className="text-gray-700">{currentPlan.memberName}</strong></span>
-                  )}
                 </div>
               </div>
 
@@ -888,7 +814,7 @@ export default function PlanLookup() {
                   style={{ backgroundColor: "#FFF8F3", border: "1px solid #FDDCBC" }}
                 >
                   <div className="text-sm font-semibold" style={{ color: "#F47920" }}>
-                    💰 You could save approximately{" "}
+                    You could save approximately{" "}
                     <span className="text-xl font-bold">${savings.toLocaleString()}</span> per year
                     by switching to the new plan.
                   </div>
@@ -927,7 +853,7 @@ export default function PlanLookup() {
                 onClick={() => setSavedComparison(true)}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border-2 transition-all"
                 style={{
-                  borderColor: savedComparison ? "#006B3F" : "#006B3F",
+                  borderColor: "#006B3F",
                   color: savedComparison ? "white" : "#006B3F",
                   backgroundColor: savedComparison ? "#006B3F" : "transparent",
                 }}
@@ -960,10 +886,9 @@ export default function PlanLookup() {
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <span>
-            <strong>Disclaimer:</strong> Plan data shown is for illustrative purposes only and does
-            not represent actual insurance coverage. Contact a licensed Medicare agent to verify your
-            coverage details before making any enrollment decisions. This tool uses simulated data
-            and is not affiliated with pVerify or any insurance carrier.
+            Your Medicare ID is used only to perform a one-time eligibility lookup and is immediately
+            purged from memory after use. It is never stored in a database, log, or any persistent
+            system. Plan data shown is for illustrative purposes only.
           </span>
         </div>
       </div>

@@ -56,3 +56,15 @@
 - [x] Disclaimer at bottom
 - [x] Mobile-responsive layout
 - [x] Vitest for pverify router procedures (12 tests total, all passing)
+
+## Plan Lookup Simplification (v3.1)
+- [ ] Backend: accept only medicareId (remove firstName, lastName, dob, payerId)
+- [ ] Backend: add PRIVACY comment block and null the ID after use
+- [ ] Backend: confirm no DB storage of medicareId
+- [ ] Frontend: remove firstName, lastName, dob, payerId state variables
+- [ ] Frontend: single Medicare ID input (full-width, placeholder "e.g. 1EG4-TE5-MK72")
+- [ ] Frontend: privacy note below input (shield icon + "Never stored · Purged after lookup")
+- [ ] Frontend: clear medicareId field immediately after lookup completes
+- [ ] Frontend: update subheading text
+- [ ] Frontend: update disclaimer text
+- [ ] Update vitest to match new single-field signature

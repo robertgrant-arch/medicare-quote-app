@@ -1,3 +1,10 @@
+/**
+ * Tests for the pVerify Plan Lookup router.
+ *
+ * Privacy note: These tests use synthetic Medicare IDs (not real beneficiary identifiers).
+ * The router accepts only a medicareId field — no firstName, lastName, dob, or payerId.
+ */
+
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
@@ -15,18 +22,14 @@ function createPublicContext(): TrpcContext {
   };
 }
 
-const SAMPLE_LOOKUP_INPUT = {
-  firstName: "John",
-  lastName: "Smith",
-  dob: "1950-03-15",
-  memberId: "123456789",
-  payerId: "UHC001",
-};
+// Synthetic test Medicare IDs — not real beneficiary identifiers
+const SAMPLE_MEDICARE_ID = "1EG4-TE5-MK72";
+const ALT_MEDICARE_ID = "2AB3-CD4-EF56";
 
 describe("pverify.lookup", () => {
-  it("returns a successful mock eligibility response", async () => {
+  it("accepts only medicareId and returns a successful mock eligibility response", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.pverify.lookup(SAMPLE_LOOKUP_INPUT);
+    const result = await caller.pverify.lookup({ medicareId: SAMPLE_MEDICARE_ID });
 
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
@@ -39,27 +42,28 @@ describe("pverify.lookup", () => {
     expect(typeof result.data.premium).toBe("number");
   }, 10000); // 10s timeout to allow for the 1.2s artificial delay
 
-  it("includes member name in the response", async () => {
+  it("does NOT include memberName in the response (PII minimization)", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.pverify.lookup(SAMPLE_LOOKUP_INPUT);
+    const result = await caller.pverify.lookup({ medicareId: SAMPLE_MEDICARE_ID });
 
-    expect(result.data.memberName).toContain("John");
-    expect(result.data.memberName).toContain("Smith");
+    // memberName should not be present — we only accept medicareId, not name fields
+    expect((result.data as Record<string, unknown>).memberName).toBeUndefined();
   }, 10000);
 
-  it("returns different plan names for different payers", async () => {
+  it("returns deterministically different plans for different Medicare IDs", async () => {
     const caller = appRouter.createCaller(createPublicContext());
 
-    const uhcResult = await caller.pverify.lookup({ ...SAMPLE_LOOKUP_INPUT, payerId: "UHC001" });
-    const humanaResult = await caller.pverify.lookup({ ...SAMPLE_LOOKUP_INPUT, payerId: "HUM001" });
+    const result1 = await caller.pverify.lookup({ medicareId: "1EG4-TE5-MK7A" });
+    const result2 = await caller.pverify.lookup({ medicareId: "1EG4-TE5-MK7B" });
 
-    expect(uhcResult.data.planName).not.toBe(humanaResult.data.planName);
-    expect(uhcResult.data.planId).not.toBe(humanaResult.data.planId);
+    // Different last characters → different plan variants
+    // (may occasionally be the same if charCode % 6 collides, but A vs B won't)
+    expect(result1.data.planId).not.toBe(result2.data.planId);
   }, 30000);
 
   it("has all required copay fields", async () => {
     const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.pverify.lookup(SAMPLE_LOOKUP_INPUT);
+    const result = await caller.pverify.lookup({ medicareId: SAMPLE_MEDICARE_ID });
     const d = result.data;
 
     expect(typeof d.pcpCopay).toBe("number");
@@ -73,6 +77,16 @@ describe("pverify.lookup", () => {
     expect(d.visionCoverage).toBeTruthy();
     expect(d.hearingCoverage).toBeTruthy();
   }, 10000);
+
+  it("returns the same plan for the same Medicare ID (deterministic)", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+
+    const result1 = await caller.pverify.lookup({ medicareId: ALT_MEDICARE_ID });
+    const result2 = await caller.pverify.lookup({ medicareId: ALT_MEDICARE_ID });
+
+    expect(result1.data.planId).toBe(result2.data.planId);
+    expect(result1.data.planName).toBe(result2.data.planName);
+  }, 30000);
 });
 
 describe("pverify.compare", () => {

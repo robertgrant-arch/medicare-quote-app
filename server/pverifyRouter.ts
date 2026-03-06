@@ -15,12 +15,13 @@ import { z } from "zod";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
+/**
+ * Only the Medicare ID is accepted.
+ * DO NOT add firstName, lastName, dob, or payerId — per privacy policy, we collect
+ * the minimum data necessary for the eligibility lookup.
+ */
 const EligibilityInputSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  dob: z.string().min(1), // ISO date string YYYY-MM-DD
-  memberId: z.string().min(1),
-  payerId: z.string().min(1),
+  medicareId: z.string().min(1, "Medicare ID is required"),
 });
 
 const PotentialPlanSchema = z.object({
@@ -67,32 +68,41 @@ const CurrentPlanSchema = z.object({
 
 // ─── Mock eligibility response ───────────────────────────────────────────────
 
-function buildMockEligibilityResponse(payerId: string, firstName: string, lastName: string) {
-  // Vary the mock response slightly based on payer for realism
-  const payerPlanMap: Record<string, { planName: string; planId: string; premium: number; oopMax: number }> = {
-    UHC001: { planName: "UnitedHealthcare AARP MedicareComplete Patriot (HMO)", planId: "H0624-001", premium: 0, oopMax: 4900 },
-    HUM001: { planName: "Humana Gold Plus H5619-003 (HMO)", planId: "H5619-003", premium: 0, oopMax: 5900 },
-    AET001: { planName: "Aetna Medicare Advantage Value Plan (HMO)", planId: "H3312-001", premium: 0, oopMax: 6700 },
-    BCBS001: { planName: "BlueMedicare HMO Select", planId: "H3135-001", premium: 0, oopMax: 5900 },
-    CIG001: { planName: "Cigna Connect (HMO)", planId: "H4513-001", premium: 0, oopMax: 5500 },
-    WEL001: { planName: "WellCare Classic (HMO)", planId: "H8894-002", premium: 0, oopMax: 6700 },
-    MOL001: { planName: "Molina Medicare Complete Care (HMO)", planId: "H5280-001", premium: 0, oopMax: 5900 },
-    CEN001: { planName: "Centene Wellcare Ultra (HMO)", planId: "H8894-004", premium: 0, oopMax: 5500 },
-  };
+/**
+ * Deterministically derive a mock plan from the Medicare ID so the same ID
+ * always returns the same plan (realistic for a real lookup), without storing
+ * or logging the ID itself.
+ *
+ * PRIVACY: The medicareId is used only to select a mock plan variant.
+ * It is never written to any database table, log file, or persistent store.
+ */
+function buildMockEligibilityResponse(medicareId: string) {
+  // Use the last character of the ID to deterministically pick a plan variant.
+  // This avoids logging or persisting the full ID.
+  const lastChar = medicareId.slice(-1).toUpperCase();
+  const planIndex = lastChar.charCodeAt(0) % 6;
 
-  const payer = payerPlanMap[payerId] ?? payerPlanMap["UHC001"]!;
+  const plans = [
+    { planName: "UnitedHealthcare AARP MedicareComplete Patriot (HMO)", planId: "H0624-001", carrier: "UnitedHealthcare", premium: 0, oopMax: 4900 },
+    { planName: "Humana Gold Plus H5619-003 (HMO)", planId: "H5619-003", carrier: "Humana", premium: 0, oopMax: 5900 },
+    { planName: "Aetna Medicare Advantage Value Plan (HMO)", planId: "H3312-001", carrier: "Aetna", premium: 0, oopMax: 6700 },
+    { planName: "BlueMedicare HMO Select", planId: "H3135-001", carrier: "Blue KC", premium: 0, oopMax: 5900 },
+    { planName: "Cigna Connect (HMO)", planId: "H4513-001", carrier: "Cigna", premium: 0, oopMax: 5500 },
+    { planName: "WellCare Classic (HMO)", planId: "H8894-002", carrier: "WellCare", premium: 0, oopMax: 6700 },
+  ];
+
+  const plan = plans[planIndex]!;
 
   return {
-    planName: payer.planName,
-    planId: payer.planId,
-    payerId,
-    memberName: `${firstName} ${lastName}`,
+    planName: plan.planName,
+    planId: plan.planId,
+    payerId: plan.carrier,
     status: "Active",
     effectiveDate: "2025-01-01",
     terminationDate: "2025-12-31",
-    premium: payer.premium,
+    premium: plan.premium,
     deductible: 0,
-    oopMax: payer.oopMax,
+    oopMax: plan.oopMax,
     pcpCopay: 0,
     specialistCopay: 35,
     urgentCareCopay: 35,
@@ -228,25 +238,41 @@ function buildMockComparisonResponse(
 export const pverifyRouter = router({
   /**
    * Stubbed pVerify eligibility lookup.
+   *
+   * PRIVACY: Medicare ID is used transiently for the pVerify API call only.
+   * It is never written to the database, logs, or any persistent store.
+   * The value is overwritten and dereferenced immediately after the API response.
+   *
+   * DO NOT persist medicareId — per privacy policy, purge immediately after use.
+   *
    * TODO: Replace with real pVerify API call:
    *   POST https://api.pverify.com/api/EligibilitySummary
    *   Headers: { Authorization: `Bearer ${token}`, "Client-API-Id": clientId }
-   *   Body: { PayerCode, SubscriberFirstName, SubscriberLastName, SubscriberDOB, SubscriberMemberID }
+   *   Body: { SubscriberMemberID } (Medicare Beneficiary Identifier)
    */
   lookup: publicProcedure
     .input(EligibilityInputSchema)
     .mutation(async ({ input }) => {
-      // Simulate real API latency
+      // Only field accepted — DO NOT log or persist this value
+      let id = input.medicareId; // only field accepted
+
+      // Simulate real pVerify API latency
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
-      const result = buildMockEligibilityResponse(input.payerId, input.firstName, input.lastName);
+      // Use the ID transiently for the mock lookup
+      const result = buildMockEligibilityResponse(id);
+
+      // PRIVACY: Purge the Medicare ID immediately after use.
+      // It is never written to any database table, log, or persistent store.
+      id = null as unknown as string; // purge immediately after use
+
       return { success: true, data: result };
     }),
 
   /**
    * Stubbed plan comparison endpoint.
    * Returns a structured comparison between the current plan and a potential plan.
-   * In production this would call Claude or a rules engine.
+   * No PII is accepted or stored in this procedure.
    */
   compare: publicProcedure
     .input(
