@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Plans from "./pages/Plans";
 import AICompare from "./pages/AICompare";
+import PlanLookup from "./pages/PlanLookup";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/plans" component={Plans} />
       <Route path="/ai-compare" component={AICompare} />
+      <Route path="/plan-lookup" component={PlanLookup} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

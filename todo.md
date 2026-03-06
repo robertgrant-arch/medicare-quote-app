@@ -35,3 +35,24 @@
 - [x] AI Compare button in Plans page results header
 - [x] New Comparison reset button
 - [x] Vitest for the compare endpoint and API key validation
+
+## Plan Lookup Tool
+- [x] Add "Plan Lookup" nav link to Header
+- [x] Create /plan-lookup page route in App.tsx
+- [x] tRPC pverify.lookup procedure (stubbed, 1.2s delay, mock response)
+- [x] tRPC pverify.compare procedure (stubbed, returns structured comparison JSON)
+- [x] Eligibility form: First Name, Last Name, DOB, Member ID, Payer dropdown, Consent checkbox
+- [x] "pVerify Powered" badge with shield icon on the form
+- [x] Mock current plan card with green checkmark header and two-column field grid
+- [x] Potential plan dropdown with 3 mock MA plans
+- [x] "Compare with AI" button (orange)
+- [x] Loading spinner "Analyzing your plans..."
+- [x] Side-by-side comparison table with color coding (green=better, red=worse)
+- [x] AI Analysis summary card
+- [x] Pros/Cons two-column layout for current vs potential plan
+- [x] Estimated Annual Cost comparison with "You could save $X" callout
+- [x] Recommendation box (orange border)
+- [x] "Save This Comparison" and "Talk to an Agent" action buttons
+- [x] Disclaimer at bottom
+- [x] Mobile-responsive layout
+- [x] Vitest for pverify router procedures (12 tests total, all passing)

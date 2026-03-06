@@ -2,7 +2,7 @@
 // Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
 // DM Serif Display + DM Sans typography
 
-import { Phone, Shield, ChevronDown, Menu, X, Sparkles } from "lucide-react";
+import { Phone, Shield, ChevronDown, Menu, X, Sparkles, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -75,6 +75,19 @@ export default function Header() {
                 <ChevronDown size={13} className="opacity-60" />
               </button>
             ))}
+            {/* Plan Lookup — nav link */}
+            <Link
+              href="/plan-lookup"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-md transition-all no-underline"
+              style={{
+                color: location === "/plan-lookup" ? "white" : "#006B3F",
+                backgroundColor: location === "/plan-lookup" ? "#006B3F" : "#E8F5EE",
+                border: `1.5px solid #006B3F30`,
+              }}
+            >
+              <Search size={13} />
+              Plan Lookup
+            </Link>
             {/* AI Compare — highlighted link */}
             <Link
               href="/ai-compare"
@@ -142,6 +155,16 @@ export default function Header() {
                 </button>
               )
             )}
+            {/* Plan Lookup mobile link */}
+            <Link
+              href="/plan-lookup"
+              className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-bold rounded-md no-underline transition-colors"
+              style={{ color: "#006B3F", backgroundColor: "#E8F5EE" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Search size={14} />
+              Plan Lookup
+            </Link>
             {/* AI Compare mobile link */}
             <Link
               href="/ai-compare"
