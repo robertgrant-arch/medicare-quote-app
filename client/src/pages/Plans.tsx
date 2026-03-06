@@ -3,7 +3,7 @@
 // Layout: Sticky top bar + horizontal quick filters + 2-col plan grid + left filter sidebar
 
 import { useState, useMemo, useEffect } from "react";
-import { useSearch, useLocation } from "wouter";
+import { useSearch, useLocation, Link } from "wouter";
 import {
   MapPin,
   Pill,
@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   List,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -26,7 +27,6 @@ import DoctorsModal from "@/components/DoctorsModal";
 import EnrollModal from "@/components/EnrollModal";
 import { MOCK_PLANS } from "@/lib/mockData";
 import type { FilterState, MedicarePlan, RxDrug, Doctor } from "@/lib/types";
-import { Link } from "wouter";
 
 const DEFAULT_FILTERS: FilterState = {
   planType: [],
@@ -375,16 +375,27 @@ export default function Plans() {
                 </p>
               </div>
 
-              {/* Active filter chips */}
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
-                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+              <div className="flex items-center gap-2">
+                {/* AI Compare button */}
+                <Link
+                  href="/ai-compare"
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg no-underline transition-all"
+                  style={{ backgroundColor: "#FFF3E8", color: "#F47920", border: "1.5px solid #F4792030" }}
                 >
-                  <X size={12} />
-                  Clear Filters
-                </button>
-              )}
+                  <Sparkles size={12} />
+                  AI Compare
+                </Link>
+                {/* Active filter chips */}
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => setFilters(DEFAULT_FILTERS)}
+                    className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                  >
+                    <X size={12} />
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Personalization banner */}

@@ -2,12 +2,13 @@
 // Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
 // DM Serif Display + DM Sans typography
 
-import { Phone, Shield, ChevronDown, Menu, X } from "lucide-react";
+import { Phone, Shield, ChevronDown, Menu, X, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [location] = useLocation();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -74,6 +75,19 @@ export default function Header() {
                 <ChevronDown size={13} className="opacity-60" />
               </button>
             ))}
+            {/* AI Compare — highlighted link */}
+            <Link
+              href="/ai-compare"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-md transition-all no-underline"
+              style={{
+                color: location === "/ai-compare" ? "#006B3F" : "#F47920",
+                backgroundColor: location === "/ai-compare" ? "#E8F5EE" : "#FFF3E8",
+                border: `1.5px solid ${location === "/ai-compare" ? "#006B3F" : "#F47920"}30`,
+              }}
+            >
+              <Sparkles size={13} />
+              AI Compare
+            </Link>
           </nav>
 
           {/* Right actions */}
@@ -128,6 +142,16 @@ export default function Header() {
                 </button>
               )
             )}
+            {/* AI Compare mobile link */}
+            <Link
+              href="/ai-compare"
+              className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-bold rounded-md no-underline transition-colors"
+              style={{ color: "#F47920", backgroundColor: "#FFF3E8" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Sparkles size={14} />
+              AI Compare
+            </Link>
             <div className="pt-2 border-t border-gray-100 flex gap-2">
               <button
                 className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 transition-colors"
