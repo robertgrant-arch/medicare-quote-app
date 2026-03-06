@@ -1,6 +1,6 @@
 /**
  * AI Plan Comparison Router
- * Calls Claude claude-sonnet-4-20250514 via Anthropic API to generate a detailed
+ * Calls Claude claude-haiku-4-5 via Anthropic API to generate a detailed
  * Medicare Advantage plan comparison between two selected plans.
  */
 
@@ -182,8 +182,8 @@ async function callClaude(prompt: string): Promise<string> {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      model: "claude-haiku-4-5",
+      max_tokens: 1024,
       messages: [
         {
           role: "user",
@@ -281,7 +281,7 @@ export const compareRouter = router({
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-haiku-4-5",
           max_tokens: 10,
           messages: [{ role: "user", content: "Hi" }],
         }),

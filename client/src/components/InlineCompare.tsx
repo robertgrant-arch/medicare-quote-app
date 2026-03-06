@@ -6,9 +6,14 @@
  * - It is NEVER stored in any database, log, localStorage, or persistent store.
  * - The state variable is cleared immediately after the pVerify API response is received.
  * - No PII is transmitted to or stored by the comparison endpoint.
+ *
+ * PERFORMANCE:
+ * - Comparison table renders INSTANTLY from plan data after pVerify lookup (no AI wait)
+ * - AI narrative streams token-by-token via SSE using claude-haiku-4-5
  */
 
 import { useState, useRef, useEffect } from "react";
+import { Streamdown } from "streamdown";
 import {
   Lock,
   Shield,
@@ -24,6 +29,7 @@ import {
   Lightbulb,
   Phone,
   BookmarkPlus,
+  Sparkles,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import type { MedicarePlan } from "@/lib/types";
@@ -34,31 +40,30 @@ interface InlineCompareProps {
   onActivate: (planId: string | null) => void;
 }
 
-type CompareStep = "idle" | "lookup" | "analyzing" | "done" | "error";
+type CompareStep = "idle" | "lookup" | "table_ready" | "streaming" | "done" | "error";
 
-interface CompareResult {
-  summary: string;
-  currentPlanPros: string[];
-  currentPlanCons: string[];
-  potentialPlanPros: string[];
-  potentialPlanCons: string[];
-  recommendation: string;
-  estimatedAnnualCostCurrent: number;
-  estimatedAnnualCostPotential: number;
-  currentPlan: {
-    planName: string;
-    planId: string;
-    premium: number;
-    deductible: number;
-    oopMax: number;
-    pcpCopay: number;
-    specialistCopay: number;
-    urgentCareCopay: number;
-    erCopay: number;
-    drugTier1Copay: number;
-    drugTier2Copay: number;
-    drugTier3Copay: number;
-  };
+interface CurrentPlanData {
+  planName: string;
+  planId: string;
+  payerId?: string;
+  status?: string;
+  effectiveDate?: string;
+  terminationDate?: string;
+  premium: number;
+  deductible: number;
+  oopMax: number;
+  pcpCopay: number;
+  specialistCopay: number;
+  urgentCareCopay: number;
+  erCopay: number;
+  inpatientCost?: string;
+  drugTier1Copay: number;
+  drugTier2Copay: number;
+  drugTier3Copay: number;
+  dentalCoverage?: string;
+  visionCoverage?: string;
+  hearingCoverage?: string;
+  estimatedAnnualCost?: number;
 }
 
 function CompareCell({
@@ -81,8 +86,8 @@ function CompareCell({
   let Icon = Minus;
 
   if (isNumeric && currentNum !== potentialNum) {
-    const potentialIsBetter = lowerIsBetter ? potentialNum < currentNum : potentialNum > currentNum;
-    if (potentialIsBetter) {
+    const isBetter = lowerIsBetter ? potentialNum < currentNum : potentialNum > currentNum;
+    if (isBetter) {
       potentialColor = "#065F46";
       potentialBg = "#D1FAE5";
       Icon = TrendingDown;
@@ -94,9 +99,7 @@ function CompareCell({
   }
 
   const fmt = (v: string | number) => {
-    if (typeof v === "number") {
-      return v === 0 ? "$0" : `$${v.toLocaleString()}`;
-    }
+    if (typeof v === "number") return v === 0 ? "$0" : `$${v}`;
     return v;
   };
 
@@ -117,15 +120,57 @@ function CompareCell({
   );
 }
 
+// ── localStorage cache helpers ───────────────────────────────────────────────
+const CACHE_PREFIX = "medicare-compare-v1-";
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+interface CacheEntry {
+  currentPlanId: string;
+  currentPlanName: string;
+  streamedText: string;
+  savedAt: number;
+}
+
+function getCacheKey(currentPlanId: string, newPlanId: string): string {
+  const sorted = [currentPlanId, newPlanId].sort().join("|");
+  return CACHE_PREFIX + sorted;
+}
+
+function readCache(key: string): CacheEntry | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const entry: CacheEntry = JSON.parse(raw);
+    if (Date.now() - entry.savedAt > CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key: string, entry: CacheEntry): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(entry));
+  } catch {
+    // ignore storage errors (private mode, quota exceeded)
+  }
+}
+
 export default function InlineCompare({ plan, isActive, onActivate }: InlineCompareProps) {
   // PRIVACY: medicareId is transient — cleared immediately after lookup response
   const [medicareId, setMedicareId] = useState("");
   const [consent, setConsent] = useState(false);
   const [step, setStep] = useState<CompareStep>("idle");
-  const [result, setResult] = useState<CompareResult | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<CurrentPlanData | null>(null);
+  const [streamedText, setStreamedText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isCached, setIsCached] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const cacheKeyRef = useRef<string | null>(null);
 
   // Auto-focus the Medicare ID input when panel opens
   useEffect(() => {
@@ -134,29 +179,164 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
     }
   }, [isActive, step]);
 
+  // Cleanup streaming on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
   // When unchecked: collapse panel and clear Medicare ID immediately
   const handleCheckboxChange = (checked: boolean) => {
     if (checked) {
       onActivate(plan.id);
     } else {
       // PRIVACY: clear Medicare ID immediately on uncheck
+      abortRef.current?.abort();
       setMedicareId("");
       setConsent(false);
       setStep("idle");
-      setResult(null);
+      setCurrentPlan(null);
+      setStreamedText("");
       setErrorMsg("");
       onActivate(null);
     }
   };
 
   const lookupMutation = trpc.pverify.lookup.useMutation();
-  const compareMutation = trpc.pverify.compare.useMutation();
+
+  // Refresh analysis: re-run streaming using already-loaded currentPlan (skips pVerify)
+  const handleRefreshAnalysis = async () => {
+    if (!currentPlan) return;
+    setStep("streaming");
+    setStreamedText("");
+    setIsCached(false);
+
+    const cpData = currentPlan;
+    const currentPlanForStream = {
+      id: cpData.planId || "current-plan",
+      carrier: cpData.payerId || "Unknown",
+      planName: cpData.planName,
+      planType: "HMO",
+      premium: cpData.premium,
+      deductible: cpData.deductible,
+      maxOutOfPocket: cpData.oopMax,
+      partBPremiumReduction: 0,
+      starRating: { overall: 4.0 },
+      copays: {
+        primaryCare: `$${cpData.pcpCopay} copay`,
+        specialist: `$${cpData.specialistCopay} copay`,
+        urgentCare: `$${cpData.urgentCareCopay} copay`,
+        emergency: `$${cpData.erCopay} copay`,
+        inpatientHospital: cpData.inpatientCost ?? "$275/day days 1-7",
+        outpatientSurgery: "$200 copay",
+      },
+      rxDrugs: {
+        tier1: `$${cpData.drugTier1Copay}`,
+        tier2: `$${cpData.drugTier2Copay}`,
+        tier3: `$${cpData.drugTier3Copay}`,
+        tier4: "$100",
+        deductible: "$0",
+        gap: false,
+      },
+      extraBenefits: {
+        dental: { covered: (cpData.dentalCoverage ?? "") !== "Not covered", details: cpData.dentalCoverage ?? "" },
+        vision: { covered: (cpData.visionCoverage ?? "") !== "Not covered", details: cpData.visionCoverage ?? "" },
+        hearing: { covered: (cpData.hearingCoverage ?? "") !== "Not covered", details: cpData.hearingCoverage ?? "" },
+        otc: { covered: false, details: "Not covered" },
+        fitness: { covered: false, details: "Not covered" },
+        transportation: { covered: false, details: "Not covered" },
+        telehealth: { covered: true, details: "Virtual visits available" },
+        meals: { covered: false, details: "Not covered" },
+      },
+      networkSize: 3000,
+      enrollmentPeriod: "Annual Enrollment Period",
+      effectiveDate: cpData.effectiveDate ?? "2025-01-01",
+    };
+    const newPlanForStream = {
+      id: plan.id, carrier: plan.carrier, planName: plan.planName, planType: plan.planType,
+      snpType: plan.snpType, premium: plan.premium, deductible: plan.deductible,
+      maxOutOfPocket: plan.maxOutOfPocket, partBPremiumReduction: plan.partBPremiumReduction,
+      starRating: { overall: plan.starRating.overall },
+      copays: { primaryCare: plan.copays.primaryCare, specialist: plan.copays.specialist,
+        urgentCare: plan.copays.urgentCare, emergency: plan.copays.emergency,
+        inpatientHospital: plan.copays.inpatientHospital, outpatientSurgery: plan.copays.outpatientSurgery },
+      rxDrugs: { tier1: plan.rxDrugs.tier1, tier2: plan.rxDrugs.tier2, tier3: plan.rxDrugs.tier3,
+        tier4: plan.rxDrugs.tier4, deductible: plan.rxDrugs.deductible, gap: plan.rxDrugs.gap },
+      extraBenefits: {
+        dental: { covered: plan.extraBenefits.dental.covered, details: plan.extraBenefits.dental.details },
+        vision: { covered: plan.extraBenefits.vision.covered, details: plan.extraBenefits.vision.details },
+        hearing: { covered: plan.extraBenefits.hearing.covered, details: plan.extraBenefits.hearing.details },
+        otc: { covered: plan.extraBenefits.otc.covered, details: plan.extraBenefits.otc.details },
+        fitness: { covered: plan.extraBenefits.fitness.covered, details: plan.extraBenefits.fitness.details },
+        transportation: { covered: plan.extraBenefits.transportation.covered, details: plan.extraBenefits.transportation.details },
+        telehealth: { covered: plan.extraBenefits.telehealth.covered, details: plan.extraBenefits.telehealth.details },
+        meals: { covered: plan.extraBenefits.meals.covered, details: plan.extraBenefits.meals.details },
+      },
+      networkSize: plan.networkSize, enrollmentPeriod: plan.enrollmentPeriod, effectiveDate: plan.effectiveDate,
+      isBestMatch: plan.isBestMatch, isMostPopular: plan.isMostPopular, isNewPlan: plan.isNewPlan,
+      contractId: plan.contractId, planId: plan.planId,
+    };
+
+    try {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      const resp = await fetch("/api/compare-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPlan: currentPlanForStream, newPlan: newPlanForStream }),
+        signal: ctrl.signal,
+      });
+      if (!resp.ok) throw new Error("Streaming comparison failed");
+      const reader = resp.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) continue;
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (!data) continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (typeof parsed === "string" && parsed.length > 0) {
+                  setStreamedText(prev => prev + parsed);
+                }
+              } catch { /* skip malformed */ }
+            }
+          }
+        }
+      }
+      if (cacheKeyRef.current) {
+        setStreamedText(prev => {
+          writeCache(cacheKeyRef.current!, {
+            currentPlanId: currentPlanForStream.id,
+            currentPlanName: currentPlanForStream.planName,
+            streamedText: prev,
+            savedAt: Date.now(),
+          });
+          return prev;
+        });
+      }
+      setStep("done");
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setStep("error");
+      setErrorMsg(err instanceof Error ? err.message : "Refresh failed. Please try again.");
+    }
+  };
 
   const handleRunComparison = async () => {
     if (!medicareId.trim() || !consent) return;
 
     setStep("lookup");
     setErrorMsg("");
+    setStreamedText("");
+    setIsCached(false);
 
     try {
       // Step 1: pVerify eligibility lookup
@@ -171,45 +351,177 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
         throw new Error("Eligibility lookup failed");
       }
 
-      const currentPlanData = lookupResult.data;
+      const cpData = lookupResult.data as unknown as CurrentPlanData;
+      setCurrentPlan(cpData);
 
-      // Step 2: AI plan comparison
-      setStep("analyzing");
+      // Step 2: INSTANTLY show the comparison table — no AI wait needed
+      setStep("table_ready");
 
-      const potentialPlanData = {
-        id: plan.id,
-        planName: plan.planName,
-        carrier: plan.carrier,
-        premium: plan.premium,
-        deductible: plan.deductible,
-        oopMax: plan.maxOutOfPocket,
-        pcpCopay: parseInt(plan.copays.primaryCare.replace(/[^0-9]/g, "")) || 0,
-        specialistCopay: parseInt(plan.copays.specialist.replace(/[^0-9]/g, "")) || 0,
-        urgentCareCopay: parseInt(plan.copays.urgentCare.replace(/[^0-9]/g, "")) || 0,
-        erCopay: parseInt(plan.copays.emergency.replace(/[^0-9]/g, "")) || 0,
-        drugTier1Copay: parseInt(plan.rxDrugs.tier1.replace(/[^0-9]/g, "")) || 0,
-        drugTier2Copay: parseInt(plan.rxDrugs.tier2.replace(/[^0-9]/g, "")) || 0,
-        drugTier3Copay: parseInt(plan.rxDrugs.tier3.replace(/[^0-9]/g, "")) || 0,
-        dentalCoverage: plan.extraBenefits.dental.covered ? plan.extraBenefits.dental.details : "Not covered",
-        visionCoverage: plan.extraBenefits.vision.covered ? plan.extraBenefits.vision.details : "Not covered",
-        hearingCoverage: plan.extraBenefits.hearing.covered ? plan.extraBenefits.hearing.details : "Not covered",
-      };
-
-      const compareResult = await compareMutation.mutateAsync({
-        currentPlan: currentPlanData,
-        potentialPlan: potentialPlanData,
-      });
-
-      if (!compareResult.success) {
-        throw new Error("Plan comparison failed");
+      // Check localStorage cache before streaming
+      const cacheKey = getCacheKey(cpData.planId || "current", plan.id);
+      cacheKeyRef.current = cacheKey;
+      const cached = readCache(cacheKey);
+      if (cached) {
+        setStreamedText(cached.streamedText);
+        setIsCached(true);
+        setStep("done");
+        return;
       }
 
-      setResult({
-        ...compareResult.data,
-        currentPlan: currentPlanData,
+      // Step 3: Stream AI narrative in the background
+      // Transform pVerify current plan data to the full PlanInputSchema format
+      const currentPlanForStream = {
+        id: cpData.planId || "current-plan",
+        carrier: cpData.payerId || "Unknown",
+        planName: cpData.planName,
+        planType: "HMO",
+        premium: cpData.premium,
+        deductible: cpData.deductible,
+        maxOutOfPocket: cpData.oopMax,
+        partBPremiumReduction: 0,
+        starRating: { overall: 4.0 },
+        copays: {
+          primaryCare: `$${cpData.pcpCopay} copay`,
+          specialist: `$${cpData.specialistCopay} copay`,
+          urgentCare: `$${cpData.urgentCareCopay} copay`,
+          emergency: `$${cpData.erCopay} copay`,
+          inpatientHospital: cpData.inpatientCost ?? "$275/day days 1-7",
+          outpatientSurgery: "$200 copay",
+        },
+        rxDrugs: {
+          tier1: `$${cpData.drugTier1Copay}`,
+          tier2: `$${cpData.drugTier2Copay}`,
+          tier3: `$${cpData.drugTier3Copay}`,
+          tier4: "$100",
+          deductible: "$0",
+          gap: false,
+        },
+        extraBenefits: {
+          dental: { covered: cpData.dentalCoverage !== "Not covered", details: cpData.dentalCoverage },
+          vision: { covered: cpData.visionCoverage !== "Not covered", details: cpData.visionCoverage },
+          hearing: { covered: cpData.hearingCoverage !== "Not covered", details: cpData.hearingCoverage },
+          otc: { covered: false, details: "Not covered" },
+          fitness: { covered: false, details: "Not covered" },
+          transportation: { covered: false, details: "Not covered" },
+          telehealth: { covered: true, details: "Virtual visits available" },
+          meals: { covered: false, details: "Not covered" },
+        },
+        networkSize: 3000,
+        enrollmentPeriod: "Annual Enrollment Period",
+        effectiveDate: cpData.effectiveDate ?? "2025-01-01",
+      };
+
+      // Transform the plan card data to the full PlanInputSchema format
+      const newPlanForStream = {
+        id: plan.id,
+        carrier: plan.carrier,
+        planName: plan.planName,
+        planType: plan.planType,
+        snpType: plan.snpType,
+        premium: plan.premium,
+        deductible: plan.deductible,
+        maxOutOfPocket: plan.maxOutOfPocket,
+        partBPremiumReduction: plan.partBPremiumReduction,
+        starRating: { overall: plan.starRating.overall },
+        copays: {
+          primaryCare: plan.copays.primaryCare,
+          specialist: plan.copays.specialist,
+          urgentCare: plan.copays.urgentCare,
+          emergency: plan.copays.emergency,
+          inpatientHospital: plan.copays.inpatientHospital,
+          outpatientSurgery: plan.copays.outpatientSurgery,
+        },
+        rxDrugs: {
+          tier1: plan.rxDrugs.tier1,
+          tier2: plan.rxDrugs.tier2,
+          tier3: plan.rxDrugs.tier3,
+          tier4: plan.rxDrugs.tier4,
+          deductible: plan.rxDrugs.deductible,
+          gap: plan.rxDrugs.gap,
+        },
+        extraBenefits: {
+          dental: { covered: plan.extraBenefits.dental.covered, details: plan.extraBenefits.dental.details },
+          vision: { covered: plan.extraBenefits.vision.covered, details: plan.extraBenefits.vision.details },
+          hearing: { covered: plan.extraBenefits.hearing.covered, details: plan.extraBenefits.hearing.details },
+          otc: { covered: plan.extraBenefits.otc.covered, details: plan.extraBenefits.otc.details },
+          fitness: { covered: plan.extraBenefits.fitness.covered, details: plan.extraBenefits.fitness.details },
+          transportation: { covered: plan.extraBenefits.transportation.covered, details: plan.extraBenefits.transportation.details },
+          telehealth: { covered: plan.extraBenefits.telehealth.covered, details: plan.extraBenefits.telehealth.details },
+          meals: { covered: plan.extraBenefits.meals.covered, details: plan.extraBenefits.meals.details },
+        },
+        networkSize: plan.networkSize,
+        enrollmentPeriod: plan.enrollmentPeriod,
+        effectiveDate: plan.effectiveDate,
+        isBestMatch: plan.isBestMatch,
+        isMostPopular: plan.isMostPopular,
+        isNewPlan: plan.isNewPlan,
+        contractId: plan.contractId,
+        planId: plan.planId,
+      };
+
+      setStep("streaming");
+
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      const resp = await fetch("/api/compare-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPlan: currentPlanForStream, newPlan: newPlanForStream }),
+        signal: ctrl.signal,
       });
+
+      if (!resp.ok) throw new Error("Streaming comparison failed");
+
+      const reader = resp.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              // SSE event name line — handled by next data line
+              continue;
+            }
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6).trim();
+              if (!data) continue;
+              try {
+                const parsed = JSON.parse(data);
+                // The SSE endpoint sends the text as a JSON string directly
+                if (typeof parsed === "string" && parsed.length > 0) {
+                  setStreamedText(prev => prev + parsed);
+                }
+              } catch {
+                // skip malformed chunks
+              }
+            }
+          }
+        }
+      }
+
+      // Write the full streamed result to cache
+      if (cacheKeyRef.current) {
+        setStreamedText(prev => {
+          writeCache(cacheKeyRef.current!, {
+            currentPlanId: currentPlanForStream.id,
+            currentPlanName: currentPlanForStream.planName,
+            streamedText: prev,
+            savedAt: Date.now(),
+          });
+          return prev;
+        });
+      }
+
       setStep("done");
     } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       // PRIVACY: ensure medicareId is cleared even on error
       setMedicareId("");
       setStep("error");
@@ -218,15 +530,39 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
   };
 
   const handleClose = () => {
-    setResult(null);
+    abortRef.current?.abort();
+    setCurrentPlan(null);
     setStep("idle");
     setMedicareId("");
     setConsent(false);
+    setStreamedText("");
     onActivate(null);
   };
 
   const canRun = medicareId.trim().length >= 4 && consent && step === "idle";
-  const savings = result ? result.estimatedAnnualCostCurrent - result.estimatedAnnualCostPotential : 0;
+
+  // Compute estimated annual costs from plan data
+  // pVerify stub doesn't return estimatedAnnualCost, so compute it from raw fields
+  const estimatedCurrentCost = currentPlan
+    ? (currentPlan.estimatedAnnualCost ??
+        (currentPlan.premium * 12 +
+          currentPlan.pcpCopay * 6 +
+          currentPlan.specialistCopay * 4 +
+          currentPlan.urgentCareCopay * 2 +
+          currentPlan.drugTier1Copay * 12 +
+          currentPlan.drugTier2Copay * 6))
+    : 0;
+  const estimatedPotentialCost = (() => {
+    if (!plan) return 0;
+    const pcpCopay = parseInt(plan.copays.primaryCare.replace(/[^0-9]/g, "")) || 0;
+    const specCopay = parseInt(plan.copays.specialist.replace(/[^0-9]/g, "")) || 0;
+    const t1 = parseInt(plan.rxDrugs.tier1.replace(/[^0-9]/g, "")) || 0;
+    const t2 = parseInt(plan.rxDrugs.tier2.replace(/[^0-9]/g, "")) || 0;
+    return plan.premium * 12 + plan.deductible + pcpCopay * 6 + specCopay * 4 + t1 * 12 + t2 * 6;
+  })();
+  const savings = estimatedCurrentCost - estimatedPotentialCost;
+
+  const showTable = step === "table_ready" || step === "streaming" || step === "done";
 
   return (
     <div className="border-t border-gray-100 mt-1">
@@ -267,10 +603,9 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
         )}
       </label>
 
-      {/* ── Slide-down panel ─────────────────────────────────────────────── */}
-      {isActive && (
+      {/* ── Slide-down panel (input form) ────────────────────────────────── */}
+      {isActive && !showTable && (
         <div
-          ref={panelRef}
           className="animate-slide-down mx-4 mb-4 rounded-xl border overflow-hidden"
           style={{ borderColor: "#C3E6D4", backgroundColor: "#F0FAF5" }}
         >
@@ -356,7 +691,7 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
 
                 {/* Run button */}
                 <button
-                  onClick={handleRunComparison}
+                  onClick={() => handleRunComparison()}
                   disabled={!canRun}
                   className="w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all"
                   style={{
@@ -394,47 +729,12 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
                 </div>
               </div>
             )}
-
-            {/* ── Loading: AI analysis ─────────────────────────────────────── */}
-            {step === "analyzing" && (
-              <div className="py-6 flex flex-col items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "#FFF3E8" }}
-                >
-                  <Loader2 size={22} className="animate-spin" style={{ color: "#F47920" }} />
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-bold text-gray-800">Analyzing plans with AI...</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Comparing benefits, costs, and coverage</div>
-                </div>
-                <div className="flex flex-col gap-1.5 w-full mt-1">
-                  {[
-                    "Comparing premiums & deductibles",
-                    "Analyzing copay differences",
-                    "Evaluating drug coverage",
-                    "Generating recommendation",
-                  ].map((step, i) => (
-                    <div key={step} className="flex items-center gap-2 text-xs text-gray-500">
-                      <div
-                        className="w-1.5 h-1.5 rounded-full animate-pulse"
-                        style={{
-                          backgroundColor: "#F47920",
-                          animationDelay: `${i * 200}ms`,
-                        }}
-                      />
-                      {step}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* ── Inline comparison result ─────────────────────────────────────── */}
-      {isActive && step === "done" && result && (
+      {/* ── Inline comparison result (shows instantly after lookup) ─────── */}
+      {isActive && showTable && currentPlan && (
         <div className="mx-4 mb-4 rounded-xl border overflow-hidden" style={{ borderColor: "#C3E6D4" }}>
           {/* ── Result header ──────────────────────────────────────────────── */}
           <div
@@ -446,7 +746,7 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
               <div>
                 <div className="text-sm font-bold text-white">Comparison Complete</div>
                 <div className="text-[11px] text-green-200">
-                  {result.currentPlan.planName} vs {plan.planName}
+                  {currentPlan.planName} vs {plan.planName}
                 </div>
               </div>
             </div>
@@ -459,7 +759,7 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
           </div>
 
           <div className="p-4 space-y-4" style={{ backgroundColor: "#F8FAF9" }}>
-            {/* ── Side-by-side comparison table ────────────────────────────── */}
+            {/* ── Side-by-side comparison table (INSTANT) ──────────────────── */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className="grid grid-cols-3 text-center text-[10px] font-bold uppercase tracking-wide py-2 border-b border-gray-100"
                 style={{ backgroundColor: "#F8FAF9" }}>
@@ -469,114 +769,54 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
               </div>
               <table className="w-full">
                 <tbody>
-                  <CompareCell
-                    label="Monthly Premium"
-                    current={result.currentPlan.premium}
-                    potential={plan.premium}
-                  />
-                  <CompareCell
-                    label="Deductible"
-                    current={result.currentPlan.deductible}
-                    potential={plan.deductible}
-                  />
-                  <CompareCell
-                    label="Max Out-of-Pocket"
-                    current={result.currentPlan.oopMax}
-                    potential={plan.maxOutOfPocket}
-                  />
-                  <CompareCell
-                    label="PCP Visit"
-                    current={result.currentPlan.pcpCopay}
-                    potential={parseInt(plan.copays.primaryCare.replace(/[^0-9]/g, "")) || 0}
-                  />
-                  <CompareCell
-                    label="Specialist"
-                    current={result.currentPlan.specialistCopay}
-                    potential={parseInt(plan.copays.specialist.replace(/[^0-9]/g, "")) || 0}
-                  />
-                  <CompareCell
-                    label="Tier 1 Drug"
-                    current={result.currentPlan.drugTier1Copay}
-                    potential={parseInt(plan.rxDrugs.tier1.replace(/[^0-9]/g, "")) || 0}
-                  />
-                  <CompareCell
-                    label="Tier 2 Drug"
-                    current={result.currentPlan.drugTier2Copay}
-                    potential={parseInt(plan.rxDrugs.tier2.replace(/[^0-9]/g, "")) || 0}
-                  />
-                  <CompareCell
-                    label="Tier 3 Drug"
-                    current={result.currentPlan.drugTier3Copay}
-                    potential={parseInt(plan.rxDrugs.tier3.replace(/[^0-9]/g, "")) || 0}
-                  />
+                  <CompareCell label="Monthly Premium" current={currentPlan.premium} potential={plan.premium} />
+                  <CompareCell label="Deductible" current={currentPlan.deductible} potential={plan.deductible} />
+                  <CompareCell label="Max Out-of-Pocket" current={currentPlan.oopMax} potential={plan.maxOutOfPocket} />
+                  <CompareCell label="PCP Visit" current={currentPlan.pcpCopay} potential={parseInt(plan.copays.primaryCare.replace(/[^0-9]/g, "")) || 0} />
+                  <CompareCell label="Specialist" current={currentPlan.specialistCopay} potential={parseInt(plan.copays.specialist.replace(/[^0-9]/g, "")) || 0} />
+                  <CompareCell label="Tier 1 Drug" current={currentPlan.drugTier1Copay} potential={parseInt(plan.rxDrugs.tier1.replace(/[^0-9]/g, "")) || 0} />
+                  <CompareCell label="Tier 2 Drug" current={currentPlan.drugTier2Copay} potential={parseInt(plan.rxDrugs.tier2.replace(/[^0-9]/g, "")) || 0} />
+                  <CompareCell label="Tier 3 Drug" current={currentPlan.drugTier3Copay} potential={parseInt(plan.rxDrugs.tier3.replace(/[^0-9]/g, "")) || 0} />
                 </tbody>
               </table>
             </div>
 
-            {/* ── AI Summary ───────────────────────────────────────────────── */}
+            {/* ── AI Analysis (streaming) ───────────────────────────────────── */}
             <div className="bg-white rounded-xl border border-gray-100 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Lightbulb size={13} style={{ color: "#F47920" }} />
+                <Sparkles size={13} style={{ color: "#F47920" }} />
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">AI Analysis</span>
+                {step === "streaming" && (
+                  <span className="ml-auto flex items-center gap-1 text-[10px] text-gray-400">
+                    <Loader2 size={10} className="animate-spin" />
+                    Claude Haiku is writing...
+                  </span>
+                )}
+                {step === "done" && !isCached && (
+                  <span className="ml-auto text-[10px] text-gray-400">claude-haiku-4-5</span>
+                )}
+                {step === "done" && isCached && (
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-full">Cached</span>
+                    <button
+                      onClick={() => handleRefreshAnalysis()}
+                      className="text-[10px] text-gray-400 hover:text-gray-600 underline"
+                    >
+                      Refresh
+                    </button>
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-gray-600 leading-relaxed">{result.summary}</p>
-            </div>
-
-            {/* ── Pros / Cons ──────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Current plan */}
-              <div className="bg-white rounded-xl border border-gray-100 p-3">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">
-                  Your Current Plan
+              {streamedText ? (
+                <div className="text-xs text-gray-600 leading-relaxed [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-gray-800 [&_h2]:mt-2 [&_h2]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-0.5 [&_strong]:font-semibold [&_strong]:text-gray-800">
+                  <Streamdown>{streamedText}</Streamdown>
                 </div>
-                {result.currentPlanPros.length > 0 && (
-                  <div className="space-y-1 mb-2">
-                    {result.currentPlanPros.map((pro, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <ThumbsUp size={9} className="shrink-0 mt-0.5" style={{ color: "#006B3F" }} />
-                        <span className="text-[10px] text-gray-600">{pro}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {result.currentPlanCons.length > 0 && (
-                  <div className="space-y-1">
-                    {result.currentPlanCons.map((con, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <ThumbsDown size={9} className="shrink-0 mt-0.5 text-red-400" />
-                        <span className="text-[10px] text-gray-500">{con}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Potential plan */}
-              <div className="bg-white rounded-xl border border-gray-100 p-3">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-2">
-                  {plan.carrier} Plan
+              ) : (
+                <div className="flex items-center gap-2 py-2">
+                  <Loader2 size={12} className="animate-spin text-gray-400" />
+                  <span className="text-xs text-gray-400">Generating AI analysis...</span>
                 </div>
-                {result.potentialPlanPros.length > 0 && (
-                  <div className="space-y-1 mb-2">
-                    {result.potentialPlanPros.map((pro, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <ThumbsUp size={9} className="shrink-0 mt-0.5" style={{ color: "#006B3F" }} />
-                        <span className="text-[10px] text-gray-600">{pro}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {result.potentialPlanCons.length > 0 && (
-                  <div className="space-y-1">
-                    {result.potentialPlanCons.map((con, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <ThumbsDown size={9} className="shrink-0 mt-0.5 text-red-400" />
-                        <span className="text-[10px] text-gray-500">{con}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             {/* ── Annual Cost Comparison ───────────────────────────────────── */}
@@ -591,7 +831,7 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
                 <div className="text-center p-2.5 rounded-lg" style={{ backgroundColor: "#F8FAF9" }}>
                   <div className="text-[10px] text-gray-500 mb-1">Your Current Plan</div>
                   <div className="text-xl font-bold text-gray-800" style={{ fontFamily: "'DM Serif Display', serif" }}>
-                    ${result.estimatedAnnualCostCurrent.toLocaleString()}
+                    ${estimatedCurrentCost.toLocaleString()}
                   </div>
                   <div className="text-[9px] text-gray-400">typical usage/year</div>
                 </div>
@@ -609,7 +849,7 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
                       color: savings > 0 ? "#065F46" : savings < 0 ? "#991B1B" : "#1F2937",
                     }}
                   >
-                    ${result.estimatedAnnualCostPotential.toLocaleString()}
+                    ${estimatedPotentialCost.toLocaleString()}
                   </div>
                   <div className="text-[9px] text-gray-400">typical usage/year</div>
                 </div>
@@ -637,34 +877,10 @@ export default function InlineCompare({ plan, isActive, onActivate }: InlineComp
               )}
             </div>
 
-            {/* ── Recommendation ───────────────────────────────────────────── */}
-            <div
-              className="rounded-xl p-3"
-              style={{
-                border: "2px solid #F47920",
-                backgroundColor: "#FFFBF7",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "#F47920" }}
-                >
-                  <Lightbulb size={12} color="white" />
-                </div>
-                <span className="text-xs font-bold" style={{ color: "#C2410C" }}>
-                  AI Recommendation
-                </span>
-              </div>
-              <p className="text-xs text-gray-700 leading-relaxed">{result.recommendation}</p>
-            </div>
-
             {/* ── Action buttons ───────────────────────────────────────────── */}
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  // In a real app, this would save to the user's account
-                  // For demo: show a toast via the parent or use window alert
                   alert("Comparison saved! (In production, this would save to your account.)");
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition-all"

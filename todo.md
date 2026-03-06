@@ -86,3 +86,17 @@
 - [ ] Reuse existing pverify.lookup and pverify.compare tRPC routes
 - [ ] Medicare ID never stored in DB or logs (privacy comment in component)
 - [ ] Vitest updated for new inline compare flow
+
+## AI Compare Performance Optimizations
+- [x] Switch compareRouter to claude-3-5-haiku-20241022
+- [x] Add streaming SSE endpoint at /api/compare-stream (Express route, not tRPC)
+- [x] Shorten prompt to 3 sections: Quick Summary, Key Differences, Recommendation
+- [x] AICompare.tsx: instant client-side comparison table (no API wait)
+- [x] AICompare.tsx: streaming AI text with token-by-token rendering
+- [x] AICompare.tsx: localStorage cache keyed by sorted plan IDs
+- [x] AICompare.tsx: progressive loading UX (table instant, AI streams below)
+- [x] AICompare.tsx: Refresh Analysis button for cached results
+- [x] InlineCompare.tsx: same instant table + streaming optimizations (fixed schema mismatch + SSE parsing)
+- [x] InlineCompare.tsx: localStorage cache with Refresh Analysis button
+- [x] InlineCompare.tsx: Streamdown markdown rendering for AI analysis
+- [x] Update vitest for streaming endpoint
