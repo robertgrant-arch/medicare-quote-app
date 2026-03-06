@@ -120,3 +120,30 @@
 - [x] Resources active on /resources, /medicare-101, /faq
 - [x] Bold font-weight + green color + green bg when active
 - [x] Hover styles only apply when NOT active (no flicker)
+
+## Deep-Content Pages for Nav & Footer Links
+- [x] InfoPage shared layout component (breadcrumb, hero, content card, CTA)
+- [x] /medicare-advantage/hmo-plans — MA HMO Plans (deep content)
+- [x] /medicare-advantage/ppo-plans — MA PPO Plans (deep content)
+- [x] /medicare-advantage/special-needs-plans — MA Special Needs Plans (deep content)
+- [x] /medicare-advantage/drug-coverage — MA with Drug Coverage (deep content)
+- [x] /medicare-supplement/plan-f — Medigap Plan F (deep content)
+- [x] /medicare-supplement/plan-g — Medigap Plan G (deep content)
+- [x] /medicare-supplement/plan-n — Medigap Plan N (deep content)
+- [x] /medicare-supplement/compare — Compare Supplement Plans (deep content)
+- [x] /part-d/compare — Compare Drug Plans (deep content)
+- [x] /part-d/formulary-search — Drug Formulary Search (deep content)
+- [x] /part-d/extra-help — Extra Help Programs (deep content)
+- [x] /part-d/enrollment — Part D Enrollment (deep content)
+- [x] /resources/medicare-101 — Medicare 101 (deep content)
+- [x] /resources/enrollment-periods — Enrollment Periods (deep content)
+- [x] /resources/star-ratings — Star Ratings Guide (deep content)
+- [x] /resources/faq — FAQ (10 Q&As with accordion)
+- [x] /about — About Us (deep content)
+- [x] /agents — Licensed Agents (deep content)
+- [x] /contact — Contact Us (deep content)
+- [x] /privacy — Privacy Policy (deep content)
+- [x] /dual-eligible — Dual Eligible / D-SNP (deep content)
+- [x] Header NAV_DROPDOWNS hrefs updated to real routes
+- [x] Home.tsx footer links updated to real routes with Link components
+- [x] All 28 routes registered in App.tsx

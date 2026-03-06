@@ -3,7 +3,7 @@
 // Layout: Full-width hero with centered search, stats row below, features section
 
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { MapPin, Search, Shield, Star, Users, ChevronRight, CheckCircle2, Phone, Award } from "lucide-react";
 import Header from "@/components/Header";
 
@@ -447,15 +447,30 @@ export default function Home() {
             {[
               {
                 title: "Plans",
-                links: ["Medicare Advantage", "Medicare Supplement", "Part D Drug Plans", "Dual Eligible"],
+                links: [
+                  { label: "Medicare Advantage", href: "/medicare-advantage/hmo-plans" },
+                  { label: "Medicare Supplement", href: "/medicare-supplement/compare" },
+                  { label: "Part D Drug Plans", href: "/part-d/compare" },
+                  { label: "Dual Eligible", href: "/dual-eligible" },
+                ],
               },
               {
                 title: "Resources",
-                links: ["Medicare 101", "Enrollment Periods", "Star Ratings Guide", "Compare Plans"],
+                links: [
+                  { label: "Medicare 101", href: "/resources/medicare-101" },
+                  { label: "Enrollment Periods", href: "/resources/enrollment-periods" },
+                  { label: "Star Ratings Guide", href: "/resources/star-ratings" },
+                  { label: "Compare Plans", href: "/plans?zip=64106" },
+                ],
               },
               {
                 title: "Company",
-                links: ["About Us", "Licensed Agents", "Contact Us", "Privacy Policy"],
+                links: [
+                  { label: "About Us", href: "/about" },
+                  { label: "Licensed Agents", href: "/agents" },
+                  { label: "Contact Us", href: "/contact" },
+                  { label: "Privacy Policy", href: "/privacy" },
+                ],
               },
             ].map((col) => (
               <div key={col.title}>
@@ -464,10 +479,10 @@ export default function Home() {
                 </div>
                 <ul className="space-y-2">
                   {col.links.map((link) => (
-                    <li key={link}>
-                      <a href="#" className="text-sm hover:text-white transition-colors">
-                        {link}
-                      </a>
+                    <li key={link.label}>
+                      <Link href={link.href} className="text-sm hover:text-white transition-colors no-underline">
+                        {link.label}
+                      </Link>
                     </li>
                   ))}
                 </ul>
