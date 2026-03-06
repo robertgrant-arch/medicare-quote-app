@@ -3,12 +3,171 @@
 // DM Serif Display + DM Sans typography
 
 import { Phone, Shield, ChevronDown, Menu, X, Sparkles, Search } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 
+// ── Dropdown menu definitions ────────────────────────────────────────────────
+const NAV_DROPDOWNS = [
+  {
+    label: "Medicare Advantage",
+    items: [
+      { label: "MA HMO Plans", href: "/#" },
+      { label: "MA PPO Plans", href: "/#" },
+      { label: "MA Special Needs Plans", href: "/#" },
+      { label: "MA with Drug Coverage", href: "/#" },
+    ],
+  },
+  {
+    label: "Medicare Supplement",
+    items: [
+      { label: "Medigap Plan F", href: "/#" },
+      { label: "Medigap Plan G", href: "/#" },
+      { label: "Medigap Plan N", href: "/#" },
+      { label: "Compare Supplement Plans", href: "/#" },
+    ],
+  },
+  {
+    label: "Part D Drug Plans",
+    items: [
+      { label: "Compare Drug Plans", href: "/#" },
+      { label: "Drug Formulary Search", href: "/#" },
+      { label: "Extra Help Programs", href: "/#" },
+      { label: "Part D Enrollment", href: "/#" },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { label: "Medicare 101", href: "/#" },
+      { label: "Enrollment Periods", href: "/#" },
+      { label: "Star Ratings Guide", href: "/#" },
+      { label: "FAQ", href: "/#" },
+    ],
+  },
+];
+
+// ── NavDropdown: single desktop dropdown button + panel ──────────────────────
+interface NavDropdownProps {
+  label: string;
+  items: { label: string; href: string }[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+}
+
+function NavDropdown({ label, items, isOpen, onToggle, onClose }: NavDropdownProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isOpen, onClose]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onClose]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+        className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-green-800 rounded-md hover:bg-green-50 transition-colors"
+      >
+        {label}
+        <ChevronDown
+          size={13}
+          className="opacity-60 transition-transform duration-200"
+          style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className="absolute top-full left-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-50"
+          style={{ borderTop: "3px solid #006B3F" }}
+        >
+          {items.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={onClose}
+              className="block px-4 py-2.5 text-sm text-gray-700 hover:text-green-800 hover:bg-green-50 transition-colors no-underline"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MobileNavSection: expandable section in mobile menu ─────────────────────
+interface MobileNavSectionProps {
+  label: string;
+  items: { label: string; href: string }[];
+  onClose: () => void;
+}
+
+function MobileNavSection({ label, items, onClose }: MobileNavSectionProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-800 rounded-md transition-colors"
+      >
+        {label}
+        <ChevronDown
+          size={13}
+          className="opacity-60 transition-transform duration-200"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+      {open && (
+        <div className="ml-3 mt-0.5 border-l-2 border-green-100 pl-3 space-y-0.5">
+          {items.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={onClose}
+              className="block py-2 text-sm text-gray-600 hover:text-green-800 no-underline"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [location] = useLocation();
+
+  const toggleDropdown = (label: string) => {
+    setOpenDropdown((prev) => (prev === label ? null : label));
+  };
+
+  const closeDropdown = () => setOpenDropdown(null);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -60,21 +219,17 @@ export default function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-1">
-            {[
-              { label: "Medicare Advantage", href: "#" },
-              { label: "Medicare Supplement", href: "#" },
-              { label: "Part D Drug Plans", href: "#" },
-              { label: "Resources", href: "#" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-green-800 rounded-md hover:bg-green-50 transition-colors"
-                onClick={() => {}}
-              >
-                {item.label}
-                <ChevronDown size={13} className="opacity-60" />
-              </button>
+            {NAV_DROPDOWNS.map((nav) => (
+              <NavDropdown
+                key={nav.label}
+                label={nav.label}
+                items={nav.items}
+                isOpen={openDropdown === nav.label}
+                onToggle={() => toggleDropdown(nav.label)}
+                onClose={closeDropdown}
+              />
             ))}
+
             {/* Plan Lookup — nav link */}
             <Link
               href="/plan-lookup"
@@ -84,10 +239,12 @@ export default function Header() {
                 backgroundColor: location === "/plan-lookup" ? "#006B3F" : "#E8F5EE",
                 border: `1.5px solid #006B3F30`,
               }}
+              onClick={closeDropdown}
             >
               <Search size={13} />
               Plan Lookup
             </Link>
+
             {/* AI Compare — highlighted link */}
             <Link
               href="/ai-compare"
@@ -97,6 +254,7 @@ export default function Header() {
                 backgroundColor: location === "/ai-compare" ? "#E8F5EE" : "#FFF3E8",
                 border: `1.5px solid ${location === "/ai-compare" ? "#006B3F" : "#F47920"}30`,
               }}
+              onClick={closeDropdown}
             >
               <Sparkles size={13} />
               AI Compare
@@ -145,16 +303,15 @@ export default function Header() {
       {mobileOpen && (
         <div className="lg:hidden border-t border-gray-100 bg-white">
           <div className="container py-3 space-y-1">
-            {["Medicare Advantage", "Medicare Supplement", "Part D Drug Plans", "Resources"].map(
-              (item) => (
-                <button
-                  key={item}
-                  className="w-full text-left px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-800 rounded-md transition-colors"
-                >
-                  {item}
-                </button>
-              )
-            )}
+            {NAV_DROPDOWNS.map((nav) => (
+              <MobileNavSection
+                key={nav.label}
+                label={nav.label}
+                items={nav.items}
+                onClose={() => setMobileOpen(false)}
+              />
+            ))}
+
             {/* Plan Lookup mobile link */}
             <Link
               href="/plan-lookup"
@@ -165,6 +322,7 @@ export default function Header() {
               <Search size={14} />
               Plan Lookup
             </Link>
+
             {/* AI Compare mobile link */}
             <Link
               href="/ai-compare"
@@ -175,6 +333,7 @@ export default function Header() {
               <Sparkles size={14} />
               AI Compare
             </Link>
+
             <div className="pt-2 border-t border-gray-100 flex gap-2">
               <button
                 className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 transition-colors"

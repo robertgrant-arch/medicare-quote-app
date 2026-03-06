@@ -100,3 +100,14 @@
 - [x] InlineCompare.tsx: localStorage cache with Refresh Analysis button
 - [x] InlineCompare.tsx: Streamdown markdown rendering for AI analysis
 - [x] Update vitest for streaming endpoint
+
+## Header Navigation Dropdowns
+- [x] Medicare Advantage dropdown (MA HMO, MA PPO, MA SNP, MA with Drug Coverage)
+- [x] Medicare Supplement dropdown (Plan F, Plan G, Plan N, Compare Supplement Plans)
+- [x] Part D Drug Plans dropdown (Compare Drug Plans, Formulary Search, Extra Help, Enrollment)
+- [x] Resources dropdown (Medicare 101, Enrollment Periods, Star Ratings Guide, FAQ)
+- [x] Outside-click dismissal via useEffect + mousedown listener
+- [x] Escape key closes open dropdown
+- [x] Chevron rotates 180deg when open
+- [x] Green top border accent on dropdown panel
+- [x] Mobile accordion sections with indent + left border
