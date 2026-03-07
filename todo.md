@@ -253,3 +253,18 @@
 - [x] Inputs: rounded, blue focus glow
 - [x] Consistent 80-100px section padding throughout
 - [x] Fix duplicate location display (ZIP + county, not county twice)
+
+## Plan Loading Overhaul (Re-applied after sandbox reset — v2)
+- [x] Pre-process CMS CSV into 51 per-state JSON files (116,065 plans)
+- [x] Upload all 51 state files to CDN (new URLs after sandbox reset)
+- [x] Rewrite plansRouter.ts to use CDN JSON files (no CSV parsing, no LLM)
+- [x] Add server-side in-memory LRU cache per state (STATE_CACHE_MAX=20)
+- [x] Add ZIP cache with LRU eviction (ZIP_CACHE_MAX=5000)
+- [x] Pre-warm 10 common states on server startup (MO, KS, FL, TX, CA, NY, OH, PA, IL, GA)
+- [x] Fix toTitleCase (lowercase first, then title case)
+- [x] ZIP 64086 → 30 plans, Jackson County, MO ✓ (13ms)
+- [x] ZIP 64106 → 30 plans, Jackson County, MO ✓ (601ms first load, instant after)
+- [x] ZIP 10001 → 30 plans, New York County, NY ✓ (138ms)
+- [x] ZIP 33101 → 30 plans, Miami-Dade County, FL ✓ (160ms)
+- [x] ZIP 90210 → 30 plans, Los Angeles County, CA ✓ (147ms)
+- [x] All 13 tests passing

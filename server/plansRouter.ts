@@ -1,573 +1,300 @@
 /**
  * /api/plans?zip={zip}
  *
- * 1. Resolve ZIP → county/state via CMS Marketplace API
- * 2. Look up MA/SNP plans in the CY2026 CMS Landscape CSV (indexed in memory)
- * 3. Transform raw CSV rows → MedicarePlan objects via Claude Haiku (with in-process cache)
- * 4. Return JSON array of MedicarePlan objects
+ * Fast plan lookup using pre-processed per-state JSON files hosted on CDN.
+ * No CSV parsing, no LLM transformation at runtime.
  *
- * The CSV index is built once on first request and kept in memory.
- * Claude Haiku transformation results are cached per county key.
+ * Flow:
+ * 1. Validate ZIP (5 digits)
+ * 2. Resolve ZIP → county/state via CMS Marketplace API
+ * 3. Download state JSON from CDN (cached in memory per state)
+ * 4. Look up plans by county name
+ * 5. Return up to MAX_PLANS plans with isBestMatch / isMostPopular flags
  */
 
-import { Router, Request, Response, type Express } from "express";
-import { parse } from "csv-parse";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { Readable } from "stream";
+import { type Express } from "express";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// ── CDN URLs for pre-processed per-state plan JSON files ─────────────────────
+const CDN_BASE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const STATE_CDN_URLS: Record<string, string> = {
+  AL: `${CDN_BASE}/AL_67b904f5.json`,
+  AR: `${CDN_BASE}/AR_44da840b.json`,
+  AZ: `${CDN_BASE}/AZ_822fc811.json`,
+  CA: `${CDN_BASE}/CA_0e63b144.json`,
+  CO: `${CDN_BASE}/CO_d5d0202e.json`,
+  CT: `${CDN_BASE}/CT_fe117f1a.json`,
+  DC: `${CDN_BASE}/DC_956b23b8.json`,
+  DE: `${CDN_BASE}/DE_e49d3fed.json`,
+  FL: `${CDN_BASE}/FL_49f1876a.json`,
+  GA: `${CDN_BASE}/GA_533e1fca.json`,
+  HI: `${CDN_BASE}/HI_fa323526.json`,
+  IA: `${CDN_BASE}/IA_c0fbfe84.json`,
+  ID: `${CDN_BASE}/ID_36678396.json`,
+  IL: `${CDN_BASE}/IL_4defe286.json`,
+  IN: `${CDN_BASE}/IN_dc82ef53.json`,
+  KS: `${CDN_BASE}/KS_7e35aefd.json`,
+  KY: `${CDN_BASE}/KY_d429ac6a.json`,
+  LA: `${CDN_BASE}/LA_135fa9eb.json`,
+  MA: `${CDN_BASE}/MA_a8cf20c4.json`,
+  MD: `${CDN_BASE}/MD_e84fb99f.json`,
+  ME: `${CDN_BASE}/ME_32265cbc.json`,
+  MI: `${CDN_BASE}/MI_2be468a6.json`,
+  MN: `${CDN_BASE}/MN_eda92d03.json`,
+  MO: `${CDN_BASE}/MO_4e9fdf09.json`,
+  MS: `${CDN_BASE}/MS_c8f93956.json`,
+  MT: `${CDN_BASE}/MT_686ff40b.json`,
+  NC: `${CDN_BASE}/NC_036848e7.json`,
+  ND: `${CDN_BASE}/ND_f12b42a3.json`,
+  NE: `${CDN_BASE}/NE_960f49d1.json`,
+  NH: `${CDN_BASE}/NH_d1021c0f.json`,
+  NJ: `${CDN_BASE}/NJ_4f264fd0.json`,
+  NM: `${CDN_BASE}/NM_446e840a.json`,
+  NV: `${CDN_BASE}/NV_9ca45f94.json`,
+  NY: `${CDN_BASE}/NY_d3c0c09e.json`,
+  OH: `${CDN_BASE}/OH_ec644008.json`,
+  OK: `${CDN_BASE}/OK_3e52d056.json`,
+  OR: `${CDN_BASE}/OR_4d1de179.json`,
+  PA: `${CDN_BASE}/PA_124dc2c6.json`,
+  PR: `${CDN_BASE}/PR_2ff56627.json`,
+  RI: `${CDN_BASE}/RI_74672982.json`,
+  SC: `${CDN_BASE}/SC_3ceb6e53.json`,
+  SD: `${CDN_BASE}/SD_0553bb69.json`,
+  TN: `${CDN_BASE}/TN_cf7b12c8.json`,
+  TX: `${CDN_BASE}/TX_2dd68bdd.json`,
+  UT: `${CDN_BASE}/UT_ac1faf77.json`,
+  VA: `${CDN_BASE}/VA_db8b8a4c.json`,
+  VT: `${CDN_BASE}/VT_8e463fe4.json`,
+  WA: `${CDN_BASE}/WA_43e2f67b.json`,
+  WI: `${CDN_BASE}/WI_003da44b.json`,
+  WV: `${CDN_BASE}/WV_c5df6929.json`,
+  WY: `${CDN_BASE}/WY_02219b63.json`,
+};
 
-interface CmsRow {
-  contractYear: string;
-  contractCategoryType: string;
-  stateAbbr: string;
-  stateName: string;
-  countyName: string;
-  contractId: string;
-  planId: string;
-  segmentId: string;
-  sanctionedPlan: string;
-  parentOrgName: string;
-  orgMarketingName: string;
-  planName: string;
-  planType: string;
-  snpIndicator: string;
-  snpType: string;
-  partDCoverageIndicator: string;
-  annualPartDDeductible: string;
-  partCPremium: string;
-  monthlyConsolidatedPremium: string;
-  inNetworkMOOP: string;
-  partCStarRating: string;
-  partDStarRating: string;
-  overallStarRating: string;
-}
+// ── CMS Marketplace API for ZIP → county resolution ──────────────────────────
+const CMS_ZIP_API = "https://marketplace.api.healthcare.gov/api/v1/counties/by/zip";
+const CMS_API_KEY = process.env.CMS_MARKETPLACE_API_KEY ?? "d687412e7b53146b2631dc01974ad0a4";
 
-// ── CSV Index ─────────────────────────────────────────────────────────────────
+// ── In-memory LRU cache for state data (keyed by state abbreviation) ─────────
+const STATE_CACHE_MAX = 20;
+const stateCache = new Map<string, Record<string, unknown[]>>();
 
-// Key: "STATE_ABBR|COUNTY_NAME" (uppercase, trimmed)
-const csvIndex = new Map<string, CmsRow[]>();
-let csvLoaded = false;
-let csvLoadPromise: Promise<void> | null = null;
-
-// CDN URL for the CMS CY2026 Landscape CSV (uploaded to avoid large file in git)
-const CSV_CDN_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8/cms-landscape_fd7afeb6.csv";
-const CSV_LOCAL_CACHE = path.join(__dirname, "cms-landscape-cache.csv");
-
-function parseMoneyValue(raw: string): number {
-  if (!raw || raw.trim() === "Not Applicable" || raw.trim() === "") return 0;
-  // Remove $, commas, spaces, parentheses (negative values shown as ($x.xx))
-  const cleaned = raw.replace(/[$,\s()]/g, "").trim();
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : Math.abs(num);
-}
-
-function parseStarRating(raw: string): number {
-  if (!raw || raw.trim() === "Not Applicable" || raw.trim() === "") return 0;
-  const num = parseFloat(raw.trim());
-  return isNaN(num) ? 0 : num;
-}
-
-async function loadCsvIndex(): Promise<void> {
-  if (csvLoaded) return;
-  if (csvLoadPromise) return csvLoadPromise;
-
-  csvLoadPromise = new Promise<void>((resolve, reject) => {
-    const parser = parse({
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      bom: true, // handle BOM in the CMS file
-    });
-
-    let rowCount = 0;
-
-    parser.on("readable", () => {
-      let record: Record<string, string>;
-      while ((record = parser.read()) !== null) {
-        rowCount++;
-        const categoryType = record["Contract Category Type"]?.trim() ?? "";
-        // Only index MA-PD and SNP plans (not standalone PDP)
-        if (categoryType !== "MA-PD" && categoryType !== "SNP") continue;
-
-        const stateAbbr = record["State Territory Abbreviation"]?.trim().toUpperCase() ?? "";
-        const countyName = record["County Name"]?.trim().toUpperCase() ?? "";
-        if (!stateAbbr || !countyName) continue;
-
-        const key = `${stateAbbr}|${countyName}`;
-
-        const row: CmsRow = {
-          contractYear: record["Contract Year"] ?? "",
-          contractCategoryType: categoryType,
-          stateAbbr,
-          stateName: record["State Territory Name"] ?? "",
-          countyName: record["County Name"]?.trim() ?? "",
-          contractId: record["Contract ID"] ?? "",
-          planId: record["Plan ID"] ?? "",
-          segmentId: record["Segment ID"] ?? "",
-          sanctionedPlan: record["Sanctioned Plan"] ?? "",
-          parentOrgName: record["Parent Organization Name"] ?? "",
-          orgMarketingName: record["Organization Marketing Name"] ?? "",
-          planName: record["Plan Name"] ?? "",
-          planType: record["Plan Type"] ?? "",
-          snpIndicator: record["Special Needs Plan (SNP) Indicator"] ?? "",
-          snpType: record["SNP Type"] ?? "",
-          partDCoverageIndicator: record["Part D Coverage Indicator"] ?? "",
-          annualPartDDeductible: record["Annual Part D Deductible Amount"] ?? "",
-          partCPremium: record["Part C Premium"] ?? "",
-          monthlyConsolidatedPremium: record["Monthly Consolidated Premium (Part C + D)"] ?? "",
-          inNetworkMOOP: record["In-Network Maximum Out-of-Pocket (MOOP) Amount"] ?? "",
-          partCStarRating: record["Part C Summary Star Rating"] ?? "",
-          partDStarRating: record["Part D Summary Star Rating"] ?? "",
-          overallStarRating: record["Overall Star Rating"] ?? "",
-        };
-
-        let recordsForKey = csvIndex.get(key);
-        if (!recordsForKey) {
-          recordsForKey = [];
-          csvIndex.set(key, recordsForKey);
-        }
-        recordsForKey.push(row);
-      }
-    });
-
-    parser.on("end", () => {
-      csvLoaded = true;
-      console.log(`[CMS CSV] Loaded ${rowCount} rows, ${csvIndex.size} county keys indexed`);
-      resolve();
-    });
-
-    parser.on("error", (err) => {
-      console.error("[CMS CSV] Parse error:", err);
-      reject(err);
-    });
-
-    // Use local cache if available, otherwise download from CDN
-    const loadStream = async () => {
-      if (fs.existsSync(CSV_LOCAL_CACHE)) {
-        console.log("[CMS CSV] Using local cache");
-        fs.createReadStream(CSV_LOCAL_CACHE).pipe(parser);
-      } else {
-        console.log("[CMS CSV] Downloading from CDN...");
-        const response = await fetch(CSV_CDN_URL);
-        if (!response.ok) {
-          reject(new Error(`Failed to download CSV: ${response.status}`));
-          return;
-        }
-        const buffer = await response.arrayBuffer();
-        fs.writeFileSync(CSV_LOCAL_CACHE, Buffer.from(buffer));
-        console.log("[CMS CSV] Downloaded and cached locally");
-        Readable.from(Buffer.from(buffer)).pipe(parser);
-      }
-    };
-    loadStream().catch(reject);
-  });
-
-  return csvLoadPromise;
-}
-
-// ── ZIP → County lookup via CMS Marketplace API ───────────────────────────────
-
-interface ZipCountyResult {
-  stateAbbr: string;
-  countyName: string;
-  fipsCode: string;
-}
-
-const zipCache = new Map<string, ZipCountyResult | null>();
-
-// Max entries in the ZIP cache to prevent unbounded memory growth
-const ZIP_CACHE_MAX = 5000;
-
-async function resolveZipToCounty(zip: string): Promise<ZipCountyResult | null> {
-  // LRU: move to end on access so oldest (least recently used) is evicted first
-  if (zipCache.has(zip)) {
-    const cached = zipCache.get(zip)!;
-    zipCache.delete(zip);
-    zipCache.set(zip, cached);
-    return cached;
+function evictStateCache() {
+  if (stateCache.size >= STATE_CACHE_MAX) {
+    const firstKey = stateCache.keys().next().value;
+    if (firstKey) stateCache.delete(firstKey);
   }
+}
 
-  // Evict least recently used entry when cache is full
+// ── In-memory LRU cache for ZIP → county resolution ──────────────────────────
+const ZIP_CACHE_MAX = 5000;
+const zipCache = new Map<string, { stateAbbr: string; countyName: string }>();
+
+function evictZipCache() {
   if (zipCache.size >= ZIP_CACHE_MAX) {
     const firstKey = zipCache.keys().next().value;
-    if (firstKey !== undefined) zipCache.delete(firstKey);
+    if (firstKey) zipCache.delete(firstKey);
   }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bOf\b/g, "of")
+    .replace(/\bThe\b/g, "the");
+}
+
+// ── Resolve ZIP → county/state via CMS Marketplace API ───────────────────────
+async function resolveZipToCounty(zip: string): Promise<{ stateAbbr: string; countyName: string } | null> {
+  // Check ZIP cache first
+  const cached = zipCache.get(zip);
+  if (cached) return cached;
 
   try {
-    // CMS Marketplace API key — public key documented at https://developer.cms.gov/marketplace-api
-    // Set CMS_MARKETPLACE_API_KEY env var to override; falls back to the well-known public demo key
-    const CMS_PUBLIC_KEY = "d687412e7b53146b2631dc01974ad0a4";
-    const cmsApiKey = process.env.CMS_MARKETPLACE_API_KEY ?? CMS_PUBLIC_KEY;
-    const url = `https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/${zip}?apikey=${cmsApiKey}`;
+    const url = `${CMS_ZIP_API}/${zip}?apikey=${CMS_API_KEY}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
-      zipCache.set(zip, null);
+      console.warn(`[Plans] CMS ZIP API returned ${res.status} for ZIP ${zip}`);
       return null;
     }
-    const data = (await res.json()) as {
-      counties?: Array<{
-        name: string;
-        state: string;
-        fips: string;
-      }>;
-    };
-
-    if (!data.counties || data.counties.length === 0) {
-      zipCache.set(zip, null);
+    const data = await res.json() as { counties?: Array<{ state: string; name: string }> };
+    const counties = data.counties;
+    if (!counties || counties.length === 0) {
+      console.warn(`[Plans] No counties found for ZIP ${zip}`);
       return null;
     }
-
-    // Use the first county result
-    const county = data.counties[0];
-    const result: ZipCountyResult = {
-      stateAbbr: county.state.toUpperCase(),
-      countyName: county.name.toUpperCase(),
-      fipsCode: county.fips,
+    // Use the first county returned (primary county for this ZIP)
+    const primary = counties[0];
+    const result = {
+      stateAbbr: primary.state.toUpperCase(),
+      countyName: primary.name.toUpperCase(),
     };
+    evictZipCache();
     zipCache.set(zip, result);
     return result;
   } catch (err) {
-    console.error(`[ZIP Lookup] Error for ${zip}:`, err);
-    zipCache.set(zip, null);
+    console.error(`[Plans] ZIP resolution error for ${zip}:`, err);
     return null;
   }
 }
 
-// ── Claude Haiku transformation ───────────────────────────────────────────────
+// ── Download and cache state data from CDN ───────────────────────────────────
+async function getStateData(stateAbbr: string): Promise<Record<string, unknown[]> | null> {
+  // Check state cache first
+  const cached = stateCache.get(stateAbbr);
+  if (cached) return cached;
 
-// Cache transformed plans per county key
-const transformCache = new Map<string, object[]>();
-
-// Carrier brand colors
-const CARRIER_COLORS: Record<string, { bg: string; text: string }> = {
-  unitedhealth: { bg: "#002677", text: "#FFFFFF" },
-  humana: { bg: "#006D9D", text: "#FFFFFF" },
-  aetna: { bg: "#7D2248", text: "#FFFFFF" },
-  cigna: { bg: "#E8002D", text: "#FFFFFF" },
-  wellcare: { bg: "#00A651", text: "#FFFFFF" },
-  centene: { bg: "#0057A8", text: "#FFFFFF" },
-  "blue cross": { bg: "#003087", text: "#FFFFFF" },
-  "blue kc": { bg: "#003087", text: "#FFFFFF" },
-  anthem: { bg: "#1355A7", text: "#FFFFFF" },
-  kaiser: { bg: "#003DA5", text: "#FFFFFF" },
-  molina: { bg: "#00539B", text: "#FFFFFF" },
-  clover: { bg: "#00BFA5", text: "#FFFFFF" },
-  devoted: { bg: "#5B2D8E", text: "#FFFFFF" },
-  oscar: { bg: "#FF5A5F", text: "#FFFFFF" },
-  alignment: { bg: "#2E7D32", text: "#FFFFFF" },
-  scan: { bg: "#0277BD", text: "#FFFFFF" },
-};
-
-function getCarrierColors(orgName: string): { bg: string; text: string } {
-  const lower = orgName.toLowerCase();
-  for (const [key, colors] of Object.entries(CARRIER_COLORS)) {
-    if (lower.includes(key)) return colors;
-  }
-  return { bg: "#006B3F", text: "#FFFFFF" };
-}
-
-function mapPlanType(planType: string): string {
-  const t = planType.toLowerCase();
-  if (t.includes("hmo-pos")) return "HMO";
-  if (t.includes("hmo")) return "HMO";
-  if (t.includes("ppo")) return "PPO";
-  if (t.includes("pffs")) return "PFFS";
-  if (t.includes("snp") || t.includes("d-snp") || t.includes("c-snp") || t.includes("i-snp")) return "SNP";
-  return "HMO";
-}
-
-function buildTransformPrompt(rows: CmsRow[], countyName: string, stateAbbr: string): string {
-  const planList = rows.slice(0, 30).map((r, i) => {
-    const premium = parseMoneyValue(r.monthlyConsolidatedPremium || r.partCPremium);
-    const moop = parseMoneyValue(r.inNetworkMOOP);
-    const deductible = parseMoneyValue(r.annualPartDDeductible);
-    const stars = parseStarRating(r.overallStarRating || r.partCStarRating);
-    return `${i + 1}. ${r.planName} | ${r.orgMarketingName} | ${r.planType} | Premium: $${premium}/mo | MOOP: $${moop} | Deductible: $${deductible} | Stars: ${stars || "N/A"} | ContractID: ${r.contractId} | PlanID: ${r.planId} | SNP: ${r.snpIndicator === "Yes" ? r.snpType : "No"}`;
-  }).join("\n");
-
-  return `You are a Medicare data expert. Convert these real CMS CY2026 Medicare Advantage plans for ${countyName} County, ${stateAbbr} into structured JSON objects.
-
-PLANS:
-${planList}
-
-For each plan, create a JSON object with this EXACT structure. Use realistic estimates based on plan type and carrier for fields not available in the raw data:
-{
-  "id": "contractId-planId" (e.g., "H0028-017"),
-  "carrier": carrier name (string),
-  "planName": full plan name,
-  "planType": "HMO" | "PPO" | "PFFS" | "SNP",
-  "contractId": contract ID,
-  "planId": plan ID,
-  "starRating": { "overall": number (0-5), "label": "X out of 5 stars" },
-  "premium": monthly premium as number (0 if $0),
-  "partBPremiumReduction": 0 (unless plan name mentions "giveback"),
-  "deductible": annual medical deductible as number,
-  "maxOutOfPocket": MOOP as number,
-  "copays": {
-    "primaryCare": "$X" or "$0" for HMO plans,
-    "specialist": "$X",
-    "urgentCare": "$X",
-    "emergency": "$X",
-    "inpatientHospital": "$X/day for days 1-5" or "$X",
-    "outpatientSurgery": "$X"
-  },
-  "rxDrugs": {
-    "tier1": "$X" (generics, usually $0-$5),
-    "tier2": "$X" (preferred brand),
-    "tier3": "$X" (non-preferred brand),
-    "tier4": "$X or X%" (specialty),
-    "deductible": "$0" or "$X",
-    "gap": true (most MA-PD plans have gap coverage),
-    "initialCoverageLimit": "$5,030"
-  },
-  "extraBenefits": {
-    "dental": { "covered": true/false, "details": "brief description" },
-    "vision": { "covered": true/false, "details": "brief description" },
-    "hearing": { "covered": true/false, "details": "brief description" },
-    "otc": { "covered": true/false, "details": "brief description or amount" },
-    "fitness": { "covered": true/false, "details": "SilverSneakers or similar" },
-    "transportation": { "covered": true/false, "details": "brief description" },
-    "telehealth": { "covered": true, "details": "24/7 telehealth included" },
-    "meals": { "covered": false, "details": "Not covered" }
-  },
-  "networkSize": estimated number (HMO: 5000-15000, PPO: 15000-50000),
-  "enrollmentPeriod": "Oct 15 – Dec 7, 2025",
-  "effectiveDate": "January 1, 2026",
-  "serviceArea": "${countyName} County, ${stateAbbr}",
-  "snpType": SNP type if applicable or undefined,
-  "carrierLogoColor": hex color for carrier brand,
-  "carrierLogoTextColor": "#FFFFFF"
-}
-
-RULES:
-- For $0 premium HMO plans, set "partBPremiumReduction" to 0 unless "giveback" is in plan name
-- For SNP plans, set planType to "SNP" and include snpType
-- Estimate realistic copays based on plan type (HMO plans typically have lower copays)
-- Return ONLY a valid JSON array with no markdown, no explanation, no code fences
-
-Return the JSON array now:`;
-}
-
-async function transformPlansWithHaiku(rows: CmsRow[], countyKey: string, countyName: string, stateAbbr: string): Promise<object[]> {
-  if (transformCache.has(countyKey)) {
-    return transformCache.get(countyKey)!;
-  }
-
-  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
-  const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
-  if (!forgeApiUrl || !forgeApiKey) {
-    console.warn("[Plans] Forge API not configured — returning raw CSV data as fallback");
-    return buildFallbackPlans(rows);
+  const url = STATE_CDN_URLS[stateAbbr];
+  if (!url) {
+    console.warn(`[Plans] No CDN URL for state: ${stateAbbr}`);
+    return null;
   }
 
   try {
-    const prompt = buildTransformPrompt(rows, countyName, stateAbbr);
-
-    const response = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${forgeApiKey}`,
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
-        max_tokens: 8192,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[Plans] Forge API error:", response.status, errorText.slice(0, 300));
-      return buildFallbackPlans(rows);
+    console.log(`[Plans] Downloading state data for ${stateAbbr} from CDN...`);
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) {
+      console.error(`[Plans] CDN returned ${res.status} for ${stateAbbr}`);
+      return null;
     }
-
-    const data = (await response.json()) as {
-      choices: Array<{ message: { content: string } }>;
-    };
-
-    const text = data.choices?.[0]?.message?.content ?? "";
-
-    // Extract JSON array from response
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error("[Plans] No JSON array found in Haiku response:", text.slice(0, 300));
-      return buildFallbackPlans(rows);
-    }
-
-    const plans = JSON.parse(jsonMatch[0]) as object[];
-
-    // Add carrier color info to each plan
-    const enrichedPlans = (plans as Record<string, unknown>[]).map((plan: Record<string, unknown>, idx: number) => {
-      const row = rows[idx];
-      const colors = getCarrierColors(String(plan.carrier || row?.orgMarketingName || ""));
-      return {
-        ...plan,
-        carrierLogoColor: plan.carrierLogoColor || colors.bg,
-        carrierLogoTextColor: plan.carrierLogoTextColor || colors.text,
-      };
-    });
-
-    transformCache.set(countyKey, enrichedPlans);
-    console.log(`[Plans] Transformed ${enrichedPlans.length} plans for ${countyKey} via Claude Haiku`);
-    return enrichedPlans;
+    const data = await res.json() as Record<string, unknown[]>;
+    evictStateCache();
+    stateCache.set(stateAbbr, data);
+    console.log(`[Plans] Loaded ${stateAbbr} state data (${Object.keys(data).length} counties)`);
+    return data;
   } catch (err) {
-    console.error("[Plans] Transform error:", err);
-    return buildFallbackPlans(rows);
+    console.error(`[Plans] Failed to download state data for ${stateAbbr}:`, err);
+    return null;
   }
 }
 
-/** Fallback: build minimal MedicarePlan objects directly from CSV rows without AI */
-function buildFallbackPlans(rows: CmsRow[]): object[] {
-  return rows.slice(0, 24).map((row, idx) => {
-    const premium = parseMoneyValue(row.monthlyConsolidatedPremium || row.partCPremium);
-    const moop = parseMoneyValue(row.inNetworkMOOP) || 6700;
-    const deductible = parseMoneyValue(row.annualPartDDeductible);
-    const stars = parseStarRating(row.overallStarRating || row.partCStarRating) || 3.5;
-    const planType = mapPlanType(row.planType);
-    const colors = getCarrierColors(row.orgMarketingName);
-
-    return {
-      id: `${row.contractId}-${row.planId}`,
-      carrier: row.orgMarketingName || row.parentOrgName,
-      planName: row.planName,
-      planType,
-      contractId: row.contractId,
-      planId: row.planId,
-      starRating: { overall: stars, label: `${stars} out of 5 stars` },
-      premium,
-      partBPremiumReduction: 0,
-      deductible,
-      maxOutOfPocket: moop,
-      copays: {
-        primaryCare: planType === "PPO" ? "$10" : "$0",
-        specialist: planType === "PPO" ? "$40" : "$30",
-        urgentCare: "$40",
-        emergency: "$90",
-        inpatientHospital: "$295/day for days 1-5",
-        outpatientSurgery: "$175",
-      },
-      rxDrugs: {
-        tier1: "$0",
-        tier2: "$10",
-        tier3: "$42",
-        tier4: "25%",
-        deductible: deductible > 0 ? `$${deductible}` : "$0",
-        gap: true,
-        initialCoverageLimit: "$5,030",
-      },
-      extraBenefits: {
-        dental: { covered: true, details: "Preventive dental included" },
-        vision: { covered: true, details: "Annual eye exam + $100 allowance" },
-        hearing: { covered: true, details: "Hearing exam + aid allowance" },
-        otc: { covered: idx % 2 === 0, details: idx % 2 === 0 ? "$100/quarter OTC allowance" : "Not included" },
-        fitness: { covered: true, details: "SilverSneakers membership" },
-        transportation: { covered: idx % 3 === 0, details: idx % 3 === 0 ? "24 rides/year" : "Not included" },
-        telehealth: { covered: true, details: "24/7 telehealth included" },
-        meals: { covered: false, details: "Not covered" },
-      },
-      networkSize: planType === "PPO" ? 25000 : 8500,
-      enrollmentPeriod: "Oct 15 – Dec 7, 2025",
-      effectiveDate: "January 1, 2026",
-      serviceArea: `${row.countyName} County, ${row.stateAbbr}`,
-      snpType: row.snpIndicator === "Yes" ? row.snpType : undefined,
-      carrierLogoColor: colors.bg,
-      carrierLogoTextColor: colors.text,
-      isBestMatch: idx === 0,
-      isMostPopular: idx === 1,
-    };
-  });
-}
-
-// ── County lookup helper ─────────────────────────────────────────────────────
-
-/**
- * Try multiple county key variations to handle inconsistencies in CMS data
- * (e.g., "JACKSON" vs "JACKSON COUNTY", partial name matches).
- */
-function findPlansByCounty(stateAbbr: string, countyName: string): CmsRow[] {
-  const variations = [
-    `${stateAbbr}|${countyName}`,
-    `${stateAbbr}|${countyName.replace(/\s+COUNTY$/i, "").trim()}`,
-    `${stateAbbr}|${countyName} COUNTY`,
-  ];
-
-  for (const key of variations) {
-    const found = csvIndex.get(key);
-    if (found && found.length > 0) return found;
+// ── Find plans for a county in state data ────────────────────────────────────
+function findPlansForCounty(stateData: Record<string, unknown[]>, countyName: string): unknown[] {
+  // Try exact match first (county name is stored uppercase in JSON)
+  const upperCounty = countyName.toUpperCase();
+  if (stateData[upperCounty]) {
+    return stateData[upperCounty];
   }
 
-  // Loose partial match: first word of county name within the state
-  const prefix = `${stateAbbr}|`;
-  const firstWord = countyName.replace(/\s+COUNTY$/i, "").trim().split(" ")[0];
-  for (const [key, keyRows] of Array.from(csvIndex.entries())) {
-    if (key.startsWith(prefix) && key.includes(firstWord) && keyRows.length > 0) {
-      return keyRows;
+  // Try without " COUNTY" suffix
+  const withoutCounty = upperCounty.replace(/ COUNTY$/, "").trim();
+  for (const key of Object.keys(stateData)) {
+    if (key === withoutCounty || key.replace(/ COUNTY$/, "") === withoutCounty) {
+      return stateData[key];
     }
   }
 
+  // Partial match fallback
+  for (const key of Object.keys(stateData)) {
+    if (key.includes(withoutCounty) || withoutCounty.includes(key.replace(/ COUNTY$/, ""))) {
+      return stateData[key];
+    }
+  }
+
+  console.warn(`[Plans] County not found: "${upperCounty}" in state data. Available: ${Object.keys(stateData).slice(0, 5).join(", ")}...`);
   return [];
 }
 
-// ── Route registration ────────────────────────────────────────────────────────
+// ── Cap and annotate plans ────────────────────────────────────────────────────
+const MAX_PLANS = 30;
 
-export function registerPlansRoute(app: Express) {
-  const router = Router();
+function annotatePlans(plans: unknown[]): unknown[] {
+  const capped = plans.slice(0, MAX_PLANS);
 
-  router.get("/", async (req: Request, res: Response) => {
-    const zip = (req.query.zip as string)?.trim();
+  // Sort by star rating descending, then by premium ascending
+  const sorted = [...capped].sort((a: any, b: any) => {
+    const starDiff = (b.starRating?.overall ?? 0) - (a.starRating?.overall ?? 0);
+    if (starDiff !== 0) return starDiff;
+    return (a.premium ?? 0) - (b.premium ?? 0);
+  });
+
+  return sorted.map((plan: any, idx) => ({
+    ...plan,
+    isBestMatch: idx === 0,
+    isMostPopular: idx === 1,
+  }));
+}
+
+// ── Register the /api/plans route ─────────────────────────────────────────────
+export function registerPlansRoute(app: Express): void {
+  app.get("/api/plans", async (req, res) => {
+    const zip = (req.query.zip as string | undefined)?.trim();
+
+    // Validate ZIP
     if (!zip || !/^\d{5}$/.test(zip)) {
-      res.status(400).json({ error: "Please provide a valid 5-digit ZIP code." });
-      return;
+      return res.status(400).json({
+        error: "Please provide a valid 5-digit ZIP code.",
+        plans: [],
+      });
     }
 
     try {
-      // 1. Ensure CSV index is loaded
-      await loadCsvIndex();
-
-      // 2. Resolve ZIP → county
+      // Step 1: Resolve ZIP → county/state
       const location = await resolveZipToCounty(zip);
       if (!location) {
-        res.status(404).json({ error: `Could not resolve ZIP code ${zip} to a county.` });
-        return;
+        return res.status(404).json({
+          error: `Could not find county information for ZIP code ${zip}. Please verify the ZIP code and try again.`,
+          plans: [],
+          location: null,
+        });
       }
 
       const { stateAbbr, countyName } = location;
-      const countyKey = `${stateAbbr}|${countyName}`;
 
-      // 3. Look up plans in CSV index (with progressive fallback matching)
-      const rows = findPlansByCounty(stateAbbr, countyName);
-
-      if (rows.length === 0) {
-        res.status(404).json({
-          error: `No Medicare Advantage plans found for ${countyName} County, ${stateAbbr}. This area may not have MA plans available.`,
-          location: { stateAbbr, countyName },
+      // Step 2: Get state data from CDN (cached)
+      const stateData = await getStateData(stateAbbr);
+      if (!stateData) {
+        return res.status(503).json({
+          error: `Plan data for ${stateAbbr} is temporarily unavailable. Please try again in a moment.`,
+          plans: [],
+          location: { stateAbbr, countyName: toTitleCase(countyName), zip },
         });
-        return;
       }
 
-      // 4. Transform via Claude Haiku (with cache)
-      const plans = await transformPlansWithHaiku(rows, countyKey, countyName, stateAbbr);
+      // Step 3: Find plans for this county
+      const rawPlans = findPlansForCounty(stateData, countyName);
+      if (rawPlans.length === 0) {
+        return res.status(404).json({
+          error: `No Medicare Advantage plans found for ${toTitleCase(countyName)}, ${stateAbbr}. This area may not have MA plans available for 2026.`,
+          plans: [],
+          location: { stateAbbr, countyName: toTitleCase(countyName), zip },
+        });
+      }
 
-      // Format county name to Title Case for display
-      const displayCounty = countyName.replace(/\b\w/g, (c: string) => c.toUpperCase());
-      res.json({
+      // Step 4: Annotate and return
+      const plans = annotatePlans(rawPlans);
+
+      return res.json({
         plans,
-        location: { stateAbbr, countyName: displayCounty, zip },
-        totalPlans: plans.length,
-        source: "CMS CY2026 Landscape",
+        location: {
+          stateAbbr,
+          countyName: toTitleCase(countyName),
+          zip,
+        },
+        totalAvailable: rawPlans.length,
+        showing: plans.length,
       });
     } catch (err) {
-      console.error("[Plans API] Error:", err);
-      res.status(500).json({ error: "Failed to load plan data. Please try again." });
+      console.error("[Plans] Unexpected error:", err);
+      return res.status(500).json({
+        error: "An unexpected error occurred while loading plans. Please try again.",
+        plans: [],
+      });
     }
   });
+}
 
-  app.use("/api/plans", router);
+// ── Pre-warm cache for common states on server startup ───────────────────────
+const PREWARM_STATES = ["MO", "KS", "FL", "TX", "CA", "NY", "OH", "PA", "IL", "GA"];
+
+export async function prewarmPlanCache(): Promise<void> {
+  console.log("[Plans] Pre-warming plan cache for common states...");
+  const results = await Promise.allSettled(
+    PREWARM_STATES.map((state) => getStateData(state))
+  );
+  const loaded = results.filter((r) => r.status === "fulfilled" && r.value !== null).length;
+  console.log(`[Plans] Pre-warm complete: ${loaded}/${PREWARM_STATES.length} states loaded`);
 }

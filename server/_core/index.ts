@@ -11,7 +11,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerCompareStreamRoute } from "../compareStream";
 import recommendStreamRouter from "../recommendStream";
-import { registerPlansRoute } from "../plansRouter";
+import { registerPlansRoute, prewarmPlanCache } from "../plansRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -119,6 +119,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Pre-warm plan cache for common states in the background (non-blocking)
+    prewarmPlanCache().catch((err) => console.warn("[Plans] Pre-warm failed:", err));
   });
 }
 
