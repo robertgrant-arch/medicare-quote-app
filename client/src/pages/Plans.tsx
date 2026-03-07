@@ -17,6 +17,11 @@ import {
   List,
   Search,
   Sparkles,
+  Shield,
+  CheckCircle2,
+  TrendingDown,
+  DollarSign,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -26,6 +31,7 @@ import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
 import EnrollModal from "@/components/EnrollModal";
 import type { FilterState, MedicarePlan, RxDrug, Doctor } from "@/lib/types";
+import type { MBIVerifyResult } from "@/components/MBIVerifyModal";
 
 const DEFAULT_FILTERS: FilterState = {
   planType: [],
@@ -124,6 +130,27 @@ export default function Plans() {
   const [plansLoading, setPlansLoading] = useState(false);
   const [plansError, setPlansError] = useState<string | null>(null);
   const [locationInfo, setLocationInfo] = useState<{ stateAbbr: string; countyName: string } | null>(null);
+  const [eligibility, setEligibility] = useState<MBIVerifyResult | null>(null);
+  const [showCurrentPlanBanner, setShowCurrentPlanBanner] = useState(true);
+
+  // Read MBI eligibility from sessionStorage (set by Home.tsx after modal verification)
+  useEffect(() => {
+    const verified = params.get("verified");
+    if (verified === "1") {
+      try {
+        const stored = sessionStorage.getItem("mbi_eligibility");
+        if (stored) {
+          const parsed = JSON.parse(stored) as MBIVerifyResult;
+          setEligibility(parsed);
+          // Clear after reading so it doesn't persist across ZIP changes
+          sessionStorage.removeItem("mbi_eligibility");
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCompareActivate = (planId: string | null) => {
     setActiveCompareId(planId);
@@ -440,6 +467,75 @@ export default function Plans() {
               </div>
             </div>
 
+            {/* ── Current Plan Banner (shown when MBI verified) ─────────── */}
+            {eligibility?.currentPlan && showCurrentPlanBanner && (
+              <div
+                className="rounded-xl p-4 mb-4 border-2"
+                style={{ backgroundColor: "#F0F4FF", borderColor: "#C8D8F5" }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ backgroundColor: "#1B365D" }}
+                    >
+                      <Shield size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold uppercase tracking-wide" style={{ color: "#1B365D" }}>
+                          Your Current Plan
+                        </span>
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          style={{ backgroundColor: "#DCFCE7", color: "#166534" }}
+                        >
+                          ✓ Active Coverage
+                        </span>
+                        {eligibility.isMockData && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ backgroundColor: "#FEF9C3", color: "#854D0E" }}
+                          >
+                            Demo data
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-bold mt-0.5" style={{ color: "#1B365D" }}>
+                        {eligibility.currentPlan.planName}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {eligibility.currentPlan.carrier} · Plan ID: {eligibility.currentPlan.planId}
+                      </p>
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        {[
+                          { icon: DollarSign, label: "Premium", value: eligibility.currentPlan.premium === 0 ? "$0/mo" : `$${eligibility.currentPlan.premium}/mo` },
+                          { icon: TrendingDown, label: "Max OOP", value: `$${eligibility.currentPlan.oopMax.toLocaleString()}` },
+                          { icon: CheckCircle2, label: "Deductible", value: eligibility.currentPlan.deductible === 0 ? "$0" : `$${eligibility.currentPlan.deductible}` },
+                        ].map(({ icon: Icon, label, value }) => (
+                          <div key={label} className="flex items-center gap-1.5 text-xs">
+                            <Icon size={11} style={{ color: "#1B365D" }} />
+                            <span className="text-gray-500">{label}:</span>
+                            <span className="font-semibold" style={{ color: "#1B365D" }}>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                        <Info size={11} />
+                        Plans below are compared against your current coverage. Look for better benefits or lower costs.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCurrentPlanBanner(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Personalization banner */}
             {(rxDrugs.length > 0 || doctors.length > 0) && (
               <div
@@ -523,18 +619,42 @@ export default function Plans() {
                     : "flex flex-col gap-4"
                 }
               >
-                {filteredPlans.map((plan, i) => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    isFavorited={favorites.has(plan.id)}
-                    onToggleFavorite={toggleFavorite}
-                    onEnroll={handleEnroll}
-                    animationDelay={Math.min(i * 60, 400)}
-                    isCompareActive={activeCompareId === plan.id}
-                    onCompareActivate={handleCompareActivate}
-                  />
-                ))}
+                {filteredPlans.map((plan, i) => {
+                  // Compute comparison vs current plan when eligibility data is available
+                  const cp = eligibility?.currentPlan;
+                  const premiumDiff = cp ? plan.premium - cp.premium : null;
+                  const oopDiff = cp ? plan.maxOutOfPocket - cp.oopMax : null;
+                  const hasBetterPremium = premiumDiff !== null && premiumDiff < 0;
+                  const hasBetterOOP = oopDiff !== null && oopDiff < 0;
+                  const hasBetterBoth = hasBetterPremium && hasBetterOOP;
+
+                  return (
+                    <div key={plan.id} className="relative">
+                      {cp && (hasBetterPremium || hasBetterOOP) && (
+                        <div
+                          className="absolute -top-2 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm"
+                          style={{ backgroundColor: hasBetterBoth ? "#C41E3A" : "#1B365D", color: "white" }}
+                        >
+                          <TrendingDown size={11} />
+                          {hasBetterBoth
+                            ? `Save $${Math.abs(premiumDiff!)}/mo + lower OOP`
+                            : hasBetterPremium
+                            ? `Save $${Math.abs(premiumDiff!)}/mo vs current`
+                            : `Lower max OOP by $${Math.abs(oopDiff!).toLocaleString()}`}
+                        </div>
+                      )}
+                      <PlanCard
+                        plan={plan}
+                        isFavorited={favorites.has(plan.id)}
+                        onToggleFavorite={toggleFavorite}
+                        onEnroll={handleEnroll}
+                        animationDelay={Math.min(i * 60, 400)}
+                        isCompareActive={activeCompareId === plan.id}
+                        onCompareActivate={handleCompareActivate}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
 

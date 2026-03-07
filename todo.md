@@ -268,3 +268,56 @@
 - [x] ZIP 33101 → 30 plans, Miami-Dade County, FL ✓ (160ms)
 - [x] ZIP 90210 → 30 plans, Los Angeles County, CA ✓ (147ms)
 - [x] All 13 tests passing
+
+## Feature: pVerify Eligibility Verification
+- [ ] Add PVERIFY_API_KEY, PVERIFY_CLIENT_ID, PVERIFY_CLIENT_SECRET env vars
+- [ ] Create server/pverifyRouter.ts with POST /api/pverify/eligibility
+- [ ] pVerify auth: POST https://api.pverify.com/Token with client_id + client_secret
+- [ ] pVerify eligibility call with MBI or Enhanced MBI Lookup (name + DOB)
+- [ ] Return: coverage status, Part A/B dates, current MA plan, copays, deductibles, MOOP
+- [ ] Create client/src/pages/VerifyCoverage.tsx with form + results card
+- [ ] Add "Verify Coverage" nav link in Header.tsx
+- [ ] Register route in App.tsx
+
+## Feature: Health Profile Plan Recommender
+- [ ] Create server/recommendRouter.ts with POST /api/recommend
+- [ ] Fetch plans for ZIP using existing plan loading logic
+- [ ] Use Forge API (Claude) to score/rank plans against health profile
+- [ ] Return top 5 plans with match score and personalized reasons
+- [ ] Create client/src/pages/FindBestPlan.tsx with 5-step wizard
+- [ ] Step 1: ZIP, age, gender
+- [ ] Step 2: Health conditions checkboxes
+- [ ] Step 3: Medications text input
+- [ ] Step 4: Care preferences
+- [ ] Step 5: Current coverage
+- [ ] Results: ranked plan cards with match score, reasons, estimated annual cost
+- [ ] Add "Find Your Best Plan" nav link in Header.tsx
+- [ ] Register route in App.tsx
+
+## pVerify MBI Modal in ZIP Search Flow
+- [x] MBIVerifyModal component: optional Medicare Beneficiary ID entry before plan results
+- [x] Modal appears after ZIP validation but before navigating to /plans
+- [x] Privacy messaging: "Immediately purged from our database" with shield icon
+- [x] Skip button (prominent) and Verify & Continue button
+- [x] Calls trpc.pverify.lookup with MBI via tRPC mutation
+- [x] On success: stores eligibility data in sessionStorage and navigates to /plans
+- [x] On skip: navigates directly to /plans without eligibility data
+- [x] Popular ZIP buttons also go through the MBI modal flow
+- [x] Plans.tsx reads eligibility from sessionStorage on mount
+- [x] Current plan banner in Plans.tsx when eligibility data is available
+- [x] Comparison badges on plan cards: "Save $X/mo vs current" or "Lower max OOP"
+- [x] TrendingDown icon imported and used in comparison badges
+
+## Health Profile Recommendation Engine (Find Best Plan)
+- [x] healthProfileRouter.ts: tRPC mutation with 20-question health profile schema
+- [x] Rule-based scoring engine: 15+ scoring dimensions (premium, OOP, copays, benefits, star rating)
+- [x] AI narrative via invokeLLM: personalized 3-section recommendation (profile summary, why selected, top pick)
+- [x] Graceful degradation: AI narrative returns empty string on LLM failure
+- [x] FindBestPlan.tsx: 5-step wizard with ZIP entry, health profile questions, results
+- [x] Step indicators with icons and progress tracking
+- [x] Ranked results cards: match score %, match reasons, watch-outs, estimated annual cost
+- [x] AI Advisor Analysis section rendered via Streamdown
+- [x] /find-best-plan route registered in App.tsx
+- [x] "Find Best Plan" nav link in Header (desktop + mobile, red accent)
+- [x] 10 vitest tests for healthProfile.recommend (all passing)
+- [x] TypeScript clean (0 errors)

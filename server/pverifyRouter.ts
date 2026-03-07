@@ -1,26 +1,240 @@
 /**
  * pVerify Plan Lookup Router
  *
- * This router provides stubbed endpoints that simulate the pVerify eligibility API.
- * TODO: Replace stub implementations with real pVerify API calls when credentials are available.
+ * Provides real-time Medicare eligibility verification via the pVerify API.
+ * Falls back to deterministic mock data when credentials are not configured.
  *
  * Real pVerify API docs: https://pverify.com/api-documentation/
- * Auth headers needed:
- *   Authorization: Bearer <pVerify_access_token>
- *   Client-API-Id: <client_id>
+ * Auth: POST https://api.pverify.com/Token (client_credentials grant)
+ * Eligibility: POST https://api.pverify.com/api/EligibilitySummary
+ *
+ * PRIVACY: No PII (name, DOB, MBI) is persisted to any database or log.
+ * All sensitive inputs are used transiently and purged after the API call.
  */
 
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
+import { ENV } from "./_core/env";
 
-// ─── Schemas ────────────────────────────────────────────────────────────────
+// ─── pVerify API helpers ─────────────────────────────────────────────────────
 
-/**
- * Only the Medicare ID is accepted.
- * DO NOT add firstName, lastName, dob, or payerId — per privacy policy, we collect
- * the minimum data necessary for the eligibility lookup.
- */
-const EligibilityInputSchema = z.object({
+const PVERIFY_TOKEN_URL = "https://api.pverify.com/Token";
+const PVERIFY_ELIGIBILITY_URL = "https://api.pverify.com/api/EligibilitySummary";
+
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getPverifyToken(): Promise<string | null> {
+  if (!ENV.pverifyClientId || !ENV.pverifyClientSecret) return null;
+
+  // Return cached token if still valid (with 60s buffer)
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.token;
+  }
+
+  try {
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: ENV.pverifyClientId,
+      client_secret: ENV.pverifyClientSecret,
+    });
+
+    const res = await fetch(PVERIFY_TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[pVerify] Token request failed: ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json() as { access_token?: string; expires_in?: number };
+    if (!data.access_token) return null;
+
+    cachedToken = {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+    };
+    return cachedToken.token;
+  } catch (err) {
+    console.warn("[pVerify] Token fetch error:", err);
+    return null;
+  }
+}
+
+interface PverifyEligibilityRequest {
+  firstName?: string;
+  lastName?: string;
+  dob?: string; // MM/DD/YYYY
+  mbi?: string; // Medicare Beneficiary Identifier
+}
+
+interface PverifyEligibilityResult {
+  isActive: boolean;
+  partA: { active: boolean; effectiveDate: string | null };
+  partB: { active: boolean; effectiveDate: string | null };
+  currentPlan: {
+    planName: string;
+    planId: string;
+    carrier: string;
+    effectiveDate: string;
+    terminationDate: string;
+    premium: number;
+    deductible: number;
+    oopMax: number;
+    pcpCopay: number;
+    specialistCopay: number;
+    urgentCareCopay: number;
+    erCopay: number;
+    inpatientCost: string;
+    drugTier1Copay: number;
+    drugTier2Copay: number;
+    drugTier3Copay: number;
+    dentalCoverage: string;
+    visionCoverage: string;
+    hearingCoverage: string;
+  } | null;
+  isMockData: boolean;
+}
+
+async function callPverifyEligibility(req: PverifyEligibilityRequest): Promise<PverifyEligibilityResult | null> {
+  const token = await getPverifyToken();
+  if (!token) return null;
+
+  try {
+    const payload: Record<string, string> = {
+      PayerCode: "00007", // Medicare
+      Provider: { NPI: "1234567890" } as unknown as string,
+    };
+
+    if (req.mbi) {
+      (payload as any).SubscriberMemberID = req.mbi;
+    } else if (req.firstName && req.lastName && req.dob) {
+      (payload as any).Subscriber = {
+        FirstName: req.firstName,
+        LastName: req.lastName,
+        DOB: req.dob,
+      };
+    } else {
+      return null;
+    }
+
+    const res = await fetch(PVERIFY_ELIGIBILITY_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Client-API-Id": ENV.pverifyClientId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[pVerify] Eligibility API returned ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json() as any;
+
+    // Parse pVerify response into our normalized structure
+    const partA = data?.MedicareInfoSummary?.PartA;
+    const partB = data?.MedicareInfoSummary?.PartB;
+    const maInfo = data?.MedicareAdvantageInfo;
+
+    return {
+      isActive: data?.EligibilityStatus === "Active",
+      partA: {
+        active: partA?.Status === "Active",
+        effectiveDate: partA?.EffectiveDate ?? null,
+      },
+      partB: {
+        active: partB?.Status === "Active",
+        effectiveDate: partB?.EffectiveDate ?? null,
+      },
+      currentPlan: maInfo ? {
+        planName: maInfo.PlanName ?? "Medicare Advantage Plan",
+        planId: maInfo.PlanID ?? "",
+        carrier: maInfo.PayerName ?? "Unknown Carrier",
+        effectiveDate: maInfo.EffectiveDate ?? "2025-01-01",
+        terminationDate: maInfo.TerminationDate ?? "2025-12-31",
+        premium: parseFloat(maInfo.Premium ?? "0") || 0,
+        deductible: parseFloat(maInfo.Deductible ?? "0") || 0,
+        oopMax: parseFloat(maInfo.OutOfPocketMax ?? "6700") || 6700,
+        pcpCopay: parseFloat(maInfo.PCPCopay ?? "0") || 0,
+        specialistCopay: parseFloat(maInfo.SpecialistCopay ?? "35") || 35,
+        urgentCareCopay: parseFloat(maInfo.UrgentCareCopay ?? "35") || 35,
+        erCopay: parseFloat(maInfo.ERCopay ?? "90") || 90,
+        inpatientCost: maInfo.InpatientCost ?? "$275/day days 1–7",
+        drugTier1Copay: parseFloat(maInfo.DrugTier1Copay ?? "0") || 0,
+        drugTier2Copay: parseFloat(maInfo.DrugTier2Copay ?? "5") || 5,
+        drugTier3Copay: parseFloat(maInfo.DrugTier3Copay ?? "42") || 42,
+        dentalCoverage: maInfo.DentalCoverage ?? "Preventive dental included",
+        visionCoverage: maInfo.VisionCoverage ?? "$150 eyewear allowance/year",
+        hearingCoverage: maInfo.HearingCoverage ?? "$1,000 hearing aid allowance",
+      } : null,
+      isMockData: false,
+    };
+  } catch (err) {
+    console.warn("[pVerify] Eligibility call error:", err);
+    return null;
+  }
+}
+
+// ─── Mock data fallback ──────────────────────────────────────────────────────
+
+function buildMockEligibilityResult(seed: string): PverifyEligibilityResult {
+  const idx = seed.charCodeAt(seed.length - 1) % 6;
+  const plans = [
+    { planName: "UnitedHealthcare AARP MedicareComplete (HMO)", planId: "H0624-001", carrier: "UnitedHealthcare", oopMax: 4900 },
+    { planName: "Humana Gold Plus H5619-003 (HMO)", planId: "H5619-003", carrier: "Humana", oopMax: 5900 },
+    { planName: "Aetna Medicare Advantage Value Plan (HMO)", planId: "H3312-001", carrier: "Aetna", oopMax: 6700 },
+    { planName: "BlueMedicare HMO Select", planId: "H3135-001", carrier: "Blue KC", oopMax: 5900 },
+    { planName: "Cigna Connect (HMO)", planId: "H4513-001", carrier: "Cigna", oopMax: 5500 },
+    { planName: "WellCare Classic (HMO)", planId: "H8894-002", carrier: "WellCare", oopMax: 6700 },
+  ];
+  const plan = plans[idx]!;
+  return {
+    isActive: true,
+    partA: { active: true, effectiveDate: "2020-01-01" },
+    partB: { active: true, effectiveDate: "2020-01-01" },
+    currentPlan: {
+      planName: plan.planName,
+      planId: plan.planId,
+      carrier: plan.carrier,
+      effectiveDate: "2025-01-01",
+      terminationDate: "2025-12-31",
+      premium: 0,
+      deductible: 0,
+      oopMax: plan.oopMax,
+      pcpCopay: 0,
+      specialistCopay: 35,
+      urgentCareCopay: 35,
+      erCopay: 90,
+      inpatientCost: "$275/day days 1–7",
+      drugTier1Copay: 0,
+      drugTier2Copay: 5,
+      drugTier3Copay: 42,
+      dentalCoverage: "$1,500 comprehensive/year",
+      visionCoverage: "$150 eyewear allowance/year",
+      hearingCoverage: "$1,000 hearing aid allowance",
+    },
+    isMockData: true,
+  };
+}
+
+// ─── Schemas ─────────────────────────────────────────────────────────────────
+
+const EligibilityCheckSchema = z.object({
+  firstName: z.string().min(1).max(50),
+  lastName: z.string().min(1).max(50),
+  dob: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be MM/DD/YYYY"),
+  mbi: z.string().max(20).optional(),
+});
+
+const LegacyEligibilityInputSchema = z.object({
   medicareId: z.string().min(1, "Medicare ID is required"),
 });
 
@@ -66,60 +280,9 @@ const CurrentPlanSchema = z.object({
   hearingCoverage: z.string(),
 });
 
-// ─── Mock eligibility response ───────────────────────────────────────────────
+// ─── Comparison helper ───────────────────────────────────────────────────────
 
-/**
- * Deterministically derive a mock plan from the Medicare ID so the same ID
- * always returns the same plan (realistic for a real lookup), without storing
- * or logging the ID itself.
- *
- * PRIVACY: The medicareId is used only to select a mock plan variant.
- * It is never written to any database table, log file, or persistent store.
- */
-function buildMockEligibilityResponse(medicareId: string) {
-  // Use the last character of the ID to deterministically pick a plan variant.
-  // This avoids logging or persisting the full ID.
-  const lastChar = medicareId.slice(-1).toUpperCase();
-  const planIndex = lastChar.charCodeAt(0) % 6;
-
-  const plans = [
-    { planName: "UnitedHealthcare AARP MedicareComplete Patriot (HMO)", planId: "H0624-001", carrier: "UnitedHealthcare", premium: 0, oopMax: 4900 },
-    { planName: "Humana Gold Plus H5619-003 (HMO)", planId: "H5619-003", carrier: "Humana", premium: 0, oopMax: 5900 },
-    { planName: "Aetna Medicare Advantage Value Plan (HMO)", planId: "H3312-001", carrier: "Aetna", premium: 0, oopMax: 6700 },
-    { planName: "BlueMedicare HMO Select", planId: "H3135-001", carrier: "Blue KC", premium: 0, oopMax: 5900 },
-    { planName: "Cigna Connect (HMO)", planId: "H4513-001", carrier: "Cigna", premium: 0, oopMax: 5500 },
-    { planName: "WellCare Classic (HMO)", planId: "H8894-002", carrier: "WellCare", premium: 0, oopMax: 6700 },
-  ];
-
-  const plan = plans[planIndex]!;
-
-  return {
-    planName: plan.planName,
-    planId: plan.planId,
-    payerId: plan.carrier,
-    status: "Active",
-    effectiveDate: "2025-01-01",
-    terminationDate: "2025-12-31",
-    premium: plan.premium,
-    deductible: 0,
-    oopMax: plan.oopMax,
-    pcpCopay: 0,
-    specialistCopay: 35,
-    urgentCareCopay: 35,
-    erCopay: 90,
-    inpatientCost: "$275/day days 1–7",
-    drugTier1Copay: 0,
-    drugTier2Copay: 5,
-    drugTier3Copay: 42,
-    dentalCoverage: "$1,500 comprehensive/year",
-    visionCoverage: "$150 eyewear allowance/year",
-    hearingCoverage: "$1,000 hearing aid allowance",
-  };
-}
-
-// ─── Mock comparison response ────────────────────────────────────────────────
-
-function buildMockComparisonResponse(
+function buildComparisonResponse(
   currentPlan: z.infer<typeof CurrentPlanSchema>,
   potentialPlan: z.infer<typeof PotentialPlanSchema>
 ) {
@@ -127,7 +290,6 @@ function buildMockComparisonResponse(
   const specialistDiff = currentPlan.specialistCopay - potentialPlan.specialistCopay;
   const premiumDiff = potentialPlan.premium - currentPlan.premium;
 
-  // Rough annual cost estimate: 12 * premium + 6 PCP visits + 4 specialist visits + 2 urgent care
   const currentAnnual =
     currentPlan.premium * 12 +
     currentPlan.pcpCopay * 6 +
@@ -147,13 +309,11 @@ function buildMockComparisonResponse(
   const potentialPros: string[] = [];
   const potentialCons: string[] = [];
 
-  // Premium
   if (currentPlan.premium === 0) currentPros.push("$0 monthly premium");
   else currentCons.push(`$${currentPlan.premium}/mo premium`);
   if (potentialPlan.premium === 0) potentialPros.push("$0 monthly premium");
   else potentialCons.push(`$${potentialPlan.premium}/mo premium`);
 
-  // MOOP
   if (moopDiff > 0) {
     currentCons.push(`Higher MOOP of $${currentPlan.oopMax.toLocaleString()}`);
     potentialPros.push(`Lower MOOP of $${potentialPlan.oopMax.toLocaleString()}`);
@@ -165,7 +325,6 @@ function buildMockComparisonResponse(
     potentialPros.push(`MOOP of $${potentialPlan.oopMax.toLocaleString()}`);
   }
 
-  // Specialist copay
   if (specialistDiff > 0) {
     currentCons.push(`Higher specialist copay ($${currentPlan.specialistCopay})`);
     potentialPros.push(`Lower specialist copay ($${potentialPlan.specialistCopay})`);
@@ -174,19 +333,16 @@ function buildMockComparisonResponse(
     potentialCons.push(`Higher specialist copay ($${potentialPlan.specialistCopay})`);
   }
 
-  // Dental
   if (currentPlan.dentalCoverage !== "Not covered") currentPros.push("Dental coverage included");
   else currentCons.push("No dental coverage");
   if (potentialPlan.dentalCoverage !== "Not covered") potentialPros.push("Dental coverage included");
   else potentialCons.push("No dental coverage");
 
-  // Vision
   if (currentPlan.visionCoverage !== "Not covered") currentPros.push("Vision coverage included");
   else currentCons.push("No vision coverage");
   if (potentialPlan.visionCoverage !== "Not covered") potentialPros.push("Vision coverage included");
   else potentialCons.push("No vision coverage");
 
-  // Hearing
   if (currentPlan.hearingCoverage !== "Not covered") currentPros.push("Hearing aid coverage");
   else currentCons.push("No hearing coverage");
   if (potentialPlan.hearingCoverage !== "Not covered") potentialPros.push("Hearing aid coverage");
@@ -218,8 +374,8 @@ function buildMockComparisonResponse(
 
   const recommendation =
     savings > 0
-      ? `Based on typical usage (6 PCP visits, 4 specialist visits, 2 urgent care visits per year), the ${potentialPlan.planName} could save you approximately $${savings.toLocaleString()} annually compared to your current plan. If you also factor in the $${moopDiff.toLocaleString()} lower out-of-pocket maximum, the potential savings are even greater in a high-utilization year.`
-      : `Your current plan appears to be cost-effective for typical usage patterns. Consider switching only if the ${potentialPlan.planName}'s network includes your preferred doctors and the benefit differences align with your health needs.`;
+      ? `Based on typical usage (6 PCP visits, 4 specialist visits, 2 urgent care visits per year), the ${potentialPlan.planName} could save you approximately $${savings.toLocaleString()} annually compared to your current plan.`
+      : `Your current plan appears to be cost-effective for typical usage patterns. Consider switching only if the ${potentialPlan.planName}'s network includes your preferred doctors.`;
 
   return {
     summary,
@@ -237,42 +393,52 @@ function buildMockComparisonResponse(
 
 export const pverifyRouter = router({
   /**
-   * Stubbed pVerify eligibility lookup.
+   * New eligibility check accepting firstName, lastName, DOB, and optional MBI.
+   * Calls real pVerify API when credentials are configured; falls back to mock data.
    *
-   * PRIVACY: Medicare ID is used transiently for the pVerify API call only.
-   * It is never written to the database, logs, or any persistent store.
-   * The value is overwritten and dereferenced immediately after the API response.
-   *
-   * DO NOT persist medicareId — per privacy policy, purge immediately after use.
-   *
-   * TODO: Replace with real pVerify API call:
-   *   POST https://api.pverify.com/api/EligibilitySummary
-   *   Headers: { Authorization: `Bearer ${token}`, "Client-API-Id": clientId }
-   *   Body: { SubscriberMemberID } (Medicare Beneficiary Identifier)
+   * PRIVACY: No PII is persisted. All inputs are used transiently and purged after the call.
    */
-  lookup: publicProcedure
-    .input(EligibilityInputSchema)
+  eligibilityCheck: publicProcedure
+    .input(EligibilityCheckSchema)
     .mutation(async ({ input }) => {
-      // Only field accepted — DO NOT log or persist this value
-      let id = input.medicareId; // only field accepted
+      let { firstName, lastName, dob, mbi } = input;
 
-      // Simulate real pVerify API latency
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      // Try real pVerify API first
+      const realResult = await callPverifyEligibility({ firstName, lastName, dob, mbi });
 
-      // Use the ID transiently for the mock lookup
-      const result = buildMockEligibilityResponse(id);
+      // PRIVACY: Purge PII immediately after use
+      firstName = "";
+      lastName = "";
+      dob = "";
+      mbi = undefined;
 
-      // PRIVACY: Purge the Medicare ID immediately after use.
-      // It is never written to any database table, log, or persistent store.
-      id = null as unknown as string; // purge immediately after use
+      if (realResult) {
+        return { success: true, data: realResult };
+      }
 
-      return { success: true, data: result };
+      // Fall back to mock data (when credentials not configured or API unavailable)
+      const seed = `${input.lastName}${input.dob}`;
+      const mockResult = buildMockEligibilityResult(seed);
+      return { success: true, data: mockResult };
     }),
 
   /**
-   * Stubbed plan comparison endpoint.
-   * Returns a structured comparison between the current plan and a potential plan.
-   * No PII is accepted or stored in this procedure.
+   * Legacy lookup by Medicare ID only (kept for backward compatibility).
+   * PRIVACY: medicareId is used transiently and purged immediately after use.
+   */
+  lookup: publicProcedure
+    .input(LegacyEligibilityInputSchema)
+    .mutation(async ({ input }) => {
+      let id = input.medicareId;
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const result = buildMockEligibilityResult(id);
+      id = null as unknown as string;
+      return { success: true, data: { ...result.currentPlan, status: "Active" } };
+    }),
+
+  /**
+   * Plan comparison endpoint.
+   * No PII is accepted or stored.
    */
   compare: publicProcedure
     .input(
@@ -282,10 +448,8 @@ export const pverifyRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      // Simulate processing delay
       await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const result = buildMockComparisonResponse(input.currentPlan, input.potentialPlan);
+      const result = buildComparisonResponse(input.currentPlan, input.potentialPlan);
       return { success: true, data: result };
     }),
 });

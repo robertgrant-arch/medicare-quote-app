@@ -9,6 +9,8 @@ import Plans from "./pages/Plans";
 import AICompare from "./pages/AICompare";
 import PlanLookup from "./pages/PlanLookup";
 import PlanRecommender from "./pages/PlanRecommender";
+import VerifyCoverage from "./pages/VerifyCoverage";
+import FindBestPlan from "./pages/FindBestPlan";
 
 // Medicare Advantage sub-pages
 import MAHMOPlans from "./pages/ma/MAHMOPlans";
@@ -60,6 +62,8 @@ function Router() {
       <Route path="/ai-compare" component={AICompare} />
       <Route path="/plan-lookup" component={PlanLookup} />
       <Route path="/plan-recommender" component={PlanRecommender} />
+      <Route path="/verify-coverage" component={VerifyCoverage} />
+      <Route path="/find-best-plan" component={FindBestPlan} />
 
       {/* Medicare Advantage */}
       <Route path="/medicare-advantage/hmo-plans" component={MAHMOPlans} />

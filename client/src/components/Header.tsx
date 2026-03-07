@@ -325,6 +325,36 @@ export default function Header() {
               <Sparkles size={13} />
               Plan Recommender
             </Link>
+
+            {/* Verify Coverage */}
+            <Link
+              href="/verify-coverage"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-md transition-all no-underline"
+              style={{
+                color: location === "/verify-coverage" ? "white" : "#0F766E",
+                backgroundColor: location === "/verify-coverage" ? "#0F766E" : "#F0FDFA",
+                fontFamily: "'Inter', sans-serif",
+              }}
+              onClick={closeDropdown}
+            >
+              <Shield size={13} />
+              Verify Coverage
+            </Link>
+
+            {/* Find Best Plan */}
+            <Link
+              href="/find-best-plan"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-md transition-all no-underline"
+              style={{
+                color: location === "/find-best-plan" ? "white" : "#C41E3A",
+                backgroundColor: location === "/find-best-plan" ? "#C41E3A" : "#FDEEF1",
+                fontFamily: "'Inter', sans-serif",
+              }}
+              onClick={closeDropdown}
+            >
+              <Sparkles size={13} />
+              Find Best Plan
+            </Link>
           </nav>
 
           {/* Right actions */}
@@ -415,6 +445,26 @@ export default function Header() {
             >
               <Sparkles size={14} />
               Plan Recommender
+            </Link>
+
+            <Link
+              href="/verify-coverage"
+              className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold rounded-md no-underline"
+              style={{ color: "#0F766E", backgroundColor: "#F0FDFA", fontFamily: "'Inter', sans-serif" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Shield size={14} />
+              Verify Coverage
+            </Link>
+
+            <Link
+              href="/find-best-plan"
+              className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold rounded-md no-underline"
+              style={{ color: "#C41E3A", backgroundColor: "#FDEEF1", fontFamily: "'Inter', sans-serif" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Sparkles size={14} />
+              Find Best Plan
             </Link>
 
             <div className="pt-2 border-t flex gap-2" style={{ borderColor: "#E8F0FE" }}>

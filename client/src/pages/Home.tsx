@@ -9,6 +9,7 @@ import {
   BadgeCheck, Clock, DollarSign
 } from "lucide-react";
 import Header from "@/components/Header";
+import MBIVerifyModal, { type MBIVerifyResult } from "@/components/MBIVerifyModal";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8/medicare-doctor-network-UbrpVenqJHVZiygzeBgcKi.webp";
 
@@ -99,6 +100,8 @@ function useReveal() {
 export default function Home() {
   const [zip, setZip] = useState("");
   const [inputError, setInputError] = useState("");
+  const [showMBIModal, setShowMBIModal] = useState(false);
+  const [pendingZip, setPendingZip] = useState("");
   const [, navigate] = useLocation();
 
   const statsRef = useReveal();
@@ -113,16 +116,42 @@ export default function Home() {
       return;
     }
     setInputError("");
-    navigate(`/plans?zip=${trimmed}`);
+    setPendingZip(trimmed);
+    setShowMBIModal(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
   };
 
+  const handleMBISkip = () => {
+    setShowMBIModal(false);
+    navigate(`/plans?zip=${pendingZip}`);
+  };
+
+  const handleMBIVerified = (result: MBIVerifyResult) => {
+    setShowMBIModal(false);
+    // Encode the eligibility result in sessionStorage so Plans.tsx can read it
+    try {
+      sessionStorage.setItem("mbi_eligibility", JSON.stringify(result));
+    } catch {
+      // sessionStorage unavailable — proceed without it
+    }
+    navigate(`/plans?zip=${pendingZip}&verified=1`);
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFFFFF" }}>
       <Header />
+
+      {/* ── MBI Verify Modal ─────────────────────────────────────────────── */}
+      {showMBIModal && (
+        <MBIVerifyModal
+          zip={pendingZip}
+          onSkip={handleMBISkip}
+          onVerified={handleMBIVerified}
+        />
+      )}
 
       {/* ── Hero Section — Split Layout ──────────────────────────────────── */}
       <section className="relative overflow-hidden" style={{ backgroundColor: "#F7F8FA", minHeight: "600px" }}>
@@ -229,7 +258,8 @@ export default function Home() {
                       key={z.zip}
                       onClick={() => {
                         setZip(z.zip);
-                        navigate(`/plans?zip=${z.zip}`);
+                        setPendingZip(z.zip);
+                        setShowMBIModal(true);
                       }}
                       className="text-xs px-3 py-1 rounded-full border transition-all font-medium"
                       style={{ borderColor: "#E5E7EB", color: "#555555" }}

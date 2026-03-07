@@ -89,6 +89,48 @@ describe("pverify.lookup", () => {
   }, 30000);
 });
 
+describe("pverify.eligibilityCheck", () => {
+  it("returns a successful result with firstName, lastName, and dob", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.pverify.eligibilityCheck({
+      firstName: "John",
+      lastName: "Smith",
+      dob: "01/15/1950",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).toBeDefined();
+    expect(typeof result.data.isActive).toBe("boolean");
+    expect(result.data.partA).toBeDefined();
+    expect(result.data.partB).toBeDefined();
+    expect(typeof result.data.isMockData).toBe("boolean");
+  }, 15000);
+
+  it("validates dob format — rejects invalid date format", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(
+      caller.pverify.eligibilityCheck({
+        firstName: "Jane",
+        lastName: "Doe",
+        dob: "1950-01-15", // wrong format (YYYY-MM-DD instead of MM/DD/YYYY)
+      })
+    ).rejects.toThrow();
+  }, 10000);
+
+  it("accepts optional MBI field", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.pverify.eligibilityCheck({
+      firstName: "Mary",
+      lastName: "Johnson",
+      dob: "03/22/1948",
+      mbi: "1EG4TE5MK72",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data.isMockData).toBeDefined();
+  }, 15000);
+});
+
 describe("pverify.compare", () => {
   const CURRENT_PLAN = {
     planName: "UnitedHealthcare AARP MedicareComplete Patriot (HMO)",
