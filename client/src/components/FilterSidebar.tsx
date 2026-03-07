@@ -93,7 +93,7 @@ export default function FilterSidebar({
       premiumRange: [0, 200],
       benefits: [],
       quickFilter: "all",
-      sortBy: "best-match",
+      sortBy: "moop-low",
     });
   };
 
@@ -145,11 +145,11 @@ export default function FilterSidebar({
           onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }}
           onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
         >
-          <option value="best-match">Best Match</option>
+          <option value="moop-low">Lowest Out-of-Pocket Cost</option>
           <option value="premium-low">Premium: Low to High</option>
-          <option value="premium-high">Premium: High to Low</option>
           <option value="star-rating">Star Rating</option>
-          <option value="moop-low">Lowest Out-of-Pocket Max</option>
+          <option value="best-match">Best Match</option>
+          <option value="premium-high">Premium: High to Low</option>
         </select>
       </FilterSection>
 

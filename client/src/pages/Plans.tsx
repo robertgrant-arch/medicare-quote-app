@@ -39,7 +39,7 @@ const DEFAULT_FILTERS: FilterState = {
   premiumRange: [0, 200],
   benefits: [],
   quickFilter: "all",
-  sortBy: "best-match",
+  sortBy: "moop-low",
 };
 
 function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan[] {
@@ -92,7 +92,7 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
     case "moop-low":
       result.sort((a, b) => a.maxOutOfPocket - b.maxOutOfPocket);
       break;
-    default:
+    case "best-match":
       // best-match: best match first, then most popular, then by star rating
       result.sort((a, b) => {
         if (a.isBestMatch && !b.isBestMatch) return -1;
@@ -101,6 +101,10 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
         if (!a.isMostPopular && b.isMostPopular) return 1;
         return b.starRating.overall - a.starRating.overall;
       });
+      break;
+    default:
+      // Default: lowest expected out-of-pocket cost (MOOP)
+      result.sort((a, b) => a.maxOutOfPocket - b.maxOutOfPocket);
   }
 
   return result;

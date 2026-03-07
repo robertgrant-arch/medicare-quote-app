@@ -358,3 +358,6 @@
 - [x] Generate Episode Alert API Integration Guide PDF (392KB)
 - [x] Upload PDF to CDN
 - [x] Add PDF download link to Home.tsx footer under "Technical Resources" section
+
+## Sort Order Change
+- [x] Change default plan sort from carrier name / best-match to lowest expected out-of-pocket cost
