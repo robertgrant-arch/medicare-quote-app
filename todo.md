@@ -332,3 +332,6 @@
 - [x] Mobile accordion: same 2 sections with icons, description subtitles, and divider rows
 - [x] Mobile CTA row: Sign In + Talk to an Agent (updated label from "Call an Agent")
 - [x] Zero TypeScript errors, dev server running cleanly
+
+## Bug Fixes
+- [x] Remove MAX_PLANS=30 cap in plansRouter.ts — now returns all available plans (56 for ZIP 64106)

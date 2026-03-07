@@ -198,14 +198,11 @@ function findPlansForCounty(stateData: Record<string, unknown[]>, countyName: st
   return [];
 }
 
-// ── Cap and annotate plans ────────────────────────────────────────────────────
-const MAX_PLANS = 30;
+// ── Annotate plans ──────────────────────────────────────────────────────────
 
 function annotatePlans(plans: unknown[]): unknown[] {
-  const capped = plans.slice(0, MAX_PLANS);
-
-  // Sort by star rating descending, then by premium ascending
-  const sorted = [...capped].sort((a: any, b: any) => {
+  // Sort by star rating descending, then by premium ascending — return ALL plans
+  const sorted = [...plans].sort((a: any, b: any) => {
     const starDiff = (b.starRating?.overall ?? 0) - (a.starRating?.overall ?? 0);
     if (starDiff !== 0) return starDiff;
     return (a.premium ?? 0) - (b.premium ?? 0);
