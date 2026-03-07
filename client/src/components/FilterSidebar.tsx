@@ -5,7 +5,7 @@ import { useState } from "react";
 import { SlidersHorizontal, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import type { FilterState, PlanType, Carrier } from "@/lib/types";
 
-interface FilterSidebarProps {
+export interface FilterSidebarProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
   totalCount: number;

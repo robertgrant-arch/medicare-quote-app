@@ -211,3 +211,22 @@
 - [x] Set Express trust proxy = 1 for accurate IP detection behind gateway
 - [x] Write SECURITY_REVIEW.md documenting all findings and fixes
 - [x] All 13 tests passing, zero TypeScript errors
+
+## Claude claude-3-5-sonnet Code Review
+- [x] Send all 12 specified files to Claude claude-3-5-sonnet-20241022 via API
+- [x] C1: Extract hardcoded CMS API key to named constant (CMS_PUBLIC_KEY)
+- [x] C2: Implement LRU eviction semantics on zipCache (delete + re-insert on hit)
+- [x] C3: Add doneSent flag to prevent duplicate SSE done events (compareStream + recommendStream)
+- [x] C4: Add console.warn for malformed JSON lines in SSE stream (compareStream + recommendStream)
+- [x] C5: Rewrite compareRouter.ts to use Forge API (was calling broken Anthropic direct API)
+- [x] C6: Replace double Map.has+get lookup with single Map.get in CSV index builder
+- [x] H1: Extract findPlansByCounty() helper function from inline route handler logic
+- [x] H2: Convert QUICK_FILTERS to useMemo with dynamic counts from loaded plans
+- [x] H3: Memoize availableCarriers with useMemo in Plans.tsx
+- [x] H4: Remove cachedResult from handleCompare useCallback deps — call loadCache() directly
+- [x] H5: Move inline <style> tag from AICompare.tsx render to index.css
+- [x] H6: Add Zod .max() input length constraints on compareRouter.ts plan schema
+- [x] H7: Add AbortSignal.timeout(120s) to Forge API fetch in streaming endpoints
+- [x] M4: Export FilterSidebarProps interface from FilterSidebar.tsx
+- [x] Write CLAUDE_CODE_REVIEW.md with full findings (38 issues, 26 fixed)
+- [x] All 13 tests passing, zero TypeScript errors after all fixes

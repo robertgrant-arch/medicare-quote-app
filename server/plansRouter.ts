@@ -126,10 +126,12 @@ async function loadCsvIndex(): Promise<void> {
           overallStarRating: record["Overall Star Rating"] ?? "",
         };
 
-        if (!csvIndex.has(key)) {
-          csvIndex.set(key, []);
+        let recordsForKey = csvIndex.get(key);
+        if (!recordsForKey) {
+          recordsForKey = [];
+          csvIndex.set(key, recordsForKey);
         }
-        csvIndex.get(key)!.push(row);
+        recordsForKey.push(row);
       }
     });
 
@@ -182,18 +184,25 @@ const zipCache = new Map<string, ZipCountyResult | null>();
 const ZIP_CACHE_MAX = 5000;
 
 async function resolveZipToCounty(zip: string): Promise<ZipCountyResult | null> {
-  if (zipCache.has(zip)) return zipCache.get(zip)!;
+  // LRU: move to end on access so oldest (least recently used) is evicted first
+  if (zipCache.has(zip)) {
+    const cached = zipCache.get(zip)!;
+    zipCache.delete(zip);
+    zipCache.set(zip, cached);
+    return cached;
+  }
 
-  // Evict oldest entries when cache is full
+  // Evict least recently used entry when cache is full
   if (zipCache.size >= ZIP_CACHE_MAX) {
     const firstKey = zipCache.keys().next().value;
     if (firstKey !== undefined) zipCache.delete(firstKey);
   }
 
   try {
-    // CMS Marketplace API key — public/unauthenticated key from CMS documentation
-    // Falls back to env var CMS_MARKETPLACE_API_KEY if set
-    const cmsApiKey = process.env.CMS_MARKETPLACE_API_KEY ?? "d687412e7b53146b2631dc01974ad0a4";
+    // CMS Marketplace API key — public key documented at https://developer.cms.gov/marketplace-api
+    // Set CMS_MARKETPLACE_API_KEY env var to override; falls back to the well-known public demo key
+    const CMS_PUBLIC_KEY = "d687412e7b53146b2631dc01974ad0a4";
+    const cmsApiKey = process.env.CMS_MARKETPLACE_API_KEY ?? CMS_PUBLIC_KEY;
     const url = `https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/${zip}?apikey=${cmsApiKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
@@ -476,6 +485,36 @@ function buildFallbackPlans(rows: CmsRow[]): object[] {
   });
 }
 
+// ── County lookup helper ─────────────────────────────────────────────────────
+
+/**
+ * Try multiple county key variations to handle inconsistencies in CMS data
+ * (e.g., "JACKSON" vs "JACKSON COUNTY", partial name matches).
+ */
+function findPlansByCounty(stateAbbr: string, countyName: string): CmsRow[] {
+  const variations = [
+    `${stateAbbr}|${countyName}`,
+    `${stateAbbr}|${countyName.replace(/\s+COUNTY$/i, "").trim()}`,
+    `${stateAbbr}|${countyName} COUNTY`,
+  ];
+
+  for (const key of variations) {
+    const found = csvIndex.get(key);
+    if (found && found.length > 0) return found;
+  }
+
+  // Loose partial match: first word of county name within the state
+  const prefix = `${stateAbbr}|`;
+  const firstWord = countyName.replace(/\s+COUNTY$/i, "").trim().split(" ")[0];
+  for (const [key, keyRows] of Array.from(csvIndex.entries())) {
+    if (key.startsWith(prefix) && key.includes(firstWord) && keyRows.length > 0) {
+      return keyRows;
+    }
+  }
+
+  return [];
+}
+
 // ── Route registration ────────────────────────────────────────────────────────
 
 export function registerPlansRoute(app: Express) {
@@ -502,34 +541,8 @@ export function registerPlansRoute(app: Express) {
       const { stateAbbr, countyName } = location;
       const countyKey = `${stateAbbr}|${countyName}`;
 
-      // 3. Look up plans in CSV index
-      let rows = csvIndex.get(countyKey) ?? [];
-
-      // Try partial match if exact match fails (some counties have "County" suffix in CSV)
-      if (rows.length === 0) {
-        // Try without "COUNTY" suffix
-        const withoutCounty = countyName.replace(/\s+COUNTY$/i, "").trim();
-        const altKey = `${stateAbbr}|${withoutCounty}`;
-        rows = csvIndex.get(altKey) ?? [];
-
-        // Try with "COUNTY" suffix added
-        if (rows.length === 0) {
-          const withCounty = `${countyName} COUNTY`;
-          const altKey2 = `${stateAbbr}|${withCounty}`;
-          rows = csvIndex.get(altKey2) ?? [];
-        }
-
-        // Search all keys for partial match
-        if (rows.length === 0) {
-          const prefix = `${stateAbbr}|`;
-          const firstWord = withoutCounty.split(" ")[0];
-          csvIndex.forEach((keyRows, key) => {
-            if (rows.length === 0 && key.startsWith(prefix) && key.includes(firstWord)) {
-              rows = keyRows;
-            }
-          });
-        }
-      }
+      // 3. Look up plans in CSV index (with progressive fallback matching)
+      const rows = findPlansByCounty(stateAbbr, countyName);
 
       if (rows.length === 0) {
         res.status(404).json({

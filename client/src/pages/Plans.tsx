@@ -36,13 +36,6 @@ const DEFAULT_FILTERS: FilterState = {
   sortBy: "best-match",
 };
 
-const QUICK_FILTERS = [
-  { key: "all", label: "All Plans", count: 24 },
-  { key: "ppo", label: "PPO", count: 10 },
-  { key: "zero-premium", label: "$0 Premium", count: 20 },
-  { key: "hmo", label: "HMO", count: 12 },
-] as const;
-
 function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan[] {
   let result = [...plans];
 
@@ -171,6 +164,20 @@ export default function Plans() {
     }
     return result;
   }, [plans, filters, showFavoritesOnly, favorites]);
+
+  // Memoize available carriers to avoid re-creating on every render
+  const availableCarriers = useMemo(
+    () => Array.from(new Set(plans.map((p) => p.carrier))).sort(),
+    [plans]
+  );
+
+  // Dynamic quick filter counts based on loaded plans
+  const QUICK_FILTERS = useMemo(() => [
+    { key: "all" as const, label: "All Plans", count: plans.length },
+    { key: "ppo" as const, label: "PPO", count: plans.filter((p) => p.planType === "PPO").length },
+    { key: "zero-premium" as const, label: "$0 Premium", count: plans.filter((p) => p.premium === 0).length },
+    { key: "hmo" as const, label: "HMO", count: plans.filter((p) => p.planType === "HMO").length },
+  ], [plans]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -383,7 +390,7 @@ export default function Plans() {
               onChange={setFilters}
               totalCount={plans.length}
               filteredCount={filteredPlans.length}
-              availableCarriers={Array.from(new Set(plans.map((p) => p.carrier))).sort()}
+              availableCarriers={availableCarriers}
             />
           </aside>
 
@@ -563,7 +570,7 @@ export default function Plans() {
                 onChange={(f) => { setFilters(f); setSidebarOpen(false); }}
                 totalCount={plans.length}
                 filteredCount={filteredPlans.length}
-                availableCarriers={Array.from(new Set(plans.map((p) => p.carrier))).sort()}
+                availableCarriers={availableCarriers}
               />
             </div>
           </div>

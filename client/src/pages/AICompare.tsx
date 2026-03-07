@@ -558,22 +558,19 @@ export default function AICompare() {
 
   const activePlanIds = planIds.filter(Boolean);
 
-  // Check if cache exists for current trio
-  const cachedResult = useMemo(() => {
-    if (!canCompare) return null;
-    return loadCache(planIds);
-  }, [planIds, canCompare]);
-
   const handleCompare = useCallback(async (forceRefresh = false) => {
     if (!canCompare || !plans[0] || !plans[1] || !plans[2]) return;
 
-    // Check cache first (unless forced refresh)
-    if (!forceRefresh && cachedResult) {
-      setStreamedText(cachedResult.analysis);
-      setGeneratedAt(cachedResult.generatedAt);
-      setFromCache(true);
-      setPhase("cached");
-      return;
+    // Check cache first (unless forced refresh) — called directly to avoid stale closure
+    if (!forceRefresh) {
+      const currentCachedResult = loadCache(planIds);
+      if (currentCachedResult) {
+        setStreamedText(currentCachedResult.analysis);
+        setGeneratedAt(currentCachedResult.generatedAt);
+        setFromCache(true);
+        setPhase("cached");
+        return;
+      }
     }
 
     // Cancel any in-flight request
@@ -658,7 +655,7 @@ export default function AICompare() {
       setErrorMsg((err as Error).message || "An unexpected error occurred.");
       setPhase("error");
     }
-  }, [plans, planIds, canCompare, cachedResult]);
+  }, [plans, planIds, canCompare]);
 
   const handleReset = () => {
     abortRef.current?.abort();
@@ -754,7 +751,7 @@ export default function AICompare() {
               <span className="text-xs font-bold" style={{ color: "#006B3F" }}>1</span>
             </div>
             <h2 className="text-base font-bold text-gray-900">Select Three Plans to Compare</h2>
-            {cachedResult && phase === "idle" && (
+            {canCompare && loadCache(planIds) && phase === "idle" && (
               <div className="ml-auto flex items-center gap-1.5 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
                 <Clock size={10} />
                 Cached result available
@@ -816,7 +813,7 @@ export default function AICompare() {
             ) : (
               <>
                 <Sparkles size={18} />
-                {cachedResult && phase === "idle" ? "Show Cached Comparison" : "Compare Plans with AI"}
+                {canCompare && loadCache(planIds) && phase === "idle" ? "Show Cached Comparison" : "Compare Plans with AI"}
               </>
             )}
           </button>
@@ -926,23 +923,6 @@ export default function AICompare() {
                 {/* Streaming / completed text */}
                 {streamedText.length > 0 && (
                   <div className="ai-analysis">
-                    <style>{`
-                      .ai-analysis h2 {
-                        font-family: 'DM Serif Display', serif;
-                        font-size: 1.05rem;
-                        font-weight: 700;
-                        color: #1F2937;
-                        margin-top: 1.25rem;
-                        margin-bottom: 0.4rem;
-                        padding-bottom: 0.3rem;
-                        border-bottom: 2px solid #E8F5EE;
-                      }
-                      .ai-analysis h2:first-child { margin-top: 0; }
-                      .ai-analysis p { color: #374151; line-height: 1.65; margin-bottom: 0.75rem; font-size: 0.875rem; }
-                      .ai-analysis ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
-                      .ai-analysis li { color: #374151; font-size: 0.875rem; margin-bottom: 0.3rem; line-height: 1.55; }
-                      .ai-analysis strong { color: #111827; font-weight: 600; }
-                    `}</style>
                     <Streamdown>{streamedText}</Streamdown>
                     {isStreaming && (
                       <span className="inline-block w-0.5 h-4 bg-orange-400 animate-pulse ml-0.5 align-middle" />

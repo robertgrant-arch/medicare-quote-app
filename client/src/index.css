@@ -340,3 +340,20 @@
     background: #006B3F;
   }
 }
+
+/* ── AI Analysis output styles (used in AICompare.tsx) ────────────────────── */
+.ai-analysis h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid #E8F5EE;
+}
+.ai-analysis h2:first-child { margin-top: 0; }
+.ai-analysis p { color: #374151; line-height: 1.65; margin-bottom: 0.75rem; font-size: 0.875rem; }
+.ai-analysis ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+.ai-analysis li { color: #374151; font-size: 0.875rem; margin-bottom: 0.3rem; line-height: 1.55; }
+.ai-analysis strong { color: #111827; font-weight: 600; }

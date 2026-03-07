@@ -239,6 +239,7 @@ export function registerCompareStreamRoute(app: Express) {
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let doneSent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -252,7 +253,7 @@ export function registerCompareStreamRoute(app: Express) {
           if (!line.startsWith("data: ")) continue;
           const dataStr = line.slice(6).trim();
           if (dataStr === "[DONE]") {
-            sendSSE(res, "done", "");
+            if (!doneSent) { sendSSE(res, "done", ""); doneSent = true; }
             continue;
           }
 
@@ -266,16 +267,18 @@ export function registerCompareStreamRoute(app: Express) {
               sendSSE(res, "delta", content);
             }
             if (event.choices?.[0]?.finish_reason === "stop") {
-              sendSSE(res, "done", "");
+              if (!doneSent) { sendSSE(res, "done", ""); doneSent = true; }
             }
-          } catch {
-            // skip malformed JSON lines
+          } catch (jsonErr) {
+            console.warn("[compareStream] Malformed JSON line from AI stream, skipping:", dataStr, jsonErr);
           }
         }
       }
 
-      // Ensure done event is sent
-      sendSSE(res, "done", "");
+      // Ensure done event is sent if not already
+      if (!doneSent) {
+        sendSSE(res, "done", "");
+      }
       res.end();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

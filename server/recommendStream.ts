@@ -181,6 +181,7 @@ router.post("/recommend-stream", async (req, res) => {
 
     const decoder = new TextDecoder();
     let buffer = "";
+    let doneSent = false;
 
     while (true) {
       if (res.destroyed) break;
@@ -196,7 +197,7 @@ router.post("/recommend-stream", async (req, res) => {
         if (!line.startsWith("data: ")) continue;
         const raw = line.slice(6).trim();
         if (raw === "[DONE]") {
-          sendSSE(res, "done", "{}");
+          if (!doneSent) { sendSSE(res, "done", "{}"); doneSent = true; }
           continue;
         }
 
@@ -210,15 +211,18 @@ router.post("/recommend-stream", async (req, res) => {
             sendSSE(res, "delta", JSON.stringify(content));
           }
           if (evt.choices?.[0]?.finish_reason === "stop") {
-            sendSSE(res, "done", "{}");
+            if (!doneSent) { sendSSE(res, "done", "{}"); doneSent = true; }
           }
-        } catch {
-          // skip malformed lines
+        } catch (jsonErr) {
+          console.warn("[recommendStream] Malformed JSON line from AI stream, skipping:", raw, jsonErr);
         }
       }
     }
 
-    sendSSE(res, "done", "{}");
+    // Ensure done event is sent if not already
+    if (!doneSent) {
+      sendSSE(res, "done", "{}");
+    }
     res.end();
   } catch (err) {
     console.error("[recommend-stream] Error:", err);
