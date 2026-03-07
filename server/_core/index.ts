@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -33,9 +35,57 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // Trust the first proxy hop (needed for accurate IP detection behind Manus gateway)
+  app.set("trust proxy", 1);
+
+  // ── Security headers (helmet) ─────────────────────────────────────────────
+  // Disable CSP in development (Vite HMR uses inline scripts)
+  app.use(
+    helmet({
+      contentSecurityPolicy: process.env.NODE_ENV === "production",
+      crossOriginEmbedderPolicy: false, // needed for CDN assets
+    })
+  );
+
+  // ── Rate limiting ─────────────────────────────────────────────────────────
+  // General API rate limit: 200 requests per 15 minutes per IP
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please try again later." },
+  });
+
+  // Strict rate limit for AI/LLM endpoints: 20 requests per 15 minutes per IP
+  const aiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please wait before trying again." },
+  });
+
+  // Plans endpoint: 60 requests per 15 minutes per IP (ZIP lookups + CSV parsing)
+  const plansLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many plan lookup requests. Please try again later." },
+  });
+
+  app.use("/api", generalLimiter);
+  app.use("/api/compare-stream", aiLimiter);
+  app.use("/api/recommend-stream", aiLimiter);
+  app.use("/api/plans", plansLimiter);
+
+  // ── Body parser — reduced limit (no file uploads in this app) ────────────
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
+
+  // ── Routes ────────────────────────────────────────────────────────────────
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // Real CMS plans endpoint
@@ -52,6 +102,7 @@ async function startServer() {
       createContext,
     })
   );
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

@@ -162,6 +162,7 @@ router.post("/recommend-stream", async (req, res) => {
         stream: true,
         messages: [{ role: "user", content: buildPrompt(answers, topPlans) }],
       }),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!forgeRes.ok) {

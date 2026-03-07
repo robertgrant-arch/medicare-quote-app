@@ -199,3 +199,15 @@
 - [x] FilterSidebar: dynamic carriers from real plan data (not hardcoded)
 - [x] Fix county name display to use Title Case
 - [x] Verify end-to-end with real ZIP codes (24 plans for ZIP 64106 Jackson County, MO)
+
+## Security & Code Quality Review
+- [x] Add rate limiting (express-rate-limit) — 3 tiers by endpoint sensitivity
+- [x] Add security headers (helmet) — X-Frame-Options, X-Content-Type-Options, etc.
+- [x] Fix request body size limit — reduced from 50 MB to 1 MB
+- [x] Move hardcoded CMS API key to env var with documented fallback
+- [x] Fix compareRouter.ts to use Forge API instead of direct Anthropic API
+- [x] Add AbortSignal.timeout(120s) to compareStream.ts and recommendStream.ts
+- [x] Add ZIP cache eviction guard (ZIP_CACHE_MAX = 5000)
+- [x] Set Express trust proxy = 1 for accurate IP detection behind gateway
+- [x] Write SECURITY_REVIEW.md documenting all findings and fixes
+- [x] All 13 tests passing, zero TypeScript errors

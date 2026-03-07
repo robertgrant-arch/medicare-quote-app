@@ -178,11 +178,23 @@ interface ZipCountyResult {
 
 const zipCache = new Map<string, ZipCountyResult | null>();
 
+// Max entries in the ZIP cache to prevent unbounded memory growth
+const ZIP_CACHE_MAX = 5000;
+
 async function resolveZipToCounty(zip: string): Promise<ZipCountyResult | null> {
   if (zipCache.has(zip)) return zipCache.get(zip)!;
 
+  // Evict oldest entries when cache is full
+  if (zipCache.size >= ZIP_CACHE_MAX) {
+    const firstKey = zipCache.keys().next().value;
+    if (firstKey !== undefined) zipCache.delete(firstKey);
+  }
+
   try {
-    const url = `https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/${zip}?apikey=d687412e7b53146b2631dc01974ad0a4`;
+    // CMS Marketplace API key — public/unauthenticated key from CMS documentation
+    // Falls back to env var CMS_MARKETPLACE_API_KEY if set
+    const cmsApiKey = process.env.CMS_MARKETPLACE_API_KEY ?? "d687412e7b53146b2631dc01974ad0a4";
+    const url = `https://marketplace.api.healthcare.gov/api/v1/counties/by/zip/${zip}?apikey=${cmsApiKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
       zipCache.set(zip, null);

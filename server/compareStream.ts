@@ -206,6 +206,7 @@ export function registerCompareStreamRoute(app: Express) {
         : build2PlanPrompt(currentPlan, newPlan);
 
       // Call Forge API (OpenAI-compatible) with streaming
+      // 120s timeout: streaming responses can take up to 2 minutes for complex comparisons
       const forgeRes = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
         method: "POST",
         headers: {
@@ -218,6 +219,7 @@ export function registerCompareStreamRoute(app: Express) {
           stream: true,
           messages: [{ role: "user", content: prompt }],
         }),
+        signal: AbortSignal.timeout(120_000),
       });
 
       if (!forgeRes.ok) {

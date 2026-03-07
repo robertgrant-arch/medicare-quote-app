@@ -1,6 +1,6 @@
 /**
  * AI Plan Comparison Router
- * Calls Claude claude-haiku-4-5 via Anthropic API to generate a detailed
+ * Uses the Manus Forge API (OpenAI-compatible) to generate a detailed
  * Medicare Advantage plan comparison between two selected plans.
  */
 
@@ -78,9 +78,14 @@ const PlanInputSchema = z.object({
 
 // ── Helper: build the prompt ──────────────────────────────────────────────────
 
-function buildComparisonPrompt(currentPlan: z.infer<typeof PlanInputSchema>, newPlan: z.infer<typeof PlanInputSchema>): string {
+function buildComparisonPrompt(
+  currentPlan: z.infer<typeof PlanInputSchema>,
+  newPlan: z.infer<typeof PlanInputSchema>
+): string {
   const formatBenefit = (b: z.infer<typeof BenefitDetailSchema>) =>
-    b.covered ? `✅ ${b.details}${b.annualLimit ? ` (${b.annualLimit})` : ""}` : `❌ Not covered`;
+    b.covered
+      ? `Yes — ${b.details}${b.annualLimit ? ` (${b.annualLimit})` : ""}`
+      : "Not covered";
 
   const planSummary = (p: z.infer<typeof PlanInputSchema>) => `
 **${p.planName}** (${p.carrier})
@@ -128,109 +133,88 @@ ${planSummary(newPlan)}
 
 Please provide a detailed comparison in the following exact markdown format:
 
-## 📊 Quick Summary
-
+## Quick Summary
 Provide 2-3 sentences summarizing the key trade-offs between these plans in plain language.
 
-## 💰 Premium & Cost Comparison
-
+## Premium & Cost Comparison
 Compare monthly premiums, deductibles, and max out-of-pocket costs. Calculate annual premium savings/costs. Highlight which plan is better for low vs. high healthcare utilizers.
 
-## 🏥 Copay Comparison
+## Copay Comparison
+Compare all copays side-by-side. Identify which plan has lower costs for primary care, specialists, urgent care, and emergency visits.
 
-Compare all copays side-by-side. Identify which plan has lower costs for primary care, specialists, urgent care, and emergency visits. Note any significant differences.
+## Prescription Drug Coverage
+Compare drug tier costs. Analyze the coverage gap (donut hole) protection difference. Note any drug deductible differences.
 
-## 💊 Prescription Drug Coverage
+## Extra Benefits Gained / Lost
+List benefits the member would GAIN by switching to the new plan. List benefits they would LOSE.
 
-Compare drug tier costs. Analyze the coverage gap (donut hole) protection difference. Estimate impact for common medication users. Note any drug deductible differences.
+## Star Rating & Quality
+Compare CMS star ratings. Explain what the rating difference means for quality of care. Note network size differences.
 
-## ⭐ Extra Benefits Gained / Lost
+## Network Type Considerations
+If plan types differ (HMO vs PPO), explain the key implications: referral requirements, out-of-network coverage, flexibility.
 
-List benefits the member would GAIN by switching to the new plan. List benefits they would LOSE. Assign dollar values where possible (e.g., OTC allowance amounts).
+## Overall Recommendation
+Provide a clear, direct recommendation. Who should switch to the new plan? Who should stay? Use specific scenarios. End with a confidence level (High/Medium/Low).
 
-## 🌟 Star Rating & Quality
-
-Compare CMS star ratings. Explain what the rating difference means for quality of care and member experience. Note network size differences.
-
-## 🔄 Network Type Considerations
-
-If plan types differ (HMO vs PPO), explain the key implications: referral requirements, out-of-network coverage, flexibility. If same type, note any network size differences.
-
-## ✅ Overall Recommendation
-
-Provide a clear, direct recommendation. Who should switch to the new plan? Who should stay with their current plan? Use specific scenarios (e.g., "If you take brand-name medications regularly, the new plan's lower Tier 2 copay saves you $X/year"). End with a confidence level (High/Medium/Low) and the primary reason for your recommendation.
-
-Be specific with numbers, calculate annual costs where possible, and use plain language that a Medicare beneficiary can understand. Do not use jargon without explanation.`;
+Be specific with numbers, calculate annual costs where possible, and use plain language that a Medicare beneficiary can understand.`;
 }
 
-// ── Anthropic API call ────────────────────────────────────────────────────────
+// ── Forge API call (OpenAI-compatible) ───────────────────────────────────────
 
-async function callClaude(prompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+async function callForgeApi(prompt: string): Promise<string> {
+  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+  const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+
+  if (!forgeApiUrl || !forgeApiKey) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "ANTHROPIC_API_KEY is not configured. Please add it in the project secrets.",
+      message: "Forge API is not configured.",
     });
   }
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      "authorization": `Bearer ${forgeApiKey}`,
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+      messages: [{ role: "user", content: prompt }],
     }),
+    signal: AbortSignal.timeout(60_000),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = `Anthropic API error: ${response.status} ${response.statusText}`;
-    try {
-      const errorJson = JSON.parse(errorText);
-      if (errorJson?.error?.message) {
-        errorMessage = `Anthropic API error: ${errorJson.error.message}`;
-      }
-    } catch {
-      // keep the original error message
-    }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: errorMessage,
+      message: `AI API error: ${response.status} — ${errorText.slice(0, 200)}`,
     });
   }
 
   const data = (await response.json()) as {
-    content: Array<{ type: string; text: string }>;
-    usage?: { input_tokens: number; output_tokens: number };
+    choices: Array<{ message: { content: string } }>;
   };
 
-  const textContent = data.content.find((c) => c.type === "text");
-  if (!textContent?.text) {
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: "No text content returned from Claude",
+      message: "No content returned from AI",
     });
   }
 
-  return textContent.text;
+  return content;
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const compareRouter = router({
   /**
-   * Compare two Medicare Advantage plans using Claude AI.
+   * Compare two Medicare Advantage plans using AI.
    * Returns a markdown-formatted analysis.
    */
   comparePlans: publicProcedure
@@ -251,7 +235,7 @@ export const compareRouter = router({
       }
 
       const prompt = buildComparisonPrompt(currentPlan, newPlan);
-      const analysis = await callClaude(prompt);
+      const analysis = await callForgeApi(prompt);
 
       return {
         analysis,
@@ -264,31 +248,33 @@ export const compareRouter = router({
     }),
 
   /**
-   * Lightweight health check to validate the Anthropic API key is working.
+   * Lightweight health check to validate the Forge API is configured.
    */
   validateApiKey: publicProcedure.query(async () => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return { valid: false, message: "ANTHROPIC_API_KEY not set" };
+    const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+    const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+
+    if (!forgeApiUrl || !forgeApiKey) {
+      return { valid: false, message: "Forge API not configured" };
     }
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
+          "authorization": `Bearer ${forgeApiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5",
+          model: "claude-3-5-haiku-20241022",
           max_tokens: 10,
           messages: [{ role: "user", content: "Hi" }],
         }),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (response.ok) {
-        return { valid: true, message: "API key is valid" };
+        return { valid: true, message: "Forge API is configured and reachable" };
       }
 
       const errorText = await response.text();
