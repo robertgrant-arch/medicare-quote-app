@@ -335,3 +335,26 @@
 
 ## Bug Fixes
 - [x] Remove MAX_PLANS=30 cap in plansRouter.ts — now returns all available plans (56 for ZIP 64106)
+
+## Extra Help / LIS Integration
+- [ ] Add "Skip to View All Plans" button at top of Health Status section in FindBestPlan
+- [ ] Add Extra Help question with 4 radio options to Health Status section
+- [ ] Add helper text below Extra Help question
+- [ ] Pass extraHelp value through to Plans page via URL param
+- [ ] Filter plans based on Extra Help selection (No = filter LIS-only plans)
+- [ ] Show banner on Plans page when "Not Sure" is selected
+- [ ] Show all plans when "Skip" or "Yes" is selected
+- [ ] Generate Episode Alert API Integration Guide PDF
+- [ ] Upload PDF to CDN and add download link to app footer
+
+## Extra Help / LIS Integration (March 2026)
+- [x] Add "Skip to View All Plans" button at top of Health Status step in FindBestPlan wizard
+- [x] Add Extra Help (LIS) question to Health Status step with 4 options: Full, Partial, No, Not Sure
+- [x] Add helper text below Extra Help question explaining the program
+- [x] Pass extraHelp param through to Plans page URL from FindBestPlan wizard
+- [x] Implement D-SNP filtering in Plans.tsx when extraHelp=no
+- [x] Show "Not Sure" informational banner in Plans.tsx when extraHelp=not-sure
+- [x] Show all plans when extraHelp=full, partial, or skip
+- [x] Generate Episode Alert API Integration Guide PDF (392KB)
+- [x] Upload PDF to CDN
+- [x] Add PDF download link to Home.tsx footer under "Technical Resources" section

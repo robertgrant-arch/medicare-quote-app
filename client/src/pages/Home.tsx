@@ -765,6 +765,29 @@ export default function Home() {
               </div>
             ))}
           </div>
+          {/* Developer / Technical Resources */}
+          <div className="border-t pt-6 mb-6" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
+            <div className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3">Technical Resources</div>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8/episode-alert-api-integration-guide_6a93d69a.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all no-underline"
+                style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.2)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(255,255,255,0.18)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(255,255,255,0.1)"; }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Episode Alert API Integration Guide (PDF)
+              </a>
+            </div>
+          </div>
+
           <div className="border-t pt-6 text-xs opacity-40" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
             <p className="mb-2">
               We are not affiliated with or endorsed by the U.S. government or the federal Medicare

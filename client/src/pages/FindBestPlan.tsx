@@ -55,6 +55,7 @@ type MonthlyDrugSpend = "$0" | "under-100" | "100-500" | "500+";
 type Importance = "not" | "somewhat" | "very";
 type PlanTypePreference = "hmo" | "ppo" | "no-preference";
 type TopPriority = "lowest-premium" | "lowest-oop" | "best-benefits" | "largest-network";
+type ExtraHelp = "full" | "partial" | "no" | "not-sure";
 
 interface HealthProfile {
   healthStatus: HealthStatus | "";
@@ -77,6 +78,7 @@ interface HealthProfile {
   hasSpecificDoctors: YesNo | "";
   planTypePreference: PlanTypePreference | "";
   topPriority: TopPriority | "";
+  extraHelp: ExtraHelp | "";
 }
 
 const EMPTY_PROFILE: HealthProfile = {
@@ -100,6 +102,7 @@ const EMPTY_PROFILE: HealthProfile = {
   hasSpecificDoctors: "",
   planTypePreference: "",
   topPriority: "",
+  extraHelp: "",
 };
 
 interface RankedPlan {
@@ -241,7 +244,7 @@ export default function FindBestPlan() {
 
   // Validate current step before advancing
   const stepFields: Record<number, (keyof HealthProfile)[]> = {
-    1: ["healthStatus", "chronicConditions", "plannedSurgery"],
+    1: ["healthStatus", "chronicConditions", "plannedSurgery", "extraHelp"],
     2: ["pcpVisits", "specialistVisits", "erVisits", "urgentCareVisits"],
     3: ["monthlyRxCount", "brandNameDrugs", "specialtyDrugs", "monthlyDrugSpend"],
     4: ["dentalImportance", "visionImportance", "hearingImportance", "needsTransportation", "wantsOTC", "wantsFitness"],
@@ -295,6 +298,21 @@ export default function FindBestPlan() {
     } else if (typeof step === "number" && step < 5) {
       setStep((step + 1) as 1 | 2 | 3 | 4 | 5);
     }
+  };
+
+  // Skip to all plans — bypasses all questions
+  const handleSkipToAllPlans = () => {
+    const z = zip.trim();
+    if (!/^\d{5}$/.test(z)) {
+      // If we're already on step 1, zip is confirmed; use it
+      if (typeof step === "number" && plans.length > 0) {
+        navigate(`/plans?zip=${z}&extraHelp=skip`);
+        return;
+      }
+      setZipError("Please enter a valid 5-digit ZIP code first.");
+      return;
+    }
+    navigate(`/plans?zip=${z}&extraHelp=skip`);
   };
 
   const handleBack = () => {
@@ -450,11 +468,21 @@ export default function FindBestPlan() {
               {/* Step 1: Health Status */}
               {step === 1 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-5">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#FDEEF1" }}>
-                      <Heart size={14} style={{ color: "#C41E3A" }} />
+                  <div className="flex items-center justify-between gap-2 mb-5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#FDEEF1" }}>
+                        <Heart size={14} style={{ color: "#C41E3A" }} />
+                      </div>
+                      <h2 className="text-lg font-bold" style={{ color: "#1B365D" }}>Health Status</h2>
                     </div>
-                    <h2 className="text-lg font-bold" style={{ color: "#1B365D" }}>Health Status</h2>
+                    <button
+                      onClick={() => navigate(`/plans?zip=${zip.trim()}&extraHelp=skip`)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all hover:bg-gray-50 flex items-center gap-1"
+                      style={{ borderColor: "#D1D5DB", color: "#6B7280" }}
+                    >
+                      Skip to View All Plans
+                      <ChevronRight size={12} />
+                    </button>
                   </div>
 
                   <SectionQ question="How would you describe your overall health?" />
@@ -489,9 +517,39 @@ export default function FindBestPlan() {
                   </div>
 
                   <SectionQ question="Do you have a planned surgery or hospitalization in the next 12 months?" />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-5">
                     <OptionBtn value="yes" selected={profile.plannedSurgery === "yes"} label="Yes" sublabel="I have a procedure planned" onSelect={(v) => set("plannedSurgery", v)} accent="#C41E3A" />
                     <OptionBtn value="no" selected={profile.plannedSurgery === "no"} label="No" sublabel="No planned procedures" onSelect={(v) => set("plannedSurgery", v)} accent="#C41E3A" />
+                  </div>
+
+                  {/* Extra Help / LIS question */}
+                  <SectionQ question="Do you receive Extra Help (Low-Income Subsidy) from Medicare?" />
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {([
+                      { value: "full" as const, label: "Yes — Full Extra Help", sublabel: "Full LIS subsidy" },
+                      { value: "partial" as const, label: "Yes — Partial Extra Help", sublabel: "Partial LIS subsidy" },
+                      { value: "no" as const, label: "No", sublabel: "I don't receive Extra Help" },
+                      { value: "not-sure" as const, label: "Not Sure", sublabel: "I'm not certain" },
+                    ] as const).map((o) => (
+                      <OptionBtn
+                        key={o.value}
+                        value={o.value}
+                        selected={profile.extraHelp === o.value}
+                        label={o.label}
+                        sublabel={o.sublabel}
+                        onSelect={(v) => set("extraHelp", v)}
+                        accent="#C41E3A"
+                      />
+                    ))}
+                  </div>
+                  <div
+                    className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs text-gray-500 mb-1"
+                    style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0" }}
+                  >
+                    <Shield size={12} className="shrink-0 mt-0.5" style={{ color: "#16A34A" }} />
+                    <span>
+                      Extra Help is a Medicare program that helps pay Part D prescription drug costs. If you're unsure, select "Not Sure" and all plans will be shown.
+                    </span>
                   </div>
                 </div>
               )}
@@ -919,7 +977,7 @@ export default function FindBestPlan() {
                   {/* CTA */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/plans?zip=${zip}`)}
+                      onClick={() => navigate(`/plans?zip=${zip}&extraHelp=${profile.extraHelp || 'not-sure'}`)}
                       className="flex-1 py-2.5 text-sm font-bold rounded-xl border-2 transition-all"
                       style={{ borderColor: "#1B365D", color: "#1B365D" }}
                     >

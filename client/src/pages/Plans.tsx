@@ -111,6 +111,8 @@ export default function Plans() {
   const [, navigate] = useLocation();
   const params = new URLSearchParams(searchStr);
   const zip = params.get("zip") || "64106";
+  // Extra Help / LIS filter from FindBestPlan wizard or skip link
+  const extraHelp = params.get("extraHelp") as "full" | "partial" | "no" | "not-sure" | "skip" | null;
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -184,11 +186,25 @@ export default function Plans() {
 
   const filteredPlans = useMemo(() => {
     let result = applyFilters(plans, filters);
+
+    // Extra Help / LIS filtering
+    // When user says "No" to Extra Help, filter out D-SNP and plans that require LIS enrollment
+    // D-SNP plans are typically for dual-eligible (Medicaid+Medicare) beneficiaries
+    if (extraHelp === "no") {
+      result = result.filter((p) => {
+        const name = (p.planName || "").toUpperCase();
+        const type = (p.planType || "").toUpperCase();
+        // Filter out Dual-Eligible Special Needs Plans (D-SNP) which require Medicaid/LIS
+        if (type.includes("D-SNP") || name.includes("D-SNP") || name.includes("DUAL")) return false;
+        return true;
+      });
+    }
+
     if (showFavoritesOnly) {
       result = result.filter((p) => favorites.has(p.id));
     }
     return result;
-  }, [plans, filters, showFavoritesOnly, favorites]);
+  }, [plans, filters, showFavoritesOnly, favorites, extraHelp]);
 
   // Memoize available carriers to avoid re-creating on every render
   const availableCarriers = useMemo(
@@ -561,6 +577,25 @@ export default function Plans() {
                 >
                   <X size={13} />
                 </button>
+              </div>
+            )}
+
+            {/* Extra Help "Not Sure" banner */}
+            {extraHelp === "not-sure" && (
+              <div
+                className="rounded-xl p-3 mb-4 flex items-start gap-3 border"
+                style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }}
+              >
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ backgroundColor: "#F59E0B" }}
+                >
+                  <Info size={14} className="text-white" />
+                </div>
+                <div className="text-sm text-amber-800">
+                  <span className="font-semibold">Your results include all available plans.</span>{" "}
+                  If you receive Extra Help from Medicare, you may qualify for lower costs on some plans — particularly those marked as D-SNP (Dual Special Needs Plans).
+                </div>
               </div>
             )}
 
