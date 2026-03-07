@@ -559,7 +559,15 @@ export default function AICompare() {
   const activePlanIds = planIds.filter(Boolean);
 
   const handleCompare = useCallback(async (forceRefresh = false) => {
-    if (!canCompare || !plans[0] || !plans[1] || !plans[2]) return;
+    // Strong null guards — all three plans must be fully resolved objects before proceeding.
+    // This prevents sending undefined to the server when plans haven't loaded yet
+    // (e.g. when URL params pre-fill IDs before the /api/plans fetch completes).
+    const p0 = plans[0];
+    const p1 = plans[1];
+    const p2 = plans[2];
+    if (!canCompare || !p0 || !p1 || !p2) return;
+    if (typeof p0 !== "object" || typeof p1 !== "object" || typeof p2 !== "object") return;
+    if (!p0.id || !p1.id || !p2.id) return;
 
     // Check cache first (unless forced refresh) — called directly to avoid stale closure
     if (!forceRefresh) {
@@ -590,14 +598,17 @@ export default function AICompare() {
     setPhase("streaming");
 
     try {
+      // Normalize plans — use the guarded local variables (never plans[n] directly)
+      const body = JSON.stringify({
+        currentPlan: normalizePlan(p0),
+        newPlan: normalizePlan(p1),
+        thirdPlan: normalizePlan(p2),
+      });
+
       const response = await fetch("/api/compare-stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          currentPlan: normalizePlan(plans[0]),
-          newPlan: normalizePlan(plans[1]),
-          thirdPlan: normalizePlan(plans[2]),
-        }),
+        body,
         signal: abortRef.current.signal,
       });
 
@@ -612,6 +623,8 @@ export default function AICompare() {
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
+      // Track current event type so data lines are only processed for the right event
+      let currentEvent = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -622,28 +635,51 @@ export default function AICompare() {
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (line.startsWith("event: delta")) continue;
-          if (line.startsWith("event: done")) {
-            const ts = new Date().toISOString();
-            setGeneratedAt(ts);
-            setPhase("done");
-            saveCache(planIds, { analysis: fullText, generatedAt: ts, planIds });
-            return;
+          if (line.startsWith("event: ")) {
+            // Record the event type; data lines will be dispatched based on this
+            currentEvent = line.slice(7).trim();
+            if (currentEvent === "done") {
+              // done event — save and exit immediately
+              const ts = new Date().toISOString();
+              setGeneratedAt(ts);
+              setPhase("done");
+              saveCache(planIds, { analysis: fullText, generatedAt: ts, planIds });
+              return;
+            }
+            continue;
           }
-          if (line.startsWith("event: error")) continue;
+
           if (line.startsWith("data: ")) {
-            try {
-              const chunk = JSON.parse(line.slice(6)) as string;
-              fullText += chunk;
-              setStreamedText(fullText);
-            } catch {
-              // skip malformed
+            if (currentEvent === "error") {
+              // Error event from server — surface as error, do NOT append to text
+              try {
+                const errPayload = JSON.parse(line.slice(6));
+                const errMsg = typeof errPayload === "string" ? errPayload : JSON.stringify(errPayload);
+                throw new Error(errMsg);
+              } catch (parseErr) {
+                throw parseErr instanceof SyntaxError
+                  ? new Error("Comparison failed. Please try again.")
+                  : parseErr as Error;
+              }
+            }
+
+            if (currentEvent === "delta" || currentEvent === "") {
+              // Delta chunk — append to streamed text
+              try {
+                const chunk = JSON.parse(line.slice(6)) as string;
+                if (typeof chunk === "string") {
+                  fullText += chunk;
+                  setStreamedText(fullText);
+                }
+              } catch {
+                // skip malformed JSON
+              }
             }
           }
         }
       }
 
-      // Fallback if stream ended without done event
+      // Fallback if stream ended without a done event
       const ts = new Date().toISOString();
       setGeneratedAt(ts);
       setPhase("done");

@@ -361,3 +361,13 @@
 
 ## Sort Order Change
 - [x] Change default plan sort from carrier name / best-match to lowest expected out-of-pocket cost
+
+## AI Plan Compare Bug Fix (Round 2)
+- [ ] Diagnose AI Plan Compare error (same issue as before)
+- [ ] Fix the root cause permanently
+- [ ] Verify fix works in browser before any cleanup
+
+## AI Plan Compare Bug Fix (Round 3)
+- [x] Add strong null/undefined guards in handleCompare before normalizePlan calls
+- [x] Fix SSE event/data pairing so error events are not appended as text content
+- [x] Verify TypeScript compiles clean
