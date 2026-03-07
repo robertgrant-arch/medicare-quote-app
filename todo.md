@@ -321,3 +321,14 @@
 - [x] "Find Best Plan" nav link in Header (desktop + mobile, red accent)
 - [x] 10 vitest tests for healthProfile.recommend (all passing)
 - [x] TypeScript clean (0 errors)
+
+## Navigation Restructure
+- [x] Replace 4 content dropdowns + 5 standalone tool links with 2 dropdowns
+- [x] "Medicare Information" dropdown: Medicare Advantage, Medicare Supplement, Medicare Part D, Resources & Guides
+- [x] "Plan Tools" dropdown: AI Plan Compare, AI Plan Recommender, Verify Current Coverage, Find Best Plan
+- [x] Each dropdown item includes a short description subtitle
+- [x] Dropdown panels use accent color top border and hover highlight matching their category
+- [x] Desktop nav: BookOpen icon for Medicare Information, Sparkles icon for Plan Tools
+- [x] Mobile accordion: same 2 sections with icons, description subtitles, and divider rows
+- [x] Mobile CTA row: Sign In + Talk to an Agent (updated label from "Call an Agent")
+- [x] Zero TypeScript errors, dev server running cleanly
