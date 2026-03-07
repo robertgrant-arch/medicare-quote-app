@@ -414,3 +414,7 @@
 - [x] Fixed runtime error: EMPTY_OVERRIDES constant prevents undefined from loadAdminOverrides
 - [x] Fixed field name mapping: carrier (not organization), maxOutOfPocket (not moop)
 - [x] Test timeout fix: "handles single plan input" test now has 15s timeout
+
+## Production Publish
+- [x] ADMIN_PASSWORD set to 595market (verified via API test)
+- [x] All features complete and ready for production publish
