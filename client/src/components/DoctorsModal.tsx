@@ -1,5 +1,5 @@
 // DoctorsModal — Add doctors to check in-network coverage
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
 
 import { useState } from "react";
 import { X, UserRound, Search, Plus, Trash2, CheckCircle2, MapPin } from "lucide-react";
@@ -55,19 +55,19 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
         {/* Header */}
         <div
           className="flex items-center justify-between p-5 border-b border-gray-100"
-          style={{ backgroundColor: "#F8FAF9" }}
+          style={{ backgroundColor: "#F7F8FA" }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: "#E8F5EE" }}
+              style={{ backgroundColor: "#E8F0FE" }}
             >
-              <UserRound size={20} style={{ color: "#006B3F" }} />
+              <UserRound size={20} style={{ color: "#1B365D" }} />
             </div>
             <div>
               <h2
                 className="text-lg font-bold text-gray-900"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "'Inter', serif" }}
               >
                 Add Your Doctors
               </h2>
@@ -93,7 +93,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
               placeholder="Search by doctor name or specialty..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-green-600 transition-colors"
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1B365D] transition-colors"
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             />
           </div>
@@ -109,10 +109,10 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
                   <div
                     key={doctor.id}
                     className="flex items-start justify-between p-3 rounded-xl border"
-                    style={{ borderColor: "#C3E6D4", backgroundColor: "#F0FBF4" }}
+                    style={{ borderColor: "#C8D8F5", backgroundColor: "#F0FBF4" }}
                   >
                     <div className="flex items-start gap-2.5">
-                      <CheckCircle2 size={16} style={{ color: "#006B3F" }} className="mt-0.5 shrink-0" />
+                      <CheckCircle2 size={16} style={{ color: "#1B365D" }} className="mt-0.5 shrink-0" />
                       <div>
                         <div className="text-sm font-semibold text-gray-800">{doctor.name}</div>
                         <div className="text-xs text-gray-500">{doctor.specialty}</div>
@@ -148,7 +148,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
                 {filteredDoctors.map((doctor) => (
                   <div
                     key={doctor.id}
-                    className="flex items-start justify-between p-3 rounded-xl border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all cursor-pointer"
+                    className="flex items-start justify-between p-3 rounded-xl border border-gray-100 hover:border-[#C8D8F5] hover:bg-[#E8F0FE]/30 transition-all cursor-pointer"
                     onClick={() => addDoctor(doctor)}
                   >
                     <div className="flex items-start gap-2.5">
@@ -169,7 +169,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
                     </div>
                     <button
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors shrink-0 mt-0.5"
-                      style={{ color: "#006B3F", backgroundColor: "#E8F5EE" }}
+                      style={{ color: "#1B365D", backgroundColor: "#E8F0FE" }}
                     >
                       <Plus size={12} />
                       Add
@@ -201,12 +201,12 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave }:
           <button
             onClick={handleSave}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md"
-            style={{ backgroundColor: "#006B3F" }}
+            style={{ backgroundColor: "#1B365D" }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#004D2C";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#006B3F";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#1B365D";
             }}
           >
             Save {doctors.length > 0 ? `(${doctors.length}) ` : ""}Doctors

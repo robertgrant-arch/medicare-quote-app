@@ -99,7 +99,7 @@ function CompleteMedicareGuideContent() {
     <div className="space-y-8">
       {/* Overview */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           What Is Medicare?
         </h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -111,7 +111,7 @@ function CompleteMedicareGuideContent() {
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             { part: "Part A", label: "Hospital Insurance", color: "bg-blue-50 border-blue-200", badge: "bg-blue-600", desc: "Inpatient hospital stays, skilled nursing, hospice, some home health care. Most people pay $0 premium." },
-            { part: "Part B", label: "Medical Insurance", color: "bg-green-50 border-green-200", badge: "bg-green-600", desc: "Doctor visits, outpatient care, preventive services, durable medical equipment. $185/month premium in 2025." },
+            { part: "Part B", label: "Medical Insurance", color: "bg-green-50 border-[#C8D8F5]", badge: "bg-green-600", desc: "Doctor visits, outpatient care, preventive services, durable medical equipment. $185/month premium in 2025." },
             { part: "Part C", label: "Medicare Advantage", color: "bg-orange-50 border-orange-200", badge: "bg-orange-600", desc: "Private plans that bundle Parts A, B, and usually D. Often include dental, vision, hearing. Many $0 premium options." },
             { part: "Part D", label: "Prescription Drugs", color: "bg-purple-50 border-purple-200", badge: "bg-purple-600", desc: "Prescription drug coverage offered by private insurers. New $2,000 annual out-of-pocket cap in 2025." },
           ].map((item) => (
@@ -128,7 +128,7 @@ function CompleteMedicareGuideContent() {
 
       {/* Eligibility */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Who Is Eligible?
         </h3>
         <div className="space-y-2">
@@ -139,7 +139,7 @@ function CompleteMedicareGuideContent() {
             { group: "ALS (Lou Gehrig's disease)", detail: "Medicare begins the same month SSDI starts — no 24-month waiting period." },
           ].map((item) => (
             <div key={item.group} className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "#006B3F" }} />
+              <CheckCircle2 size={15} className="shrink-0 mt-0.5" style={{ color: "#1B365D" }} />
               <div>
                 <div className="text-sm font-semibold text-gray-800">{item.group}</div>
                 <div className="text-xs text-gray-500 leading-relaxed">{item.detail}</div>
@@ -151,7 +151,7 @@ function CompleteMedicareGuideContent() {
 
       {/* 2025 Key Costs */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Key 2025 Medicare Costs
         </h3>
         <div className="overflow-x-auto">
@@ -184,7 +184,7 @@ function CompleteMedicareGuideContent() {
 
       {/* Enrollment Periods */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Key Enrollment Periods
         </h3>
         <div className="space-y-3">
@@ -230,7 +230,7 @@ function CompleteMedicareGuideContent() {
 
       {/* Original Medicare vs MA */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Original Medicare vs. Medicare Advantage
         </h3>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -277,7 +277,7 @@ function CompleteMedicareGuideContent() {
 
       {/* Late Enrollment Penalties */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Late Enrollment Penalties
         </h3>
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-3 flex gap-2">
@@ -318,7 +318,7 @@ function CompleteMedicareGuideContent() {
         <Link href="/resources/enrollment-periods" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white" style={{ backgroundColor: ACCENT }}>
           Enrollment Periods Guide <ArrowRight size={14} />
         </Link>
-        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#006B3F", borderColor: "#006B3F" }}>
+        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#1B365D", borderColor: "#1B365D" }}>
           Compare Plans Near You
         </Link>
       </div>
@@ -332,7 +332,7 @@ function ExtraHelpContent() {
     <div className="space-y-8">
       {/* What is Extra Help */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           What Is Extra Help?
         </h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -341,8 +341,8 @@ function ExtraHelpContent() {
           Part D prescription drug costs. In 2025, approximately 14 million Medicare beneficiaries
           receive Extra Help, but millions more are eligible and not enrolled.
         </p>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-2">
-          <DollarSign size={15} className="shrink-0 mt-0.5 text-green-700" />
+        <div className="bg-green-50 border border-[#C8D8F5] rounded-xl p-4 flex gap-2">
+          <DollarSign size={15} className="shrink-0 mt-0.5 text-[#1B365D]" />
           <p className="text-sm text-green-800 leading-relaxed">
             If you qualify, Extra Help can save you <strong>$5,000 or more per year</strong> on
             prescription drug costs — covering premiums, deductibles, copays, and coinsurance.
@@ -352,7 +352,7 @@ function ExtraHelpContent() {
 
       {/* 2025 Eligibility */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           2025 Eligibility Requirements
         </h3>
         <div className="overflow-x-auto mb-3">
@@ -374,7 +374,7 @@ function ExtraHelpContent() {
               ].map((row, i) => (
                 <tr key={row.req} className={`border border-gray-200 ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
                   <td className="p-3 text-gray-700">{row.req}</td>
-                  <td className="p-3 font-semibold text-green-700">{row.full}</td>
+                  <td className="p-3 font-semibold text-[#1B365D]">{row.full}</td>
                   <td className="p-3 font-semibold text-blue-700">{row.partial}</td>
                 </tr>
               ))}
@@ -392,11 +392,11 @@ function ExtraHelpContent() {
 
       {/* What Extra Help Pays For */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           What Extra Help Pays For
         </h3>
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="bg-green-50 border border-[#C8D8F5] rounded-xl p-4">
             <div className="text-sm font-bold text-green-800 mb-2">Full Extra Help (Level 1)</div>
             <ul className="space-y-1.5">
               {[
@@ -437,7 +437,7 @@ function ExtraHelpContent() {
 
       {/* Automatic Enrollment */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Automatic Enrollment — Who Qualifies Without Applying
         </h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -450,8 +450,8 @@ function ExtraHelpContent() {
             { label: "Medicare Savings Program (QMB, SLMB, QI, or QDWI)", icon: FileText },
           ].map(({ label, icon: Icon }) => (
             <div key={label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-green-100 shrink-0">
-                <Icon size={13} className="text-green-700" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#E8F0FE] shrink-0">
+                <Icon size={13} className="text-[#1B365D]" />
               </div>
               <span className="text-sm text-gray-700">{label}</span>
             </div>
@@ -461,7 +461,7 @@ function ExtraHelpContent() {
 
       {/* How to Apply */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           How to Apply for Extra Help
         </h3>
         <ol className="space-y-3">
@@ -497,7 +497,7 @@ function ExtraHelpContent() {
 
       {/* Medicare Savings Programs */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>
+        <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: "'Inter', serif" }}>
           Medicare Savings Programs (MSPs)
         </h3>
         <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -534,7 +534,7 @@ function ExtraHelpContent() {
         >
           Apply at SSA.gov <ArrowRight size={14} />
         </a>
-        <Link href="/part-d/extra-help" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#006B3F", borderColor: "#006B3F" }}>
+        <Link href="/part-d/extra-help" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#1B365D", borderColor: "#1B365D" }}>
           Full Extra Help Guide
         </Link>
       </div>
@@ -549,7 +549,7 @@ export default function MedicareGuide() {
   const [extraHelpOpen, setExtraHelpOpen] = useState(false); // collapsed by default
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F8FA" }}>
       <Header />
 
       {/* Hero */}
@@ -568,7 +568,7 @@ export default function MedicareGuide() {
           </nav>
           <h1
             className="text-3xl lg:text-4xl font-bold mb-3"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "'Inter', serif" }}
           >
             Medicare Guide
           </h1>
@@ -618,7 +618,7 @@ export default function MedicareGuide() {
             title="Extra Help (Low Income Subsidy)"
             isOpen={extraHelpOpen}
             onToggle={() => setExtraHelpOpen((prev) => !prev)}
-            icon={<DollarSign size={16} style={{ color: "#006B3F" }} />}
+            icon={<DollarSign size={16} style={{ color: "#1B365D" }} />}
             badge="Free Program"
           >
             <ExtraHelpContent />
@@ -627,11 +627,11 @@ export default function MedicareGuide() {
           {/* Bottom CTA */}
           <div
             className="mt-6 rounded-2xl p-8 text-white text-center"
-            style={{ background: "linear-gradient(135deg, #004D2C 0%, #006B3F 100%)" }}
+            style={{ background: "linear-gradient(135deg, #004D2C 0%, #1B365D 100%)" }}
           >
             <h2
               className="text-2xl font-bold mb-2"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "'Inter', serif" }}
             >
               Ready to Compare Plans?
             </h2>
@@ -641,7 +641,7 @@ export default function MedicareGuide() {
             <Link
               href="/plans?zip=64106"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-bold no-underline transition-all"
-              style={{ backgroundColor: "#F47920", color: "white" }}
+              style={{ backgroundColor: "#C41E3A", color: "white" }}
             >
               See Plans Near You
               <ChevronRight size={16} />

@@ -1,6 +1,6 @@
 /**
  * AI Plan Compare Page — 3-Plan Side-by-Side
- * Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+ * Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
  *
  * Performance optimizations:
  * 1. Side-by-side comparison table renders INSTANTLY from client-side plan data
@@ -222,7 +222,7 @@ function PlanSelector({ label, sublabel, value, onChange, excludeIds = [], accen
                       setOpen(false);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
-                    style={{ backgroundColor: plan.id === value ? "#E8F5EE" : undefined }}
+                    style={{ backgroundColor: plan.id === value ? "#E8F0FE" : undefined }}
                   >
                     <div className="text-sm font-semibold text-gray-800 leading-snug">{plan.planName}</div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -283,7 +283,7 @@ function PlanMiniCard({ plan, label, color }: { plan: MedicarePlan; label: strin
       </div>
       <div className="flex items-center gap-3 mt-2">
         <div>
-          <div className="text-lg font-bold" style={{ color: plan.premium === 0 ? "#006B3F" : "#1F2937" }}>
+          <div className="text-lg font-bold" style={{ color: plan.premium === 0 ? "#1B365D" : "#1F2937" }}>
             {plan.premium === 0 ? "$0" : `$${plan.premium}`}
           </div>
           <div className="text-[10px] text-gray-500">/month</div>
@@ -487,7 +487,7 @@ function CompareTable3({ plans, labels, colors }: {
                   >
                     {val}
                     {bestIdx === j && row.nums && new Set(row.vals).size > 1 && (
-                      <span className="ml-1 text-[9px] font-bold text-green-700 bg-green-100 px-1 py-0.5 rounded">BEST</span>
+                      <span className="ml-1 text-[9px] font-bold text-[#1B365D] bg-[#E8F0FE] px-1 py-0.5 rounded">BEST</span>
                     )}
                   </td>
                 ))}
@@ -504,7 +504,7 @@ function CompareTable3({ plans, labels, colors }: {
 
 type ComparePhase = "idle" | "table-ready" | "streaming" | "done" | "error" | "cached";
 
-const PLAN_COLORS: [string, string, string] = ["#006B3F", "#F47920", "#7C3AED"];
+const PLAN_COLORS: [string, string, string] = ["#1B365D", "#C41E3A", "#7C3AED"];
 const PLAN_LABELS: [string, string, string] = ["Current Plan", "New Plan 1", "New Plan 2"];
 
 export default function AICompare() {
@@ -681,13 +681,13 @@ export default function AICompare() {
   const isTableReady = ["table-ready", "streaming", "done", "cached", "error"].includes(phase);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F8FA" }}>
       <Header />
 
       {/* ── Page Header ──────────────────────────────────────────────────────── */}
       <div
         className="relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #004D2C 0%, #006B3F 60%, #00A651 100%)" }}
+        style={{ background: "linear-gradient(135deg, #004D2C 0%, #1B365D 60%, #00A651 100%)" }}
       >
         <div
           className="absolute inset-0 opacity-5"
@@ -714,7 +714,7 @@ export default function AICompare() {
             <div>
               <h1
                 className="text-3xl lg:text-4xl font-bold text-white mb-2"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "'Inter', serif" }}
               >
                 AI Plan Compare
               </h1>
@@ -747,12 +747,12 @@ export default function AICompare() {
         {/* ── Plan Selection Card ───────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#E8F5EE" }}>
-              <span className="text-xs font-bold" style={{ color: "#006B3F" }}>1</span>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#E8F0FE" }}>
+              <span className="text-xs font-bold" style={{ color: "#1B365D" }}>1</span>
             </div>
             <h2 className="text-base font-bold text-gray-900">Select Three Plans to Compare</h2>
             {canCompare && loadCache(planIds) && phase === "idle" && (
-              <div className="ml-auto flex items-center gap-1.5 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+              <div className="ml-auto flex items-center gap-1.5 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full border border-[#C8D8F5]">
                 <Clock size={10} />
                 Cached result available
               </div>
@@ -801,7 +801,7 @@ export default function AICompare() {
             disabled={!canCompare || isStreaming || phase === "table-ready"}
             className="w-full py-3.5 rounded-xl text-base font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md"
             style={{
-              backgroundColor: canCompare && phase === "idle" ? "#F47920" : "#D1D5DB",
+              backgroundColor: canCompare && phase === "idle" ? "#C41E3A" : "#D1D5DB",
               cursor: canCompare && phase === "idle" ? "pointer" : "not-allowed",
             }}
           >
@@ -846,12 +846,12 @@ export default function AICompare() {
             {isTableReady && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#E8F5EE" }}>
-                    <Star size={14} style={{ color: "#006B3F" }} />
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#E8F0FE" }}>
+                    <Star size={14} style={{ color: "#1B365D" }} />
                   </div>
                   <h2 className="text-base font-bold text-gray-900">Side-by-Side Comparison</h2>
                   <div className="ml-auto flex items-center gap-1.5 text-[10px] text-gray-400">
-                    <span className="inline-block w-2 h-2 rounded-full bg-green-100 border border-green-600" />
+                    <span className="inline-block w-2 h-2 rounded-full bg-[#E8F0FE] border border-green-600" />
                     Best value highlighted
                   </div>
                 </div>
@@ -870,7 +870,7 @@ export default function AICompare() {
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#FFF3E8" }}>
-                    <Sparkles size={14} style={{ color: "#F47920" }} />
+                    <Sparkles size={14} style={{ color: "#C41E3A" }} />
                   </div>
                   <div>
                     <h2 className="text-base font-bold text-gray-900">AI Analysis by Claude</h2>
@@ -914,7 +914,7 @@ export default function AICompare() {
                   <div className="flex items-center gap-3 text-gray-500 text-sm py-4">
                     <div
                       className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin shrink-0"
-                      style={{ borderColor: "#E8F5EE", borderTopColor: "#F47920" }}
+                      style={{ borderColor: "#E8F0FE", borderTopColor: "#C41E3A" }}
                     />
                     Claude is analyzing all three plans...
                   </div>
@@ -977,20 +977,20 @@ export default function AICompare() {
                   step: "1",
                   title: "Select Three Plans",
                   desc: "Choose your current plan and two alternatives you're considering.",
-                  color: "#006B3F",
+                  color: "#1B365D",
                 },
                 {
                   step: "2",
                   title: "Instant Table",
                   desc: "A full 3-column comparison table appears immediately — no waiting.",
-                  color: "#F47920",
+                  color: "#C41E3A",
                   badge: "Instant",
                 },
                 {
                   step: "3",
                   title: "AI Streams In",
                   desc: "Claude Haiku analyzes all three plans and streams a recommendation in 3-5 seconds.",
-                  color: "#006B3F",
+                  color: "#1B365D",
                   badge: "~3-5s",
                 },
               ].map((item) => (

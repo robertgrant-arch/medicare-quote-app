@@ -11,7 +11,7 @@ export default function MADrugCoverage() {
       subtitle="MAPD plans bundle Medicare Parts A, B, and D into one plan — simplifying your coverage and often reducing total annual drug costs."
     >
       {/* Overview */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is an MAPD Plan?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -28,7 +28,7 @@ export default function MADrugCoverage() {
       </p>
 
       {/* 2025 Part D changes */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Major Part D Changes in 2025
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -60,7 +60,7 @@ export default function MADrugCoverage() {
         ].map((item) => (
           <div
             key={item.title}
-            className={`rounded-xl p-4 border ${item.highlight ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}
+            className={`rounded-xl p-4 border ${item.highlight ? "bg-green-50 border-[#C8D8F5]" : "bg-gray-50 border-gray-200"}`}
           >
             <div className={`font-semibold text-sm mb-1 ${item.highlight ? "text-green-800" : "text-gray-800"}`}>
               {item.highlight && "★ "}{item.title}
@@ -71,7 +71,7 @@ export default function MADrugCoverage() {
       </div>
 
       {/* Drug Tiers */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Understanding Drug Tiers
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -100,7 +100,7 @@ export default function MADrugCoverage() {
               <tr key={row.tier} className={`border border-gray-200 ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
                 <td className="p-3 font-bold text-gray-800">{row.tier}</td>
                 <td className="p-3 text-gray-700">{row.type}</td>
-                <td className="p-3 text-green-700 font-medium">{row.copay}</td>
+                <td className="p-3 text-[#1B365D] font-medium">{row.copay}</td>
                 <td className="p-3 text-gray-500 text-xs">{row.examples}</td>
               </tr>
             ))}
@@ -109,7 +109,7 @@ export default function MADrugCoverage() {
       </div>
 
       {/* Coverage Phases */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Part D Coverage Phases in 2025
       </h2>
       <div className="space-y-3 mb-6">
@@ -127,7 +127,7 @@ export default function MADrugCoverage() {
           {
             phase: "Catastrophic Coverage Phase (NEW in 2025)",
             desc: "Once you've paid $2,000 out of pocket, you pay $0 for the rest of the year. The coverage gap ('donut hole') has been eliminated. This is the most significant Part D improvement in decades.",
-            color: "border-green-200 bg-green-50",
+            color: "border-[#C8D8F5] bg-green-50",
           },
         ].map((item) => (
           <div key={item.phase} className={`rounded-xl p-4 border ${item.color}`}>
@@ -138,7 +138,7 @@ export default function MADrugCoverage() {
       </div>
 
       {/* Formulary tips */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Evaluate Drug Coverage Before Enrolling
       </h2>
       <ul className="space-y-2 text-sm text-gray-600 mb-6">
@@ -173,14 +173,14 @@ export default function MADrugCoverage() {
         <Link
           href="/plans?zip=64106"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white"
-          style={{ backgroundColor: "#006B3F" }}
+          style={{ backgroundColor: "#1B365D" }}
         >
           Compare Plans with Drug Coverage <ArrowRight size={14} />
         </Link>
         <Link
           href="/part-d/formulary"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border"
-          style={{ color: "#006B3F", borderColor: "#006B3F" }}
+          style={{ color: "#1B365D", borderColor: "#1B365D" }}
         >
           Drug Formulary Search
         </Link>

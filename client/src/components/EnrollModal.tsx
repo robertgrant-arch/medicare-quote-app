@@ -1,5 +1,5 @@
 // EnrollModal — Enrollment confirmation modal
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
 
 import { X, CheckCircle2, Phone, ExternalLink, Shield } from "lucide-react";
 import type { MedicarePlan } from "@/lib/types";
@@ -28,7 +28,7 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
         {/* Green header */}
         <div
           className="rounded-t-2xl p-6 text-white text-center relative"
-          style={{ background: "linear-gradient(135deg, #004D2C, #006B3F)" }}
+          style={{ background: "linear-gradient(135deg, #004D2C, #1B365D)" }}
         >
           <button
             onClick={onClose}
@@ -41,7 +41,7 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
           </div>
           <h2
             className="text-xl font-bold mb-1"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "'Inter', serif" }}
           >
             Ready to Enroll?
           </h2>
@@ -54,26 +54,26 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
           {/* Plan summary */}
           <div
             className="rounded-xl p-4 border"
-            style={{ backgroundColor: "#F8FAF9", borderColor: "#E5E7EB" }}
+            style={{ backgroundColor: "#F7F8FA", borderColor: "#E5E7EB" }}
           >
             <div className="flex items-center gap-3 mb-3">
               <CarrierLogo carrier={plan.carrier} size="sm" />
               <div>
                 <div className="text-xs text-gray-500 font-medium">{plan.carrier}</div>
-                <div className="text-sm font-bold text-gray-900" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                <div className="text-sm font-bold text-gray-900" style={{ fontFamily: "'Inter', serif" }}>
                   {plan.planName}
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
-                <div className="text-lg font-bold" style={{ color: "#006B3F", fontFamily: "'DM Serif Display', serif" }}>
+                <div className="text-lg font-bold" style={{ color: "#1B365D", fontFamily: "'Inter', serif" }}>
                   {plan.premium === 0 ? "$0" : `$${plan.premium}`}
                 </div>
                 <div className="text-[10px] text-gray-500">/month</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-gray-800" style={{ fontFamily: "'DM Serif Display', serif" }}>
+                <div className="text-lg font-bold text-gray-800" style={{ fontFamily: "'Inter', serif" }}>
                   ${plan.maxOutOfPocket.toLocaleString()}
                 </div>
                 <div className="text-[10px] text-gray-500">max OOP</div>
@@ -93,12 +93,12 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
 
             <button
               className="w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left"
-              style={{ borderColor: "#F47920", backgroundColor: "#FFF3E0" }}
+              style={{ borderColor: "#C41E3A", backgroundColor: "#FFF3E0" }}
             >
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: "#F47920" }}
+                  style={{ backgroundColor: "#C41E3A" }}
                 >
                   <ExternalLink size={16} className="text-white" />
                 </div>
@@ -109,21 +109,21 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
               </div>
               <span
                 className="text-xs font-bold px-3 py-1.5 rounded-lg text-white"
-                style={{ backgroundColor: "#F47920" }}
+                style={{ backgroundColor: "#C41E3A" }}
               >
                 Go Now
               </span>
             </button>
 
             <button
-              className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-green-50/30 transition-all text-left"
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-[#E8F0FE]/30 transition-all text-left"
             >
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: "#E8F5EE" }}
+                  style={{ backgroundColor: "#E8F0FE" }}
                 >
-                  <Phone size={16} style={{ color: "#006B3F" }} />
+                  <Phone size={16} style={{ color: "#1B365D" }} />
                 </div>
                 <div>
                   <div className="text-sm font-bold text-gray-900">Call to Enroll</div>
@@ -132,7 +132,7 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
               </div>
               <span
                 className="text-xs font-bold px-3 py-1.5 rounded-lg"
-                style={{ color: "#006B3F", backgroundColor: "#E8F5EE" }}
+                style={{ color: "#1B365D", backgroundColor: "#E8F0FE" }}
               >
                 Call Now
               </span>
@@ -142,7 +142,7 @@ export default function EnrollModal({ open, onClose, plan }: EnrollModalProps) {
           {/* Disclaimer */}
           <div
             className="rounded-xl p-3 flex items-start gap-2"
-            style={{ backgroundColor: "#F8FAF9" }}
+            style={{ backgroundColor: "#F7F8FA" }}
           >
             <Shield size={13} className="text-gray-400 shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500 leading-relaxed">

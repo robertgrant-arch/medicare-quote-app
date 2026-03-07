@@ -230,3 +230,26 @@
 - [x] M4: Export FilterSidebarProps interface from FilterSidebar.tsx
 - [x] Write CLAUDE_CODE_REVIEW.md with full findings (38 issues, 26 fixed)
 - [x] All 13 tests passing, zero TypeScript errors after all fixes
+
+## Full UI/UX Redesign — Chapter Medicare Style (Red/White/Blue)
+- [x] Global CSS: Navy (#1B365D), Red (#C41E3A), Light blue (#E8F0FE) color palette
+- [x] Google Fonts: Inter or DM Sans loaded in index.html
+- [x] Header: white sticky nav, navy text, red CTA button, clean minimal layout
+- [x] Home hero: split layout (text left, image right), white/light bg, red highlight word
+- [x] Home stats: light blue card grid, navy numbers, hover animations
+- [x] Home feature cards: white cards, 32px padding, 16px radius, colored icon circles
+- [x] Home carrier logos: clean horizontal row on white (no colored buttons)
+- [x] Home trust section: badges, security icons, social proof
+- [x] Plan cards: white rounded cards, red badges, navy headers, gold stars
+- [x] FilterSidebar: navy/red accent, updated checkboxes and sliders
+- [x] AICompare page: navy/red palette
+- [x] PlanRecommender page: navy/red palette
+- [x] PlanLookup page: navy/red palette
+- [x] Footer: navy background, white text, red hover links
+- [x] InfoPage: navy/red palette
+- [x] CarrierLogo: navy/red palette
+- [x] Scroll animations: fade-in-up on sections
+- [x] Buttons: 8px radius, red primary, navy outline secondary
+- [x] Inputs: rounded, blue focus glow
+- [x] Consistent 80-100px section padding throughout
+- [x] Fix duplicate location display (ZIP + county, not county twice)

@@ -11,7 +11,7 @@ export default function MAHMOPlans() {
       subtitle="Health Maintenance Organization plans deliver coordinated, cost-effective care through a defined provider network — often with $0 premiums and rich extra benefits."
     >
       {/* Overview */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is a Medicare Advantage HMO?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -28,7 +28,7 @@ export default function MAHMOPlans() {
       </p>
 
       {/* How it works */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How an HMO Works
       </h2>
       <div className="space-y-3 mb-6">
@@ -51,7 +51,7 @@ export default function MAHMOPlans() {
           },
         ].map((item) => (
           <div key={item.step} className="flex gap-3 bg-gray-50 rounded-lg p-4">
-            <div className="w-6 h-6 rounded-full bg-green-100 text-green-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-6 h-6 rounded-full bg-[#E8F0FE] text-[#1B365D] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
               {item.step[0]}
             </div>
             <div>
@@ -63,7 +63,7 @@ export default function MAHMOPlans() {
       </div>
 
       {/* Pros and Cons */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Pros and Cons of HMO Plans
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -110,7 +110,7 @@ export default function MAHMOPlans() {
       </div>
 
       {/* Typical costs */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Typical HMO Cost Structure (2025)
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -144,7 +144,7 @@ export default function MAHMOPlans() {
       </div>
 
       {/* Extra Benefits */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Extra Benefits in 2025
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-4">
@@ -171,7 +171,7 @@ export default function MAHMOPlans() {
       </div>
 
       {/* Who should choose HMO */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Is an HMO Right for You?
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -207,14 +207,14 @@ export default function MAHMOPlans() {
         <Link
           href="/plans?zip=64106"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white"
-          style={{ backgroundColor: "#006B3F" }}
+          style={{ backgroundColor: "#1B365D" }}
         >
           Browse HMO Plans in Your Area →
         </Link>
         <Link
           href="/medicare-advantage/ppo"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border"
-          style={{ color: "#006B3F", borderColor: "#006B3F" }}
+          style={{ color: "#1B365D", borderColor: "#1B365D" }}
         >
           Compare with PPO Plans
         </Link>

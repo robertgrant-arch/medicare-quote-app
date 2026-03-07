@@ -13,7 +13,7 @@ export function CompareDrugPlans() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Compare Drug Plans" accentColor={ACCENT}
       subtitle="Understanding how to compare Medicare Part D plans can save you hundreds or thousands of dollars per year. Here's what to look for.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is Medicare Part D?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -24,7 +24,7 @@ export function CompareDrugPlans() {
         Medicare beneficiaries have some form of Part D coverage.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Key Factors When Comparing Part D Plans
       </h2>
       <div className="space-y-3 mb-6">
@@ -62,7 +62,7 @@ export function CompareDrugPlans() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         2025 Part D Cost Structure
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -93,7 +93,7 @@ export function CompareDrugPlans() {
         </table>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Step-by-Step: How to Compare Plans
       </h2>
       <ol className="space-y-3 mb-6">
@@ -133,7 +133,7 @@ export function DrugFormularySearch() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Drug Formulary Search" accentColor={ACCENT}
       subtitle="A formulary is a plan's list of covered drugs. Understanding how formularies work helps you find plans that cover your medications at the lowest cost.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is a Drug Formulary?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -149,12 +149,12 @@ export function DrugFormularySearch() {
         (or at the time of your next refill), and you have the right to request an exception.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         The 5-Tier Drug Formulary System
       </h2>
       <div className="space-y-2 mb-6">
         {[
-          { tier: "Tier 1 — Preferred Generics", copay: "$0 – $5", color: "bg-green-100 border-green-200", textColor: "text-green-800", examples: "Metformin, lisinopril, atorvastatin, amlodipine, omeprazole, sertraline, levothyroxine" },
+          { tier: "Tier 1 — Preferred Generics", copay: "$0 – $5", color: "bg-[#E8F0FE] border-[#C8D8F5]", textColor: "text-green-800", examples: "Metformin, lisinopril, atorvastatin, amlodipine, omeprazole, sertraline, levothyroxine" },
           { tier: "Tier 2 — Non-Preferred Generics", copay: "$5 – $15", color: "bg-teal-50 border-teal-200", textColor: "text-teal-800", examples: "Higher-cost generics without a preferred generic equivalent" },
           { tier: "Tier 3 — Preferred Brand-Name", copay: "$35 – $50", color: "bg-blue-50 border-blue-200", textColor: "text-blue-800", examples: "Eliquis, Jardiance, Xarelto, Ozempic, Trulicity, Entresto" },
           { tier: "Tier 4 — Non-Preferred Brand-Name", copay: "$80 – $100", color: "bg-orange-50 border-orange-200", textColor: "text-orange-800", examples: "Brand drugs with available generic alternatives; newer brand drugs" },
@@ -170,7 +170,7 @@ export function DrugFormularySearch() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Coverage Rules That Can Affect Your Drugs
       </h2>
       <div className="space-y-3 mb-6">
@@ -199,7 +199,7 @@ export function DrugFormularySearch() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Search for Your Drugs
       </h2>
       <ul className="space-y-2 text-sm text-gray-600 mb-4">
@@ -250,7 +250,7 @@ export function ExtraHelpPrograms() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Extra Help Programs" accentColor={ACCENT}
       subtitle="The Extra Help program (Low Income Subsidy) can eliminate most or all of your Part D drug costs if you have limited income and resources.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is Extra Help?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -265,7 +265,7 @@ export function ExtraHelpPrograms() {
         qualify, you could save $5,000 or more per year on prescription drug costs.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         2025 Eligibility Requirements
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -288,7 +288,7 @@ export function ExtraHelpPrograms() {
             ].map((row) => (
               <tr key={row.req} className="border border-gray-200 hover:bg-gray-50">
                 <td className="p-3 font-medium text-gray-800">{row.req}</td>
-                <td className="p-3 text-green-700 font-medium">{row.full}</td>
+                <td className="p-3 text-[#1B365D] font-medium">{row.full}</td>
                 <td className="p-3 text-blue-700">{row.partial}</td>
               </tr>
             ))}
@@ -300,7 +300,7 @@ export function ExtraHelpPrograms() {
         Income limits are approximate and adjusted annually. Verify current limits at SSA.gov or Medicare.gov.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Extra Help Pays For
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -342,7 +342,7 @@ export function ExtraHelpPrograms() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Automatic Enrollment — Who Qualifies Without Applying
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -361,7 +361,7 @@ export function ExtraHelpPrograms() {
         ))}
       </ul>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Apply for Extra Help
       </h2>
       <ol className="space-y-3 mb-6">
@@ -414,7 +414,7 @@ export function PartDEnrollment() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Part D Enrollment" accentColor={ACCENT}
       subtitle="Enrolling in Part D at the right time is critical — missing your enrollment window can result in a permanent late enrollment penalty added to your premium for life.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         When Can You Enroll in Part D?
       </h2>
       <div className="space-y-3 mb-6">
@@ -423,7 +423,7 @@ export function PartDEnrollment() {
             period: "Initial Enrollment Period (IEP)",
             when: "7-month window: 3 months before you turn 65, the month of your birthday, and 3 months after",
             detail: "This is your first opportunity to enroll in Part D. Enrolling during the first 3 months of your IEP ensures coverage starts on the 1st of the month you turn 65.",
-            color: "border-green-200 bg-green-50",
+            color: "border-[#C8D8F5] bg-green-50",
             badge: "Best Time to Enroll",
           },
           {
@@ -459,7 +459,7 @@ export function PartDEnrollment() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         The Late Enrollment Penalty — Avoid It at All Costs
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -478,7 +478,7 @@ export function PartDEnrollment() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Counts as Creditable Coverage?
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -501,7 +501,7 @@ export function PartDEnrollment() {
         ))}
       </ul>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Enroll in Part D
       </h2>
       <ol className="space-y-3 mb-6">

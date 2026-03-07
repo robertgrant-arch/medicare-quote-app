@@ -11,7 +11,7 @@ export default function MASNPlans() {
       subtitle="SNPs are tailored Medicare Advantage plans designed for people with specific chronic conditions, dual Medicare-Medicaid eligibility, or institutional care needs."
     >
       {/* Overview */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is a Special Needs Plan (SNP)?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -28,7 +28,7 @@ export default function MASNPlans() {
       </p>
 
       {/* Three types */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         The Three Types of SNPs
       </h2>
       <div className="space-y-4 mb-6">
@@ -138,7 +138,7 @@ export default function MASNPlans() {
       </div>
 
       {/* SNP vs standard MA */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How SNPs Differ from Standard MA Plans
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -147,7 +147,7 @@ export default function MASNPlans() {
             <tr className="bg-green-50">
               <th className="text-left p-3 font-semibold text-gray-700 border border-gray-200">Feature</th>
               <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center">Standard MA</th>
-              <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center bg-green-100">SNP</th>
+              <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center bg-[#E8F0FE]">SNP</th>
             </tr>
           </thead>
           <tbody>
@@ -171,7 +171,7 @@ export default function MASNPlans() {
       </div>
 
       {/* Enrollment */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Enrolling in an SNP
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -207,14 +207,14 @@ export default function MASNPlans() {
         <Link
           href="/plans?zip=64106"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white"
-          style={{ backgroundColor: "#006B3F" }}
+          style={{ backgroundColor: "#1B365D" }}
         >
           Browse SNP Plans in Your Area <ArrowRight size={14} />
         </Link>
         <Link
           href="/dual-eligible"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border"
-          style={{ color: "#006B3F", borderColor: "#006B3F" }}
+          style={{ color: "#1B365D", borderColor: "#1B365D" }}
         >
           Learn About Dual Eligible Benefits
         </Link>

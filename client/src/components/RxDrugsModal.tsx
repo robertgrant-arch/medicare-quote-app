@@ -1,5 +1,5 @@
 // RxDrugsModal — Add prescription drugs to personalize plan comparison
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
 
 import { useState } from "react";
 import { X, Pill, Search, Plus, Trash2, CheckCircle2 } from "lucide-react";
@@ -54,19 +54,19 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
         {/* Header */}
         <div
           className="flex items-center justify-between p-5 border-b border-gray-100"
-          style={{ backgroundColor: "#F8FAF9" }}
+          style={{ backgroundColor: "#F7F8FA" }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: "#E8F5EE" }}
+              style={{ backgroundColor: "#E8F0FE" }}
             >
-              <Pill size={20} style={{ color: "#006B3F" }} />
+              <Pill size={20} style={{ color: "#1B365D" }} />
             </div>
             <div>
               <h2
                 className="text-lg font-bold text-gray-900"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "'Inter', serif" }}
               >
                 Add Your Prescriptions
               </h2>
@@ -92,7 +92,7 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
               placeholder="Search for a drug name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-green-600 transition-colors"
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1B365D] transition-colors"
               style={{ fontFamily: "'DM Sans', sans-serif" }}
             />
           </div>
@@ -108,16 +108,16 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                   <div
                     key={drug.id}
                     className="flex items-center justify-between p-3 rounded-xl border"
-                    style={{ borderColor: "#C3E6D4", backgroundColor: "#F0FBF4" }}
+                    style={{ borderColor: "#C8D8F5", backgroundColor: "#F0FBF4" }}
                   >
                     <div className="flex items-center gap-2.5">
-                      <CheckCircle2 size={16} style={{ color: "#006B3F" }} />
+                      <CheckCircle2 size={16} style={{ color: "#1B365D" }} />
                       <div>
                         <div className="text-sm font-semibold text-gray-800">{drug.name}</div>
                         <div className="text-xs text-gray-500">
                           {drug.dosage} · {drug.frequency}
                           {drug.isGeneric && (
-                            <span className="ml-2 text-green-700 font-medium">Generic</span>
+                            <span className="ml-2 text-[#1B365D] font-medium">Generic</span>
                           )}
                         </div>
                       </div>
@@ -148,7 +148,7 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                 {filteredDrugs.slice(0, 8).map((drug) => (
                   <div
                     key={drug.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all cursor-pointer"
+                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-[#C8D8F5] hover:bg-[#E8F0FE]/30 transition-all cursor-pointer"
                     onClick={() => addDrug(drug)}
                   >
                     <div className="flex items-center gap-2.5">
@@ -163,14 +163,14 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                         <div className="text-xs text-gray-500">
                           {drug.dosage} · {drug.frequency}
                           {drug.isGeneric && (
-                            <span className="ml-2 text-green-700 font-medium">Generic available</span>
+                            <span className="ml-2 text-[#1B365D] font-medium">Generic available</span>
                           )}
                         </div>
                       </div>
                     </div>
                     <button
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors"
-                      style={{ color: "#006B3F", backgroundColor: "#E8F5EE" }}
+                      style={{ color: "#1B365D", backgroundColor: "#E8F0FE" }}
                     >
                       <Plus size={12} />
                       Add
@@ -193,12 +193,12 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
           <button
             onClick={handleSave}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md"
-            style={{ backgroundColor: "#006B3F" }}
+            style={{ backgroundColor: "#1B365D" }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#004D2C";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#006B3F";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#1B365D";
             }}
           >
             Save {drugs.length > 0 ? `(${drugs.length}) ` : ""}Medications

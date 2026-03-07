@@ -1,5 +1,5 @@
 // Medicare Advantage Plan Quote Engine — Type Definitions
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
 
 export type PlanType = "HMO" | "PPO" | "PFFS" | "SNP";
 

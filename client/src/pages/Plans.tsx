@@ -1,5 +1,5 @@
 // Medicare Advantage Quote Engine — Plans Results Page
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Chapter-style | Navy #1B365D | Red #C41E3A | Light Blue #E8F0FE
 // Layout: Sticky top bar + horizontal quick filters + 2-col plan grid + left filter sidebar
 
 import { useState, useMemo, useEffect } from "react";
@@ -152,9 +152,7 @@ export default function Plans() {
       .finally(() => setPlansLoading(false));
   }, [zip]);
 
-  // Determine city from ZIP
   // Server returns title-case county name; just append state
-  const cityName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : `ZIP ${zip}`;
   const countyName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : "Loading...";
 
   const filteredPlans = useMemo(() => {
@@ -214,27 +212,30 @@ export default function Plans() {
     (filters.premiumRange[1] < 200 ? 1 : 0);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F8FA" }}>
       <Header />
 
       {/* ── Results Header Bar ────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 shadow-sm">
+      <div className="bg-white border-b" style={{ borderColor: "#E8F0FE", boxShadow: "0 1px 8px rgba(27,54,93,0.08)" }}>
         <div className="container py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Breadcrumb + location */}
             <div className="flex items-center gap-3">
               <Link
                 href="/"
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-700 transition-colors no-underline font-medium"
+                className="flex items-center gap-1.5 text-sm font-medium no-underline transition-colors"
+              style={{ color: "#6B7280" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#1B365D"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#6B7280"; }}
               >
                 <ArrowLeft size={15} />
                 <span className="hidden sm:inline">Back</span>
               </Link>
               <div className="w-px h-4 bg-gray-200" />
               <div className="flex items-center gap-1.5">
-                <MapPin size={15} style={{ color: "#006B3F" }} />
+                <MapPin size={15} style={{ color: "#C41E3A" }} />
                 <span className="text-sm font-semibold text-gray-800">
-                  {cityName} · {countyName}
+                  ZIP {zip} · {countyName}
                 </span>
               </div>
             </div>
@@ -256,7 +257,7 @@ export default function Plans() {
                 <button
                   onClick={handleZipSearch}
                   className="px-2.5 py-1.5 text-white text-xs font-semibold"
-                  style={{ backgroundColor: "#006B3F" }}
+                  style={{ backgroundColor: "#1B365D" }}
                 >
                   <Search size={13} />
                 </button>
@@ -267,9 +268,9 @@ export default function Plans() {
                 onClick={() => setRxModalOpen(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
                 style={{
-                  borderColor: rxDrugs.length > 0 ? "#006B3F" : "#E5E7EB",
-                  color: rxDrugs.length > 0 ? "#006B3F" : "#374151",
-                  backgroundColor: rxDrugs.length > 0 ? "#E8F5EE" : "white",
+                  borderColor: rxDrugs.length > 0 ? "#1B365D" : "#E5E7EB",
+                  color: rxDrugs.length > 0 ? "#1B365D" : "#374151",
+                  backgroundColor: rxDrugs.length > 0 ? "#E8F0FE" : "white",
                 }}
               >
                 <Pill size={13} />
@@ -281,9 +282,9 @@ export default function Plans() {
                 onClick={() => setDoctorsModalOpen(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
                 style={{
-                  borderColor: doctors.length > 0 ? "#006B3F" : "#E5E7EB",
-                  color: doctors.length > 0 ? "#006B3F" : "#374151",
-                  backgroundColor: doctors.length > 0 ? "#E8F5EE" : "white",
+                  borderColor: doctors.length > 0 ? "#1B365D" : "#E5E7EB",
+                  color: doctors.length > 0 ? "#1B365D" : "#374151",
+                  backgroundColor: doctors.length > 0 ? "#E8F0FE" : "white",
                 }}
               >
                 <UserRound size={13} />
@@ -312,7 +313,7 @@ export default function Plans() {
       </div>
 
       {/* ── Quick Filter Tabs ─────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-white border-b" style={{ borderColor: "#E8F0FE" }}>
         <div className="container">
           <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
             {QUICK_FILTERS.map((qf) => (
@@ -325,8 +326,8 @@ export default function Plans() {
                 <span
                   className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{
-                    backgroundColor: filters.quickFilter === qf.key ? "rgba(255,255,255,0.25)" : "#F3F4F6",
-                    color: filters.quickFilter === qf.key ? "white" : "#6B7280",
+                    backgroundColor: filters.quickFilter === qf.key ? "rgba(255,255,255,0.3)" : "#E8F0FE",
+                    color: filters.quickFilter === qf.key ? "white" : "#1B365D",
                   }}
                 >
                   {qf.count}
@@ -345,7 +346,7 @@ export default function Plans() {
                 {activeFilterCount > 0 && (
                   <span
                     className="w-4 h-4 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-                    style={{ backgroundColor: "#006B3F" }}
+                    style={{ backgroundColor: "#1B365D" }}
                   >
                     {activeFilterCount}
                   </span>
@@ -358,7 +359,7 @@ export default function Plans() {
                   onClick={() => setViewMode("grid")}
                   className="p-1.5 transition-colors"
                   style={{
-                    backgroundColor: viewMode === "grid" ? "#006B3F" : "white",
+                    backgroundColor: viewMode === "grid" ? "#1B365D" : "white",
                     color: viewMode === "grid" ? "white" : "#6B7280",
                   }}
                 >
@@ -368,7 +369,7 @@ export default function Plans() {
                   onClick={() => setViewMode("list")}
                   className="p-1.5 transition-colors"
                   style={{
-                    backgroundColor: viewMode === "list" ? "#006B3F" : "white",
+                    backgroundColor: viewMode === "list" ? "#1B365D" : "white",
                     color: viewMode === "list" ? "white" : "#6B7280",
                   }}
                 >
@@ -400,8 +401,8 @@ export default function Plans() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1
-                  className="text-xl font-bold text-gray-900"
-                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                  className="text-xl font-bold"
+                  style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}
                 >
                   {showFavoritesOnly ? "Saved Plans" : "Medicare Advantage Plans"}
                 </h1>
@@ -409,7 +410,7 @@ export default function Plans() {
                   {filteredPlans.length} plan{filteredPlans.length !== 1 ? "s" : ""} available
                   {showFavoritesOnly ? " (saved)" : ` in ${countyName}`}
                   {activeFilterCount > 0 && (
-                    <span className="ml-2 text-xs font-semibold" style={{ color: "#006B3F" }}>
+                    <span className="ml-2 text-xs font-semibold" style={{ color: "#1B365D" }}>
                       · {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""} applied
                     </span>
                   )}
@@ -421,7 +422,7 @@ export default function Plans() {
                 <Link
                   href="/ai-compare"
                   className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg no-underline transition-all"
-                  style={{ backgroundColor: "#FFF3E8", color: "#F47920", border: "1.5px solid #F4792030" }}
+                  style={{ backgroundColor: "#FDEEF1", color: "#C41E3A", border: "1.5px solid rgba(196,30,58,0.2)" }}
                 >
                   <Sparkles size={12} />
                   AI Compare
@@ -443,11 +444,11 @@ export default function Plans() {
             {(rxDrugs.length > 0 || doctors.length > 0) && (
               <div
                 className="rounded-xl p-3 mb-4 flex items-center gap-3 border"
-                style={{ backgroundColor: "#E8F5EE", borderColor: "#C3E6D4" }}
+                style={{ backgroundColor: "#E8F0FE", borderColor: "#C8D8F5" }}
               >
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "#006B3F" }}
+                  style={{ backgroundColor: "#1B365D" }}
                 >
                   <span className="text-white text-xs font-bold">✓</span>
                 </div>
@@ -470,7 +471,7 @@ export default function Plans() {
             {/* Loading state */}
             {plansLoading && (
               <div className="text-center py-16">
-                <div className="w-12 h-12 rounded-full border-4 border-green-200 border-t-green-700 animate-spin mx-auto mb-4" />
+                <div className="w-12 h-12 rounded-full border-4 animate-spin mx-auto mb-4" style={{ borderColor: "#E8F0FE", borderTopColor: "#1B365D" }} />
                 <p className="text-gray-500 font-medium">Loading Medicare Advantage plans for ZIP {zip}…</p>
                 <p className="text-xs text-gray-400 mt-1">Fetching real CMS 2026 data — this may take 10–20 seconds on first load</p>
               </div>
@@ -482,7 +483,7 @@ export default function Plans() {
                 <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-50">
                   <Search size={28} className="text-red-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>No Plans Found</h3>
+                <h3 className="text-xl font-bold mb-2" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>No Plans Found</h3>
                 <p className="text-gray-500 mb-4">{plansError}</p>
                 <p className="text-sm text-gray-400">Try a different ZIP code or check back later.</p>
               </div>
@@ -493,13 +494,13 @@ export default function Plans() {
               <div className="text-center py-16">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ backgroundColor: "#E8F5EE" }}
+                  style={{ backgroundColor: "#E8F0FE" }}
                 >
-                  <Search size={28} style={{ color: "#006B3F" }} />
+                  <Search size={28} style={{ color: "#1B365D" }} />
                 </div>
                 <h3
-                  className="text-xl font-bold text-gray-800 mb-2"
-                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                  className="text-xl font-bold mb-2"
+                  style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}
                 >
                   No plans match your filters
                 </h3>
@@ -509,7 +510,7 @@ export default function Plans() {
                 <button
                   onClick={() => setFilters(DEFAULT_FILTERS)}
                   className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
-                  style={{ backgroundColor: "#006B3F" }}
+                  style={{ backgroundColor: "#C41E3A" }}
                 >
                   Clear All Filters
                 </button>
@@ -538,7 +539,7 @@ export default function Plans() {
             )}
 
             {/* Bottom disclaimer */}
-            <div className="mt-8 p-4 rounded-xl border border-gray-100 bg-white">
+            <div className="mt-8 p-4 rounded-xl bg-white" style={{ border: "1px solid #E8F0FE" }}>
               <p className="text-xs text-gray-400 leading-relaxed">
                 <strong className="text-gray-500">Data Source:</strong> Plan information is sourced from the CMS CY2026 Medicare Advantage Landscape file. Benefit details are AI-estimated. Always verify plan details directly with the insurance carrier before enrolling. Medicare has neither reviewed nor endorsed this information.
               </p>
@@ -556,7 +557,7 @@ export default function Plans() {
           />
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <span className="font-bold text-gray-900">Filter Plans</span>
+              <span className="font-bold" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>Filter Plans</span>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-2 rounded-full hover:bg-gray-100"

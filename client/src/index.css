@@ -40,50 +40,66 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  
-  /* Medicare Brand Colors */
-  --color-brand-green: #006B3F;
-  --color-brand-green-dark: #004D2C;
-  --color-brand-green-light: #E8F5EE;
-  --color-brand-orange: #F47920;
-  --color-brand-orange-dark: #D4650F;
-  --color-brand-orange-light: #FFF3E0;
+
+  /* ── Medicare Brand Colors (Red/White/Blue Palette) ── */
+  --color-brand-navy: #1B365D;
+  --color-brand-navy-dark: #122444;
+  --color-brand-navy-light: #2A4A7F;
+  --color-brand-red: #C41E3A;
+  --color-brand-red-dark: #A01830;
+  --color-brand-red-light: #FDEEF1;
+  --color-brand-blue-light: #E8F0FE;
+  --color-brand-blue-mid: #DBEAFE;
+  --color-brand-gray: #333333;
+  --color-brand-gray-light: #F7F8FA;
 }
 
 :root {
-  --primary: oklch(0.35 0.12 155);
+  /* Primary = Navy Blue */
+  --primary: oklch(0.28 0.08 250);
   --primary-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.35 0.12 155);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --chart-1: oklch(0.35 0.12 155);
-  --chart-2: oklch(0.55 0.14 40);
-  --chart-3: oklch(0.45 0.12 155);
-  --chart-4: oklch(0.65 0.14 40);
-  --chart-5: oklch(0.25 0.10 155);
-  --radius: 0.5rem;
-  --background: oklch(0.98 0.004 155);
-  --foreground: oklch(0.18 0.015 155);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.015 155);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.015 155);
-  --secondary: oklch(0.96 0.008 155);
-  --secondary-foreground: oklch(0.35 0.12 155);
-  --muted: oklch(0.94 0.006 155);
-  --muted-foreground: oklch(0.52 0.016 155);
-  --accent: oklch(0.93 0.012 155);
-  --accent-foreground: oklch(0.25 0.10 155);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Secondary = Light Blue */
+  --secondary: oklch(0.94 0.02 250);
+  --secondary-foreground: oklch(0.28 0.08 250);
+  /* Muted */
+  --muted: oklch(0.96 0.01 250);
+  --muted-foreground: oklch(0.52 0.02 250);
+  /* Accent = Light Blue tint */
+  --accent: oklch(0.92 0.03 250);
+  --accent-foreground: oklch(0.28 0.08 250);
+  /* Destructive = Red */
+  --destructive: oklch(0.45 0.18 20);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.90 0.008 155);
-  --input: oklch(0.90 0.008 155);
-  --ring: oklch(0.35 0.12 155);
-  --sidebar: oklch(0.98 0.004 155);
-  --sidebar-foreground: oklch(0.18 0.015 155);
-  --sidebar-accent: oklch(0.93 0.012 155);
-  --sidebar-accent-foreground: oklch(0.25 0.10 155);
-  --sidebar-border: oklch(0.90 0.008 155);
-  --sidebar-ring: oklch(0.35 0.12 155);
+  /* Background / Foreground */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.22 0.01 250);
+  /* Card */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.01 250);
+  /* Popover */
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.01 250);
+  /* Border / Input / Ring */
+  --border: oklch(0.90 0.01 250);
+  --input: oklch(0.90 0.01 250);
+  --ring: oklch(0.28 0.08 250);
+  /* Radius */
+  --radius: 0.5rem;
+  /* Charts */
+  --chart-1: oklch(0.28 0.08 250);
+  --chart-2: oklch(0.45 0.18 20);
+  --chart-3: oklch(0.55 0.12 250);
+  --chart-4: oklch(0.65 0.14 40);
+  --chart-5: oklch(0.75 0.10 250);
+  /* Sidebar */
+  --sidebar: oklch(0.98 0.005 250);
+  --sidebar-foreground: oklch(0.22 0.01 250);
+  --sidebar-primary: oklch(0.28 0.08 250);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.92 0.03 250);
+  --sidebar-accent-foreground: oklch(0.28 0.08 250);
+  --sidebar-border: oklch(0.90 0.01 250);
+  --sidebar-ring: oklch(0.28 0.08 250);
 }
 
 @layer base {
@@ -92,10 +108,15 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', 'DM Sans', sans-serif;
+    color: #333333;
+    line-height: 1.6;
   }
-  h1, h2, h3 {
-    font-family: 'DM Serif Display', serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', 'DM Sans', sans-serif;
+    font-weight: 700;
+    color: #1B365D;
+    line-height: 1.25;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -139,47 +160,73 @@
     }
   }
 
-  /* Medicare Brand Utilities */
+  /* ── Primary Button (Red) ── */
   .btn-primary {
-    background-color: #006B3F;
+    background-color: #C41E3A;
     color: white;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 600;
-    transition: background-color 0.2s ease;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   }
   .btn-primary:hover {
-    background-color: #004D2C;
+    background-color: #A01830;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
   }
 
+  /* ── CTA Button (Red — same as primary) ── */
   .btn-cta {
-    background-color: #F47920;
+    background-color: #C41E3A;
     color: white;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   }
   .btn-cta:hover {
-    background-color: #D4650F;
+    background-color: #A01830;
     transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(196, 30, 58, 0.35);
   }
   .btn-cta:active {
     transform: translateY(0);
   }
 
+  /* ── Secondary / Outline Button (Navy) ── */
+  .btn-secondary {
+    background-color: transparent;
+    color: #1B365D;
+    border: 2px solid #1B365D;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+  .btn-secondary:hover {
+    background-color: #1B365D;
+    color: white;
+  }
+
+  /* ── Plan Card ── */
   .plan-card {
     background: white;
     border: 1.5px solid #E5E7EB;
-    border-radius: 12px;
+    border-radius: 16px;
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
   }
   .plan-card:hover {
-    border-color: #006B3F;
-    box-shadow: 0 8px 24px rgba(0, 107, 63, 0.12);
+    border-color: #1B365D;
+    box-shadow: 0 8px 32px rgba(27, 54, 93, 0.12);
     transform: translateY(-2px);
   }
 
+  /* ── Star Ratings ── */
   .star-filled {
     color: #F59E0B;
     fill: #F59E0B;
@@ -192,6 +239,7 @@
     fill: #D1D5DB;
   }
 
+  /* ── Benefit Chips ── */
   .benefit-chip {
     display: inline-flex;
     align-items: center;
@@ -200,13 +248,13 @@
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     letter-spacing: 0.02em;
   }
   .benefit-chip-green {
-    background-color: #E8F5EE;
-    color: #006B3F;
-    border: 1px solid #C3E6D4;
+    background-color: #E8F0FE;
+    color: #1B365D;
+    border: 1px solid #BFCFE8;
   }
   .benefit-chip-gray {
     background-color: #F3F4F6;
@@ -215,12 +263,13 @@
     text-decoration: line-through;
   }
 
+  /* ── Quick Filter Tabs ── */
   .quick-filter-tab {
     padding: 7px 18px;
     border-radius: 24px;
     font-size: 13px;
     font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     border: 1.5px solid #E5E7EB;
     background: white;
     color: #374151;
@@ -228,26 +277,28 @@
     cursor: pointer;
   }
   .quick-filter-tab:hover {
-    border-color: #006B3F;
-    color: #006B3F;
+    border-color: #1B365D;
+    color: #1B365D;
   }
   .quick-filter-tab.active {
-    background-color: #006B3F;
-    border-color: #006B3F;
+    background-color: #1B365D;
+    border-color: #1B365D;
     color: white;
   }
 
+  /* ── Filter Section Title ── */
   .filter-section-title {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: #6B7280;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
+  /* ── Plan Badges ── */
   .badge-best-match {
-    background: linear-gradient(135deg, #006B3F, #00A651);
+    background: linear-gradient(135deg, #1B365D, #2A4A7F);
     color: white;
     font-size: 10px;
     font-weight: 700;
@@ -258,11 +309,11 @@
     left: 0;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   .badge-popular {
-    background: #F47920;
+    background: linear-gradient(135deg, #C41E3A, #A01830);
     color: white;
     font-size: 10px;
     font-weight: 700;
@@ -273,7 +324,7 @@
     left: 0;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   .badge-new {
@@ -288,14 +339,14 @@
     left: 0;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
-  /* Animations */
+  /* ── Scroll-triggered Fade-in-up ── */
   @keyframes fadeInUp {
     from {
       opacity: 0;
-      transform: translateY(16px);
+      transform: translateY(24px);
     }
     to {
       opacity: 1;
@@ -304,7 +355,24 @@
   }
 
   .animate-fade-in-up {
-    animation: fadeInUp 0.4s ease forwards;
+    animation: fadeInUp 0.5s ease forwards;
+  }
+
+  .animate-fade-in-up-delay-1 {
+    animation: fadeInUp 0.5s ease 0.1s forwards;
+    opacity: 0;
+  }
+  .animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.5s ease 0.2s forwards;
+    opacity: 0;
+  }
+  .animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.5s ease 0.3s forwards;
+    opacity: 0;
+  }
+  .animate-fade-in-up-delay-4 {
+    animation: fadeInUp 0.5s ease 0.4s forwards;
+    opacity: 0;
   }
 
   @keyframes slideDown {
@@ -324,36 +392,54 @@
     animation: slideDown 0.3s ease forwards;
   }
 
-  /* Scrollbar */
+  /* ── Scroll-reveal utility (JS-toggled) ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Input focus glow ── */
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(27, 54, 93, 0.15);
+    border-color: #1B365D !important;
+  }
+
+  /* ── Scrollbar ── */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #F3F4F6;
+    background: #F7F8FA;
   }
   ::-webkit-scrollbar-thumb {
-    background: #C3E6D4;
+    background: #BFCFE8;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #006B3F;
+    background: #1B365D;
   }
 }
 
-/* ── AI Analysis output styles (used in AICompare.tsx) ────────────────────── */
+/* ── AI Analysis output styles ── */
 .ai-analysis h2 {
-  font-family: 'DM Serif Display', serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1F2937;
+  color: #1B365D;
   margin-top: 1.25rem;
   margin-bottom: 0.4rem;
   padding-bottom: 0.3rem;
-  border-bottom: 2px solid #E8F5EE;
+  border-bottom: 2px solid #E8F0FE;
 }
 .ai-analysis h2:first-child { margin-top: 0; }
-.ai-analysis p { color: #374151; line-height: 1.65; margin-bottom: 0.75rem; font-size: 0.875rem; }
+.ai-analysis p { color: #333333; line-height: 1.65; margin-bottom: 0.75rem; font-size: 0.875rem; }
 .ai-analysis ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
-.ai-analysis li { color: #374151; font-size: 0.875rem; margin-bottom: 0.3rem; line-height: 1.55; }
-.ai-analysis strong { color: #111827; font-weight: 600; }
+.ai-analysis li { color: #333333; font-size: 0.875rem; margin-bottom: 0.3rem; line-height: 1.55; }
+.ai-analysis strong { color: #1B365D; font-weight: 600; }

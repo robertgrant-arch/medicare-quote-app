@@ -1,5 +1,5 @@
 // PlanCard component — Medicare Advantage plan display card
-// Design: Bold Civic Design | Primary: #006B3F | CTA: #F47920
+// Design: Chapter-style | Navy #1B365D | Red #C41E3A | Light Blue #E8F0FE
 
 import { useState } from "react";
 import {
@@ -101,7 +101,7 @@ export default function PlanCard({
               </div>
               <h3
                 className="text-base font-bold text-gray-900 leading-snug"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif", fontWeight: 700 }}
               >
                 {plan.planName}
               </h3>
@@ -113,15 +113,15 @@ export default function PlanCard({
                       plan.planType === "HMO"
                         ? "#DBEAFE"
                         : plan.planType === "PPO"
-                        ? "#D1FAE5"
+                        ? "#E8F0FE"
                         : plan.planType === "SNP"
                         ? "#FEF3C7"
                         : "#F3F4F6",
                     color:
                       plan.planType === "HMO"
-                        ? "#1D4ED8"
+                        ? "#1B365D"
                         : plan.planType === "PPO"
-                        ? "#065F46"
+                        ? "#1B365D"
                         : plan.planType === "SNP"
                         ? "#92400E"
                         : "#374151",
@@ -157,29 +157,29 @@ export default function PlanCard({
         </div>
 
         {/* ── Pricing Row ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl" style={{ backgroundColor: "#F8FAF9" }}>
+        <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl" style={{ backgroundColor: "#F7F8FA" }}>
           <div className="text-center">
             <div
               className="text-2xl font-bold"
-              style={{ color: plan.premium === 0 ? "#006B3F" : "#1F2937", fontFamily: "'DM Serif Display', serif" }}
+              style={{ color: plan.premium === 0 ? "#C41E3A" : "#1B365D", fontFamily: "'Inter', sans-serif", fontWeight: 800 }}
             >
               {plan.premium === 0 ? "$0" : `$${plan.premium}`}
             </div>
             <div className="text-[10px] text-gray-500 font-medium">/month premium</div>
             {plan.partBPremiumReduction > 0 && (
-              <div className="text-[10px] font-semibold mt-0.5" style={{ color: "#006B3F" }}>
+              <div className="text-[10px] font-semibold mt-0.5" style={{ color: "#1B365D" }}>
                 +${plan.partBPremiumReduction} Part B reduction
               </div>
             )}
           </div>
           <div className="text-center border-x border-gray-200">
-            <div className="text-lg font-bold text-gray-800" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <div className="text-lg font-bold" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>
               ${plan.deductible === 0 ? "0" : plan.deductible.toLocaleString()}
             </div>
             <div className="text-[10px] text-gray-500 font-medium">deductible</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-bold text-gray-800" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <div className="text-lg font-bold" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>
               ${plan.maxOutOfPocket.toLocaleString()}
             </div>
             <div className="text-[10px] text-gray-500 font-medium">max out-of-pocket</div>
@@ -198,7 +198,7 @@ export default function PlanCard({
               <span className="text-xs text-gray-500">{item.label}</span>
               <span
                 className="text-xs font-semibold"
-                style={{ color: item.value.startsWith("$0") ? "#006B3F" : "#374151" }}
+                style={{ color: item.value.startsWith("$0") ? "#1B365D" : "#374151" }}
               >
                 {item.value}
               </span>
@@ -209,10 +209,10 @@ export default function PlanCard({
         {/* ── Rx Drug Coverage ──────────────────────────────────────────── */}
         <div className="mb-4 p-3 rounded-xl border border-gray-100">
           <div className="flex items-center gap-1.5 mb-2">
-            <Pill size={13} style={{ color: "#006B3F" }} />
+            <Pill size={13} style={{ color: "#1B365D" }} />
             <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Rx Drug Coverage</span>
             {plan.rxDrugs.gap && (
-              <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold ml-auto">
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold ml-auto" style={{ backgroundColor: "#E8F0FE", color: "#1B365D" }}>
                 Gap Coverage
               </span>
             )}
@@ -228,7 +228,7 @@ export default function PlanCard({
                 <div className="text-[10px] text-gray-400 font-medium">{t.tier}</div>
                 <div
                   className="text-xs font-bold mt-0.5"
-                  style={{ color: t.value === "$0 copay" ? "#006B3F" : "#374151" }}
+                  style={{ color: t.value === "$0 copay" ? "#1B365D" : "#374151" }}
                 >
                   {t.value.replace(" copay", "")}
                 </div>
@@ -273,7 +273,7 @@ export default function PlanCard({
             {/* All Copays */}
             <div>
               <div className="flex items-center gap-1.5 mb-2">
-                <Building2 size={13} style={{ color: "#006B3F" }} />
+                <Building2 size={13} style={{ color: "#1B365D" }} />
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
                   All Copays & Cost-Sharing
                 </span>
@@ -290,12 +290,12 @@ export default function PlanCard({
                   <div
                     key={item.label}
                     className="flex justify-between items-center py-1.5 px-2 rounded-lg"
-                    style={{ backgroundColor: "#F8FAF9" }}
+                    style={{ backgroundColor: "#F7F8FA" }}
                   >
                     <span className="text-xs text-gray-600">{item.label}</span>
                     <span
                       className="text-xs font-semibold"
-                      style={{ color: item.value.startsWith("$0") ? "#006B3F" : "#374151" }}
+                      style={{ color: item.value.startsWith("$0") ? "#1B365D" : "#374151" }}
                     >
                       {item.value}
                     </span>
@@ -307,7 +307,7 @@ export default function PlanCard({
             {/* Benefit Details */}
             <div>
               <div className="flex items-center gap-1.5 mb-2">
-                <Info size={13} style={{ color: "#006B3F" }} />
+                        <Info size={13} style={{ color: "#1B365D" }} />
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
                   Benefit Details
                 </span>
@@ -320,11 +320,11 @@ export default function PlanCard({
                     <div
                       key={key}
                       className="flex items-start gap-2 py-1.5 px-2 rounded-lg"
-                      style={{ backgroundColor: "#F8FAF9" }}
+                      style={{ backgroundColor: "#F7F8FA" }}
                     >
                       <div className="flex items-center gap-1.5 min-w-[80px]">
                         {benefit.covered ? (
-                          <CheckCircle2 size={12} style={{ color: "#006B3F" }} />
+                          <CheckCircle2 size={12} style={{ color: "#1B365D" }} />
                         ) : (
                           <XCircle size={12} className="text-gray-300" />
                         )}
@@ -336,7 +336,7 @@ export default function PlanCard({
                       {benefit.annualLimit && (
                         <span
                           className="text-xs font-semibold shrink-0"
-                          style={{ color: "#006B3F" }}
+                          style={{ color: "#1B365D" }}
                         >
                           {benefit.annualLimit}
                         </span>
@@ -383,12 +383,12 @@ export default function PlanCard({
           <button
             onClick={() => onEnroll(plan)}
             className="flex-1 py-2.5 rounded-lg text-sm font-bold text-white transition-all shadow-sm"
-            style={{ backgroundColor: "#F47920" }}
+            style={{ backgroundColor: "#C41E3A" }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#D4650F";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#A01830";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#F47920";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#C41E3A";
             }}
           >
             Enroll Now
@@ -398,11 +398,11 @@ export default function PlanCard({
             className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-all"
             style={{
               borderColor: "#E5E7EB",
-              color: "#006B3F",
+              color: "#1B365D",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#006B3F";
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#E8F5EE";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "#1B365D";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#E8F0FE";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.borderColor = "#E5E7EB";

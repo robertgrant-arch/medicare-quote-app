@@ -3,7 +3,7 @@ import InfoPage from "@/components/InfoPage";
 import { Link } from "wouter";
 import { CheckCircle2, ArrowRight, Phone, Mail, MapPin, Shield, Users, Award, Clock } from "lucide-react";
 
-const ACCENT = "#006B3F";
+const ACCENT = "#1B365D";
 
 // ── About Us ─────────────────────────────────────────────────────────────────
 export function AboutUs() {
@@ -11,7 +11,7 @@ export function AboutUs() {
     <InfoPage section="Company" sectionHref="/#" title="About MedicarePlan Finder" accentColor={ACCENT}
       subtitle="Helping Americans navigate Medicare since 2010. We're an independent, licensed insurance agency committed to unbiased plan comparison.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Our Mission
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -26,7 +26,7 @@ export function AboutUs() {
         without bias toward any single carrier.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Why We're Different
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -37,7 +37,7 @@ export function AboutUs() {
           { icon: Clock, title: "Year-Round Support", desc: "Our licensed agents are available year-round — not just during Open Enrollment. We're here when you need to make changes or have questions." },
         ].map((item) => (
           <div key={item.title} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: "#E8F5EE" }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: "#E8F0FE" }}>
               <item.icon size={18} style={{ color: ACCENT }} />
             </div>
             <div className="font-bold text-gray-800 text-sm mb-1">{item.title}</div>
@@ -46,7 +46,7 @@ export function AboutUs() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Our Numbers
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -57,13 +57,13 @@ export function AboutUs() {
           { value: "500K+", label: "Beneficiaries Helped" },
         ].map((stat) => (
           <div key={stat.label} className="text-center bg-green-50 rounded-xl p-4 border border-green-100">
-            <div className="text-2xl font-bold mb-1" style={{ color: ACCENT, fontFamily: "'DM Serif Display', serif" }}>{stat.value}</div>
+            <div className="text-2xl font-bold mb-1" style={{ color: ACCENT, fontFamily: "'Inter', serif" }}>{stat.value}</div>
             <div className="text-xs text-gray-600 font-medium">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Disclaimer
       </h2>
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-500 leading-relaxed mb-6">
@@ -92,7 +92,7 @@ export function LicensedAgents() {
     <InfoPage section="Company" sectionHref="/#" title="Licensed Agents" accentColor={ACCENT}
       subtitle="Our licensed insurance agents are Medicare specialists — certified annually by CMS and trained to help you find the right plan for your health needs and budget.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Why Work with a Licensed Medicare Agent?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -102,7 +102,7 @@ export function LicensedAgents() {
         all at no cost to you. Agents are paid by insurance carriers, not by beneficiaries.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Our Agents Are Certified to Do
       </h2>
       <ul className="space-y-2 text-sm text-gray-600 mb-6">
@@ -123,7 +123,7 @@ export function LicensedAgents() {
         ))}
       </ul>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Agent Credentials & Compliance
       </h2>
       <div className="space-y-3 mb-6">
@@ -140,7 +140,7 @@ export function LicensedAgents() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Speak with an Agent Today
       </h2>
       <div className="bg-green-50 border border-green-100 rounded-xl p-5 mb-6">
@@ -189,7 +189,7 @@ export function ContactUs() {
           { icon: MapPin, title: "Main Office", primary: "1234 Main Street, Suite 500", secondary: "Kansas City, MO 64106\nLicensed in all 50 states", href: "#" },
         ].map((item) => (
           <div key={item.title} className="bg-gray-50 rounded-xl p-5 border border-gray-100 text-center">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: "#E8F5EE" }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: "#E8F0FE" }}>
               <item.icon size={20} style={{ color: ACCENT }} />
             </div>
             <div className="font-bold text-gray-800 text-sm mb-1">{item.title}</div>
@@ -199,7 +199,7 @@ export function ContactUs() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What to Expect When You Call
       </h2>
       <ol className="space-y-3 mb-6">
@@ -250,7 +250,7 @@ export function PrivacyPolicy() {
         provided for illustrative purposes only and does not constitute a legally binding document.
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Information We Collect
       </h2>
       <div className="space-y-3 mb-6">
@@ -273,7 +273,7 @@ export function PrivacyPolicy() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How We Use Your Information
       </h2>
       <ul className="space-y-2 text-sm text-gray-600 mb-6">
@@ -293,7 +293,7 @@ export function PrivacyPolicy() {
         ))}
       </ul>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Information Sharing
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -313,7 +313,7 @@ export function PrivacyPolicy() {
         ))}
       </ul>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Your Rights
       </h2>
       <div className="space-y-2 mb-6">
@@ -330,7 +330,7 @@ export function PrivacyPolicy() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Contact for Privacy Matters
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-6">
@@ -350,7 +350,7 @@ export function DualEligible() {
     <InfoPage section="Plans" sectionHref="/#" title="Dual Eligible Plans" accentColor={ACCENT}
       subtitle="If you qualify for both Medicare and Medicaid, you may be eligible for Dual Eligible Special Needs Plans (D-SNPs) that coordinate both programs into a single, simplified benefit.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Does "Dual Eligible" Mean?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -366,13 +366,13 @@ export function DualEligible() {
         to coordinate Medicare and Medicaid benefits, reduce paperwork, and lower out-of-pocket costs.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Types of Dual Eligibility
       </h2>
       <div className="overflow-x-auto mb-6">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr style={{ backgroundColor: "#E8F5EE" }}>
+            <tr style={{ backgroundColor: "#E8F0FE" }}>
               <th className="text-left p-3 font-semibold text-gray-700 border border-gray-200">Category</th>
               <th className="text-left p-3 font-semibold text-gray-700 border border-gray-200">Income Limit (2025)</th>
               <th className="text-left p-3 font-semibold text-gray-700 border border-gray-200">What Medicaid Pays</th>
@@ -389,14 +389,14 @@ export function DualEligible() {
               <tr key={row.cat} className="border border-gray-200 hover:bg-gray-50">
                 <td className="p-3 font-medium text-gray-800 text-xs">{row.cat}</td>
                 <td className="p-3 text-gray-600 text-xs">{row.income}</td>
-                <td className="p-3 text-green-700 text-xs">{row.pays}</td>
+                <td className="p-3 text-[#1B365D] text-xs">{row.pays}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Dual Eligible Special Needs Plans (D-SNPs)
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -447,7 +447,7 @@ export function DualEligible() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Find a D-SNP in Your Area
       </h2>
       <ol className="space-y-3 mb-6">

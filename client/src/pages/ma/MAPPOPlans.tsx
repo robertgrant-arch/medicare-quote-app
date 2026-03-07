@@ -11,7 +11,7 @@ export default function MAPPOPlans() {
       subtitle="Preferred Provider Organization plans give you the freedom to see any Medicare-approved doctor — in or out of network — without a referral."
     >
       {/* Overview */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is a Medicare Advantage PPO?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -27,7 +27,7 @@ export default function MAPPOPlans() {
       </p>
 
       {/* HMO vs PPO comparison */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         HMO vs. PPO: Key Differences
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -36,7 +36,7 @@ export default function MAPPOPlans() {
             <tr className="bg-green-50">
               <th className="text-left p-3 font-semibold text-gray-700 border border-gray-200">Feature</th>
               <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center">HMO</th>
-              <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center bg-green-100">PPO</th>
+              <th className="p-3 font-semibold text-gray-700 border border-gray-200 text-center bg-[#E8F0FE]">PPO</th>
             </tr>
           </thead>
           <tbody>
@@ -61,7 +61,7 @@ export default function MAPPOPlans() {
       </div>
 
       {/* How PPO works */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How a PPO Plan Works
       </h2>
       <div className="space-y-3 mb-6">
@@ -91,7 +91,7 @@ export default function MAPPOPlans() {
       </div>
 
       {/* Typical costs */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Typical PPO Cost Structure (2025)
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -115,7 +115,7 @@ export default function MAPPOPlans() {
             ].map((row) => (
               <tr key={row.item} className="border border-gray-200 hover:bg-gray-50">
                 <td className="p-3 font-medium text-gray-800">{row.item}</td>
-                <td className="p-3 text-center text-green-700 font-medium">{row.in}</td>
+                <td className="p-3 text-center text-[#1B365D] font-medium">{row.in}</td>
                 <td className="p-3 text-center text-orange-700">{row.out}</td>
               </tr>
             ))}
@@ -124,7 +124,7 @@ export default function MAPPOPlans() {
       </div>
 
       {/* Pros and Cons */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Pros and Cons of PPO Plans
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -172,7 +172,7 @@ export default function MAPPOPlans() {
       </div>
 
       {/* Who should choose PPO */}
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Is a PPO Right for You?
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -204,14 +204,14 @@ export default function MAPPOPlans() {
         <Link
           href="/plans?zip=64106"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white"
-          style={{ backgroundColor: "#006B3F" }}
+          style={{ backgroundColor: "#1B365D" }}
         >
           Browse PPO Plans in Your Area <ArrowRight size={14} />
         </Link>
         <Link
           href="/medicare-advantage/hmo"
           className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border"
-          style={{ color: "#006B3F", borderColor: "#006B3F" }}
+          style={{ color: "#1B365D", borderColor: "#1B365D" }}
         >
           Compare with HMO Plans
         </Link>

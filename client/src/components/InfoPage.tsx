@@ -25,11 +25,11 @@ export default function InfoPage({
   sectionHref,
   title,
   subtitle,
-  accentColor = "#006B3F",
+  accentColor = "#1B365D",
   children,
 }: InfoPageProps) {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F8FA" }}>
       <Header />
 
       {/* Hero */}
@@ -56,7 +56,7 @@ export default function InfoPage({
 
           <h1
             className="text-3xl lg:text-4xl font-bold mb-3"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "'Inter', serif" }}
           >
             {title}
           </h1>
@@ -88,7 +88,7 @@ export default function InfoPage({
           >
             <h2
               className="text-2xl font-bold mb-2"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "'Inter', serif" }}
             >
               Ready to Compare Plans?
             </h2>
@@ -98,7 +98,7 @@ export default function InfoPage({
             <Link
               href="/plans?zip=64106"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-bold no-underline transition-all"
-              style={{ backgroundColor: "#F47920", color: "white" }}
+              style={{ backgroundColor: "#C41E3A", color: "white" }}
             >
               See Plans Near You
               <ChevronRight size={16} />

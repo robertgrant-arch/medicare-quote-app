@@ -13,7 +13,7 @@ export function Medicare101() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Medicare 101" accentColor={ACCENT}
       subtitle="A complete beginner's guide to Medicare — what it covers, who qualifies, how to enroll, and what it costs.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is Medicare?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -27,7 +27,7 @@ export function Medicare101() {
         Understanding how the parts fit together is the foundation of making smart Medicare decisions.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         The Four Parts of Medicare
       </h2>
       <div className="space-y-3 mb-6">
@@ -91,7 +91,7 @@ export function Medicare101() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Who Is Eligible for Medicare?
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -122,7 +122,7 @@ export function Medicare101() {
         </table>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Original Medicare vs. Medicare Advantage
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -166,7 +166,7 @@ export function Medicare101() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Key 2025 Medicare Costs at a Glance
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -202,7 +202,7 @@ export function Medicare101() {
         <Link href="/resources/enrollment-periods" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white" style={{ backgroundColor: ACCENT }}>
           Enrollment Periods Guide <ArrowRight size={14} />
         </Link>
-        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#006B3F", borderColor: "#006B3F" }}>
+        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#1B365D", borderColor: "#1B365D" }}>
           Compare Medicare Advantage Plans
         </Link>
       </div>
@@ -216,7 +216,7 @@ export function EnrollmentPeriods() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Enrollment Periods" accentColor={ACCENT}
       subtitle="Knowing when you can enroll, switch, or drop Medicare coverage is essential to avoiding penalties and coverage gaps.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Overview of Medicare Enrollment Periods
       </h2>
       <p className="text-gray-600 leading-relaxed mb-6">
@@ -288,7 +288,7 @@ export function EnrollmentPeriods() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Late Enrollment Penalties
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -311,7 +311,7 @@ export function EnrollmentPeriods() {
                 <td className="p-3 font-bold text-gray-800">{row.part}</td>
                 <td className="p-3 text-red-700 text-xs">{row.penalty}</td>
                 <td className="p-3 text-gray-600 text-xs">{row.duration}</td>
-                <td className="p-3 text-green-700 text-xs">{row.avoid}</td>
+                <td className="p-3 text-[#1B365D] text-xs">{row.avoid}</td>
               </tr>
             ))}
           </tbody>
@@ -348,7 +348,7 @@ export function StarRatingsGuide() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Star Ratings Guide" accentColor={ACCENT}
       subtitle="CMS Star Ratings are the official quality scores for Medicare Advantage and Part D plans — a 5-star plan delivers measurably better care and service.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Are CMS Star Ratings?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -364,12 +364,12 @@ export function StarRatingsGuide() {
         year using the 5-Star Special Enrollment Period.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What the Stars Mean
       </h2>
       <div className="space-y-2 mb-6">
         {[
-          { stars: 5, label: "Excellent", color: "bg-green-100 border-green-300 text-green-800", desc: "Top-performing plan. Exceptional quality of care, member experience, and administrative performance." },
+          { stars: 5, label: "Excellent", color: "bg-[#E8F0FE] border-green-300 text-green-800", desc: "Top-performing plan. Exceptional quality of care, member experience, and administrative performance." },
           { stars: 4, label: "Above Average", color: "bg-teal-50 border-teal-200 text-teal-800", desc: "Above-average quality. Strong performance across most measures. A good choice for most beneficiaries." },
           { stars: 3, label: "Average", color: "bg-yellow-50 border-yellow-200 text-yellow-800", desc: "Average quality. Meets basic standards but has room for improvement in some areas." },
           { stars: 2, label: "Below Average", color: "bg-orange-50 border-orange-200 text-orange-800", desc: "Below-average quality. CMS may impose corrective action plans on these plans." },
@@ -392,7 +392,7 @@ export function StarRatingsGuide() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How Star Ratings Are Calculated
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -437,7 +437,7 @@ export function StarRatingsGuide() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How to Use Star Ratings When Choosing a Plan
       </h2>
       <ul className="space-y-2 text-sm text-gray-600 mb-4">
@@ -557,7 +557,7 @@ export function FAQ() {
         <Link href="/resources/medicare-101" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white" style={{ backgroundColor: ACCENT }}>
           Medicare 101 Guide <ArrowRight size={14} />
         </Link>
-        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#006B3F", borderColor: "#006B3F" }}>
+        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#1B365D", borderColor: "#1B365D" }}>
           Compare Plans in Your Area
         </Link>
       </div>

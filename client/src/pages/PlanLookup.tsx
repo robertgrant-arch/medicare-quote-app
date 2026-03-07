@@ -1,6 +1,6 @@
 /**
  * Plan Lookup Tool — pVerify-powered eligibility lookup + AI plan comparison
- * Color scheme: #006B3F primary green, #F47920 CTA orange
+ * Color scheme: #1B365D primary green, #C41E3A CTA orange
  *
  * PRIVACY: Only a Medicare ID is collected. It is cleared from state immediately
  * after the lookup completes and is never persisted to any database or log.
@@ -155,7 +155,7 @@ function FieldRow({ label, value }: { label: string; value: string | number }) {
 function CopayBadge({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
-      <div className="text-lg font-bold" style={{ color: "#006B3F" }}>
+      <div className="text-lg font-bold" style={{ color: "#1B365D" }}>
         {typeof value === "number" ? `$${value}` : value}
       </div>
       <div className="text-xs text-gray-500 mt-0.5">{label}</div>
@@ -179,8 +179,8 @@ function CompareCell({
   const potentialBetter = lowerIsBetter ? numPotential < numCurrent : numPotential > numCurrent;
   const tied = numCurrent === numPotential;
 
-  const currentStyle = tied ? "text-gray-700" : currentBetter ? "text-green-700 font-bold" : "text-red-600";
-  const potentialStyle = tied ? "text-gray-700" : potentialBetter ? "text-green-700 font-bold" : "text-red-600";
+  const currentStyle = tied ? "text-gray-700" : currentBetter ? "text-[#1B365D] font-bold" : "text-red-600";
+  const potentialStyle = tied ? "text-gray-700" : potentialBetter ? "text-[#1B365D] font-bold" : "text-red-600";
 
   const currentIcon = tied ? (
     <Minus size={12} className="text-gray-400 inline ml-1" />
@@ -221,11 +221,11 @@ function TextCompareCell({ current, potential }: { current: string; potential: s
 
   return (
     <>
-      <td className={`px-4 py-3 text-sm text-center ${currentHas ? "text-green-700 font-medium" : "text-gray-400"}`}>
+      <td className={`px-4 py-3 text-sm text-center ${currentHas ? "text-[#1B365D] font-medium" : "text-gray-400"}`}>
         {currentHas ? <CheckCircle2 size={14} className="inline mr-1 text-green-600" /> : <XCircle size={14} className="inline mr-1 text-red-400" />}
         {current}
       </td>
-      <td className={`px-4 py-3 text-sm text-center ${potentialHas ? "text-green-700 font-medium" : "text-gray-400"}`}>
+      <td className={`px-4 py-3 text-sm text-center ${potentialHas ? "text-[#1B365D] font-medium" : "text-gray-400"}`}>
         {potentialHas ? <CheckCircle2 size={14} className="inline mr-1 text-green-600" /> : <XCircle size={14} className="inline mr-1 text-red-400" />}
         {potential}
       </td>
@@ -301,13 +301,13 @@ export default function PlanLookup() {
       : 0;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8FAF9" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F7F8FA" }}>
       <Header />
 
       {/* ── Page Header ─────────────────────────────────────────────────── */}
       <div
         className="py-10"
-        style={{ background: "linear-gradient(135deg, #004D2C 0%, #006B3F 100%)" }}
+        style={{ background: "linear-gradient(135deg, #004D2C 0%, #1B365D 100%)" }}
       >
         <div className="container max-w-4xl">
           <div className="flex items-center gap-3 mb-3">
@@ -316,7 +316,7 @@ export default function PlanLookup() {
             </div>
             <h1
               className="text-3xl font-bold text-white"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "'Inter', serif" }}
             >
               Plan Lookup Tool
             </h1>
@@ -326,7 +326,7 @@ export default function PlanLookup() {
           </p>
           {/* pVerify badge */}
           <div className="inline-flex items-center gap-2 mt-4 bg-white/10 border border-white/20 rounded-full px-3 py-1.5">
-            <Shield size={13} className="text-green-300" />
+            <Shield size={13} className="text-blue-200" />
             <span className="text-xs font-semibold text-white/90">pVerify Powered Eligibility</span>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function PlanLookup() {
           <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-              style={{ backgroundColor: "#006B3F" }}
+              style={{ backgroundColor: "#1B365D" }}
             >
               1
             </div>
@@ -385,7 +385,7 @@ export default function PlanLookup() {
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded accent-green-700"
+                className="mt-0.5 w-4 h-4 rounded accent-[#1B365D]"
               />
               <span className="text-sm text-gray-700">
                 I consent to look up my eligibility information. I understand this is a simulated
@@ -404,7 +404,7 @@ export default function PlanLookup() {
               onClick={handleLookup}
               disabled={!consent || lookupMutation.isPending}
               className="w-full sm:w-auto px-8 py-3 rounded-xl text-white font-bold text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: consent ? "#006B3F" : "#9CA3AF" }}
+              style={{ backgroundColor: consent ? "#1B365D" : "#9CA3AF" }}
             >
               {lookupMutation.isPending ? (
                 <>
@@ -423,11 +423,11 @@ export default function PlanLookup() {
 
         {/* ── Current Plan Card ────────────────────────────────────────── */}
         {currentPlan && (
-          <div className="bg-white rounded-2xl border-2 border-green-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border-2 border-[#C8D8F5] shadow-sm overflow-hidden">
             {/* Green header */}
             <div
               className="px-6 py-4 flex items-center gap-3"
-              style={{ backgroundColor: "#006B3F" }}
+              style={{ backgroundColor: "#1B365D" }}
             >
               <CheckCircle2 size={22} className="text-white" />
               <div>
@@ -450,7 +450,7 @@ export default function PlanLookup() {
               <div className="mb-5">
                 <h3
                   className="text-xl font-bold text-gray-900 mb-1"
-                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                  style={{ fontFamily: "'Inter', serif" }}
                 >
                   {currentPlan.planName}
                 </h3>
@@ -490,7 +490,7 @@ export default function PlanLookup() {
             <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-                style={{ backgroundColor: "#F47920" }}
+                style={{ backgroundColor: "#C41E3A" }}
               >
                 2
               </div>
@@ -544,7 +544,7 @@ export default function PlanLookup() {
                     <div className="flex gap-4 text-sm">
                       <span>
                         <span className="text-gray-500">Premium: </span>
-                        <strong style={{ color: "#006B3F" }}>
+                        <strong style={{ color: "#1B365D" }}>
                           {selectedPotential.premium === 0 ? "$0/mo" : `$${selectedPotential.premium}/mo`}
                         </strong>
                       </span>
@@ -565,7 +565,7 @@ export default function PlanLookup() {
                 onClick={handleCompare}
                 disabled={!selectedPotentialId || compareMutation.isPending}
                 className="px-8 py-3 rounded-xl text-white font-bold text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                style={{ backgroundColor: selectedPotentialId ? "#F47920" : "#9CA3AF" }}
+                style={{ backgroundColor: selectedPotentialId ? "#C41E3A" : "#9CA3AF" }}
               >
                 {compareMutation.isPending ? (
                   <>
@@ -588,9 +588,9 @@ export default function PlanLookup() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"
-              style={{ backgroundColor: "#E8F5EE" }}
+              style={{ backgroundColor: "#E8F0FE" }}
             >
-              <Sparkles size={28} style={{ color: "#006B3F" }} />
+              <Sparkles size={28} style={{ color: "#1B365D" }} />
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">Analyzing your plans...</h3>
             <p className="text-sm text-gray-500 max-w-sm mx-auto">
@@ -602,7 +602,7 @@ export default function PlanLookup() {
                 <span key={step} className="flex items-center gap-1">
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: "#006B3F" }}
+                    style={{ backgroundColor: "#1B365D" }}
                   />
                   {step}
                 </span>
@@ -618,7 +618,7 @@ export default function PlanLookup() {
             <div className="flex items-center justify-between">
               <h2
                 className="text-2xl font-bold text-gray-900"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "'Inter', serif" }}
               >
                 Comparison Results
               </h2>
@@ -649,7 +649,7 @@ export default function PlanLookup() {
                       </th>
                       <th
                         className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide"
-                        style={{ color: "#006B3F" }}
+                        style={{ color: "#1B365D" }}
                       >
                         Current Plan
                         <div className="text-gray-500 font-normal normal-case mt-0.5 text-xs">
@@ -660,7 +660,7 @@ export default function PlanLookup() {
                       </th>
                       <th
                         className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide"
-                        style={{ color: "#F47920" }}
+                        style={{ color: "#C41E3A" }}
                       >
                         New Plan
                         <div className="text-gray-500 font-normal normal-case mt-0.5 text-xs">
@@ -707,7 +707,7 @@ export default function PlanLookup() {
             {/* b) AI Analysis summary */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles size={18} style={{ color: "#006B3F" }} />
+                <Sparkles size={18} style={{ color: "#1B365D" }} />
                 <h3 className="font-bold text-gray-900">AI Analysis</h3>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">{comparisonResult.summary}</p>
@@ -720,7 +720,7 @@ export default function PlanLookup() {
                 <div className="flex items-center gap-2 mb-4">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: "#006B3F" }}
+                    style={{ backgroundColor: "#1B365D" }}
                   >
                     C
                   </div>
@@ -749,7 +749,7 @@ export default function PlanLookup() {
                 <div className="flex items-center gap-2 mb-4">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: "#F47920" }}
+                    style={{ backgroundColor: "#C41E3A" }}
                   >
                     N
                   </div>
@@ -784,7 +784,7 @@ export default function PlanLookup() {
                   </div>
                   <div
                     className="text-4xl font-bold mb-1"
-                    style={{ color: "#006B3F", fontFamily: "'DM Serif Display', serif" }}
+                    style={{ color: "#1B365D", fontFamily: "'Inter', serif" }}
                   >
                     ${comparisonResult.estimatedAnnualCostCurrent.toLocaleString()}
                   </div>
@@ -797,8 +797,8 @@ export default function PlanLookup() {
                   <div
                     className="text-4xl font-bold mb-1"
                     style={{
-                      color: savings > 0 ? "#006B3F" : "#EF4444",
-                      fontFamily: "'DM Serif Display', serif",
+                      color: savings > 0 ? "#1B365D" : "#EF4444",
+                      fontFamily: "'Inter', serif",
                     }}
                   >
                     ${comparisonResult.estimatedAnnualCostPotential.toLocaleString()}
@@ -813,7 +813,7 @@ export default function PlanLookup() {
                   className="rounded-xl p-4 text-center"
                   style={{ backgroundColor: "#FFF8F3", border: "1px solid #FDDCBC" }}
                 >
-                  <div className="text-sm font-semibold" style={{ color: "#F47920" }}>
+                  <div className="text-sm font-semibold" style={{ color: "#C41E3A" }}>
                     You could save approximately{" "}
                     <span className="text-xl font-bold">${savings.toLocaleString()}</span> per year
                     by switching to the new plan.
@@ -838,10 +838,10 @@ export default function PlanLookup() {
             {/* e) Recommendation box */}
             <div
               className="rounded-2xl p-6"
-              style={{ backgroundColor: "#FFF8F3", border: "2px solid #F47920" }}
+              style={{ backgroundColor: "#FFF8F3", border: "2px solid #C41E3A" }}
             >
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles size={18} style={{ color: "#F47920" }} />
+                <Sparkles size={18} style={{ color: "#C41E3A" }} />
                 <h3 className="font-bold text-gray-900">AI Recommendation</h3>
               </div>
               <p className="text-gray-700 text-sm leading-relaxed">{comparisonResult.recommendation}</p>
@@ -853,9 +853,9 @@ export default function PlanLookup() {
                 onClick={() => setSavedComparison(true)}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border-2 transition-all"
                 style={{
-                  borderColor: "#006B3F",
-                  color: savedComparison ? "white" : "#006B3F",
-                  backgroundColor: savedComparison ? "#006B3F" : "transparent",
+                  borderColor: "#1B365D",
+                  color: savedComparison ? "white" : "#1B365D",
+                  backgroundColor: savedComparison ? "#1B365D" : "transparent",
                 }}
               >
                 {savedComparison ? (
@@ -873,7 +873,7 @@ export default function PlanLookup() {
               <a
                 href="tel:1-800-555-0100"
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-all"
-                style={{ backgroundColor: "#F47920" }}
+                style={{ backgroundColor: "#C41E3A" }}
               >
                 <Phone size={16} />
                 Talk to an Agent

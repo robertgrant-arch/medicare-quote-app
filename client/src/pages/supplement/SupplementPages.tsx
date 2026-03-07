@@ -35,9 +35,9 @@ function BenefitsTable({ highlighted }: { highlighted: string }) {
           {benefits.map((row) => (
             <tr key={row.benefit} className="border border-gray-200 hover:bg-gray-50">
               <td className="p-2.5 text-gray-700">{row.benefit}</td>
-              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.f === "100%" || row.f === "80%" ? "text-green-700" : "text-red-500"} ${highlighted === "Plan F" ? "bg-blue-50" : ""}`}>{row.f}</td>
-              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.g === "100%" || row.g === "80%" ? "text-green-700" : "text-red-500"} ${highlighted === "Plan G" ? "bg-blue-50" : ""}`}>{row.g}</td>
-              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.n === "100%" || row.n === "80%" ? "text-green-700" : "text-red-500"} ${highlighted === "Plan N" ? "bg-blue-50" : ""}`}>{row.n}</td>
+              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.f === "100%" || row.f === "80%" ? "text-[#1B365D]" : "text-red-500"} ${highlighted === "Plan F" ? "bg-blue-50" : ""}`}>{row.f}</td>
+              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.g === "100%" || row.g === "80%" ? "text-[#1B365D]" : "text-red-500"} ${highlighted === "Plan G" ? "bg-blue-50" : ""}`}>{row.g}</td>
+              <td className={`p-2.5 text-center font-medium border border-gray-200 ${row.n === "100%" || row.n === "80%" ? "text-[#1B365D]" : "text-red-500"} ${highlighted === "Plan N" ? "bg-blue-50" : ""}`}>{row.n}</td>
             </tr>
           ))}
         </tbody>
@@ -53,7 +53,7 @@ export function MedigapPlanF() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Medigap Plan F" accentColor={ACCENT}
       subtitle="The most comprehensive Medigap plan — covers virtually all Medicare-approved out-of-pocket costs, including the Part B deductible.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Does Medigap Plan F Cover?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -80,12 +80,12 @@ export function MedigapPlanF() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan F Coverage Details
       </h2>
       <BenefitsTable highlighted="Plan F" />
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan F Costs in 2025
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -119,7 +119,7 @@ export function MedigapPlanF() {
       </div>
       <p className="text-gray-500 text-xs mb-4">Premiums are illustrative averages; actual rates vary by insurer, state, and individual factors.</p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan F vs. Plan G: Which Is Better?
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -152,7 +152,7 @@ export function MedigapPlanG() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Medigap Plan G" accentColor={ACCENT}
       subtitle="The most popular Medigap plan for new enrollees — covers everything Plan F does except the Part B deductible, at a lower monthly premium.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Why Plan G Is the Top Choice for New Enrollees
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -167,12 +167,12 @@ export function MedigapPlanG() {
         if the premium savings exceed $257/year, Plan G wins.
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan G Coverage Details
       </h2>
       <BenefitsTable highlighted="Plan G" />
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan G Costs in 2025
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -206,7 +206,7 @@ export function MedigapPlanG() {
       </div>
       <p className="text-gray-500 text-xs mb-4">Includes the $257 Part B deductible. Actual rates vary by insurer, state, and individual factors.</p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         How Insurers Price Plan G
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -226,7 +226,7 @@ export function MedigapPlanG() {
         ))}
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         When to Enroll in Plan G
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -275,7 +275,7 @@ export function MedigapPlanN() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Medigap Plan N" accentColor={ACCENT}
       subtitle="A cost-sharing plan with lower premiums — you pay small copays for office and ER visits in exchange for meaningfully reduced monthly costs.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is Medigap Plan N?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -291,12 +291,12 @@ export function MedigapPlanN() {
         doctors who accept Medicare assignment (the vast majority do).
       </p>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan N Coverage Details
       </h2>
       <BenefitsTable highlighted="Plan N" />
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Plan N vs. Plan G: The Cost-Sharing Trade-off
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -328,7 +328,7 @@ export function MedigapPlanN() {
         </table>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Is Plan N Right for You?
       </h2>
       <p className="text-gray-600 text-sm leading-relaxed mb-3">
@@ -378,7 +378,7 @@ export function CompareSupplementPlans() {
     <InfoPage section={SECTION} sectionHref={SECTION_HREF} title="Compare Supplement Plans" accentColor={ACCENT}
       subtitle="Side-by-side comparison of the most popular Medigap plans — Plan F, G, and N — to help you choose the right coverage for your health and budget.">
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         What Is Medicare Supplement (Medigap) Insurance?
       </h2>
       <p className="text-gray-600 leading-relaxed mb-4">
@@ -407,12 +407,12 @@ export function CompareSupplementPlans() {
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Full Benefits Comparison: Plans F, G, and N
       </h2>
       <BenefitsTable highlighted="" />
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Cost Comparison at a Glance
       </h2>
       <div className="overflow-x-auto mb-6">
@@ -446,7 +446,7 @@ export function CompareSupplementPlans() {
         </table>
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'DM Serif Display', serif" }}>
+      <h2 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "'Inter', serif" }}>
         Medigap vs. Medicare Advantage: Which Is Right for You?
       </h2>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -490,7 +490,7 @@ export function CompareSupplementPlans() {
         <Link href="/medicare-supplement/plan-g" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg text-white" style={{ backgroundColor: ACCENT }}>
           Learn About Plan G <ArrowRight size={14} />
         </Link>
-        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#006B3F", borderColor: "#006B3F" }}>
+        <Link href="/plans?zip=64106" className="inline-flex items-center gap-2 text-sm font-semibold no-underline px-4 py-2 rounded-lg border" style={{ color: "#1B365D", borderColor: "#1B365D" }}>
           Compare Medicare Advantage Plans
         </Link>
       </div>

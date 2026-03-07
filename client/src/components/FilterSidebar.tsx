@@ -1,5 +1,5 @@
 // FilterSidebar component — plan filtering controls
-// Design: Bold Civic Design | Primary: #006B3F
+// Design: Chapter-style | Navy #1B365D | Red #C41E3A | Light Blue #E8F0FE
 
 import { useState } from "react";
 import { SlidersHorizontal, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
@@ -105,12 +105,12 @@ export default function FilterSidebar({
     filters.premiumRange[1] < 200;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 sticky top-20">
+    <div className="bg-white rounded-xl p-5 sticky top-20" style={{ border: "1px solid #E8F0FE", boxShadow: "0 2px 12px rgba(27,54,93,0.07)" }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal size={16} style={{ color: "#006B3F" }} />
-          <span className="font-bold text-gray-900 text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          <SlidersHorizontal size={16} style={{ color: "#1B365D" }} />
+          <span className="font-bold text-sm" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>
             Filter Plans
           </span>
         </div>
@@ -128,7 +128,7 @@ export default function FilterSidebar({
       {/* Results count */}
       <div
         className="text-xs font-semibold px-3 py-2 rounded-lg mb-5 text-center"
-        style={{ backgroundColor: "#E8F5EE", color: "#006B3F" }}
+        style={{ backgroundColor: "#E8F0FE", color: "#1B365D" }}
       >
         Showing {filteredCount} of {totalCount} plans
       </div>
@@ -140,8 +140,10 @@ export default function FilterSidebar({
           onChange={(e) =>
             onChange({ ...filters, sortBy: e.target.value as FilterState["sortBy"] })
           }
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:border-green-600"
-          style={{ fontFamily: "'DM Sans', sans-serif" }}
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
         >
           <option value="best-match">Best Match</option>
           <option value="premium-low">Premium: Low to High</option>
@@ -160,9 +162,9 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.planType.includes(type)}
                 onChange={() => togglePlanType(type)}
-                className="w-4 h-4 rounded border-gray-300 accent-green-700"
+                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
               />
-              <span className="text-sm text-gray-700 group-hover:text-green-800 transition-colors font-medium">
+              <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {type}
               </span>
               <span className="ml-auto text-xs text-gray-400">
@@ -182,9 +184,9 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.carriers.includes(carrier)}
                 onChange={() => toggleCarrier(carrier)}
-                className="w-4 h-4 rounded border-gray-300 accent-green-700"
+                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
               />
-              <span className="text-sm text-gray-700 group-hover:text-green-800 transition-colors font-medium">
+              <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {carrier}
               </span>
             </label>
@@ -208,7 +210,7 @@ export default function FilterSidebar({
             onChange={(e) =>
               onChange({ ...filters, premiumRange: [filters.premiumRange[0], Number(e.target.value)] })
             }
-            className="w-full accent-green-700"
+            className="w-full" style={{ accentColor: "#1B365D" }}
           />
           <div className="flex gap-2">
             {[0, 25, 50, 100].map((val) => (
@@ -217,9 +219,9 @@ export default function FilterSidebar({
                 onClick={() => onChange({ ...filters, premiumRange: [0, val === 0 ? 0 : val] })}
                 className="flex-1 text-xs py-1 rounded border transition-colors font-medium"
                 style={{
-                  borderColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#006B3F" : "#E5E7EB",
-                  color: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#006B3F" : "#6B7280",
-                  backgroundColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#E8F5EE" : "transparent",
+                  borderColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#1B365D" : "#E5E7EB",
+                  color: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#1B365D" : "#6B7280",
+                  backgroundColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#E8F0FE" : "transparent",
                 }}
               >
                 {val === 0 ? "$0" : `$${val}`}
@@ -238,9 +240,9 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.benefits.includes(b.key)}
                 onChange={() => toggleBenefit(b.key)}
-                className="w-4 h-4 rounded border-gray-300 accent-green-700"
+                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
               />
-              <span className="text-sm text-gray-700 group-hover:text-green-800 transition-colors font-medium">
+              <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {b.label}
               </span>
             </label>
@@ -251,7 +253,7 @@ export default function FilterSidebar({
       {/* Help CTA */}
       <div
         className="rounded-xl p-4 text-center"
-        style={{ backgroundColor: "#E8F5EE" }}
+        style={{ backgroundColor: "#E8F0FE" }}
       >
         <div className="text-xs font-bold text-gray-700 mb-1">Need Help Choosing?</div>
         <div className="text-xs text-gray-500 mb-3">
@@ -260,7 +262,7 @@ export default function FilterSidebar({
         <a
           href="tel:1-800-555-0100"
           className="block w-full py-2 rounded-lg text-xs font-bold text-white text-center transition-all"
-          style={{ backgroundColor: "#F47920" }}
+          style={{ backgroundColor: "#C41E3A" }}
         >
           Call 1-800-555-0100
         </a>
