@@ -30,7 +30,6 @@ import { Streamdown } from "streamdown";
 import Header from "@/components/Header";
 import CarrierLogo from "@/components/CarrierLogo";
 import StarRating from "@/components/StarRating";
-import { MOCK_PLANS } from "@/lib/mockData";
 import type { MedicarePlan } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -246,8 +245,8 @@ interface RankedPlan {
   whyRecommended: string[];
 }
 
-function rankPlans(answers: QuestionnaireAnswers): RankedPlan[] {
-  const scored = MOCK_PLANS.map((plan) => {
+function rankPlans(answers: QuestionnaireAnswers, plans: MedicarePlan[]): RankedPlan[] {
+  const scored = plans.map((plan) => {
     const estimatedCost = estimateAnnualCost(plan, answers);
     const score = scorePlan(plan, answers);
 
@@ -524,6 +523,22 @@ export default function PlanRecommender() {
   const [streamPhase, setStreamPhase] = useState<"idle" | "streaming" | "done" | "error">("idle");
   const [streamError, setStreamError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const [allPlans, setAllPlans] = useState<MedicarePlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+
+  // Fetch plans from API on mount (use ZIP from URL or default 64106)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const zip = params.get("zip") || "64106";
+    setPlansLoading(true);
+    fetch(`/api/plans?zip=${zip}`)
+      .then((r) => r.json())
+      .then((data: { plans?: MedicarePlan[] }) => {
+        setAllPlans(data.plans ?? []);
+      })
+      .catch(() => setAllPlans([]))
+      .finally(() => setPlansLoading(false));
+  }, []);
 
   const setAnswer = <K extends keyof QuestionnaireAnswers>(key: K, value: QuestionnaireAnswers[K]) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -553,7 +568,7 @@ export default function PlanRecommender() {
     // Small delay for UX
     await new Promise((r) => setTimeout(r, 600));
 
-    const ranked = rankPlans(answers);
+    const ranked = rankPlans(answers, allPlans);
     setRankedPlans(ranked);
     setPhase("results");
 

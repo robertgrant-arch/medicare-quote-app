@@ -10,10 +10,11 @@ interface FilterSidebarProps {
   onChange: (filters: FilterState) => void;
   totalCount: number;
   filteredCount: number;
+  availableCarriers?: string[]; // Dynamic carriers from real plan data
 }
 
 const PLAN_TYPES: PlanType[] = ["HMO", "PPO", "PFFS", "SNP"];
-const CARRIERS: Carrier[] = ["UnitedHealthcare", "Humana", "Aetna", "Cigna", "WellCare", "Blue KC"];
+const DEFAULT_CARRIERS: string[] = ["UnitedHealthcare", "Humana", "Aetna", "Cigna", "WellCare", "Blue KC"];
 const BENEFITS_LIST = [
   { key: "dental", label: "Dental Coverage" },
   { key: "vision", label: "Vision Coverage" },
@@ -58,7 +59,9 @@ export default function FilterSidebar({
   onChange,
   totalCount,
   filteredCount,
+  availableCarriers,
 }: FilterSidebarProps) {
+  const CARRIERS = availableCarriers && availableCarriers.length > 0 ? availableCarriers : DEFAULT_CARRIERS;
   const togglePlanType = (type: PlanType) => {
     const current = filters.planType;
     const updated = current.includes(type)
@@ -67,7 +70,7 @@ export default function FilterSidebar({
     onChange({ ...filters, planType: updated });
   };
 
-  const toggleCarrier = (carrier: Carrier) => {
+  const toggleCarrier = (carrier: string) => {
     const current = filters.carriers;
     const updated = current.includes(carrier)
       ? current.filter((c) => c !== carrier)
@@ -184,7 +187,6 @@ export default function FilterSidebar({
               <span className="text-sm text-gray-700 group-hover:text-green-800 transition-colors font-medium">
                 {carrier}
               </span>
-              <span className="ml-auto text-xs text-gray-400">4</span>
             </label>
           ))}
         </div>

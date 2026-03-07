@@ -3,13 +3,8 @@
 
 export type PlanType = "HMO" | "PPO" | "PFFS" | "SNP";
 
-export type Carrier =
-  | "UnitedHealthcare"
-  | "Humana"
-  | "Aetna"
-  | "Cigna"
-  | "WellCare"
-  | "Blue KC";
+// Carrier is a string to support any CMS carrier name (e.g., "Aetna Medicare", "Devoted Health", etc.)
+export type Carrier = string;
 
 export interface StarRating {
   overall: number; // 1-5, supports .5 increments
@@ -54,7 +49,7 @@ export interface ExtraBenefits {
 
 export interface MedicarePlan {
   id: string;
-  carrier: Carrier;
+  carrier: string;
   planName: string;
   planType: PlanType;
   contractId: string;
@@ -81,7 +76,7 @@ export interface MedicarePlan {
 
 export interface FilterState {
   planType: PlanType[];
-  carriers: Carrier[];
+  carriers: string[];
   premiumRange: [number, number];
   benefits: string[];
   quickFilter: "all" | "ppo" | "zero-premium" | "hmo";

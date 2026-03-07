@@ -186,9 +186,10 @@ export function registerCompareStreamRoute(app: Express) {
       return;
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      res.status(500).json({ error: "ANTHROPIC_API_KEY is not configured." });
+    const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+    const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+    if (!forgeApiUrl || !forgeApiKey) {
+      res.status(500).json({ error: "Forge API is not configured." });
       return;
     }
 
@@ -204,33 +205,32 @@ export function registerCompareStreamRoute(app: Express) {
         ? build3PlanPrompt(currentPlan, newPlan, thirdPlan)
         : build2PlanPrompt(currentPlan, newPlan);
 
-      // Call Anthropic streaming API
-      const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+      // Call Forge API (OpenAI-compatible) with streaming
+      const forgeRes = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
+          "authorization": `Bearer ${forgeApiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5",
-          max_tokens: thirdPlan ? 1280 : 1024, // slightly more tokens for 3-plan analysis
+          model: "claude-3-5-haiku-20241022",
+          max_tokens: thirdPlan ? 1280 : 1024,
           stream: true,
           messages: [{ role: "user", content: prompt }],
         }),
       });
 
-      if (!anthropicRes.ok) {
-        const errorText = await anthropicRes.text();
-        sendSSE(res, "error", `Anthropic API error: ${anthropicRes.status} — ${errorText.slice(0, 200)}`);
+      if (!forgeRes.ok) {
+        const errorText = await forgeRes.text();
+        sendSSE(res, "error", `AI API error: ${forgeRes.status} — ${errorText.slice(0, 200)}`);
         res.end();
         return;
       }
 
-      // Stream the response body line by line
-      const reader = anthropicRes.body?.getReader();
+      // Stream the response body line by line (OpenAI-compatible SSE format)
+      const reader = forgeRes.body?.getReader();
       if (!reader) {
-        sendSSE(res, "error", "No response body from Anthropic");
+        sendSSE(res, "error", "No response body from AI");
         res.end();
         return;
       }
@@ -249,17 +249,21 @@ export function registerCompareStreamRoute(app: Express) {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const dataStr = line.slice(6).trim();
-          if (dataStr === "[DONE]") continue;
+          if (dataStr === "[DONE]") {
+            sendSSE(res, "done", "");
+            continue;
+          }
 
           try {
             const event = JSON.parse(dataStr) as {
-              type: string;
-              delta?: { type: string; text?: string };
+              choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
             };
 
-            if (event.type === "content_block_delta" && event.delta?.type === "text_delta" && event.delta.text) {
-              sendSSE(res, "delta", event.delta.text);
-            } else if (event.type === "message_stop") {
+            const content = event.choices?.[0]?.delta?.content;
+            if (content) {
+              sendSSE(res, "delta", content);
+            }
+            if (event.choices?.[0]?.finish_reason === "stop") {
               sendSSE(res, "done", "");
             }
           } catch {

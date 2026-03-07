@@ -25,7 +25,6 @@ import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
 import EnrollModal from "@/components/EnrollModal";
-import { MOCK_PLANS } from "@/lib/mockData";
 import type { FilterState, MedicarePlan, RxDrug, Doctor } from "@/lib/types";
 
 const DEFAULT_FILTERS: FilterState = {
@@ -128,22 +127,50 @@ export default function Plans() {
   const [zipInput, setZipInput] = useState(zip);
   // Inline compare: only one card can be active at a time
   const [activeCompareId, setActiveCompareId] = useState<string | null>(null);
+  const [plans, setPlans] = useState<MedicarePlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [plansError, setPlansError] = useState<string | null>(null);
+  const [locationInfo, setLocationInfo] = useState<{ stateAbbr: string; countyName: string } | null>(null);
 
   const handleCompareActivate = (planId: string | null) => {
     setActiveCompareId(planId);
   };
 
+  // Fetch real CMS plans when ZIP changes
+  useEffect(() => {
+    if (!zip || !/^\d{5}$/.test(zip)) return;
+    setPlansLoading(true);
+    setPlansError(null);
+    fetch(`/api/plans?zip=${zip}`)
+      .then((r) => r.json())
+      .then((data: { plans?: MedicarePlan[]; location?: { stateAbbr: string; countyName: string }; error?: string }) => {
+        if (data.error) {
+          setPlansError(data.error);
+          setPlans([]);
+        } else {
+          setPlans(data.plans ?? []);
+          setLocationInfo(data.location ?? null);
+        }
+      })
+      .catch((err: Error) => {
+        setPlansError("Failed to load plans. Please try again.");
+        console.error("[Plans] fetch error:", err);
+      })
+      .finally(() => setPlansLoading(false));
+  }, [zip]);
+
   // Determine city from ZIP
-  const cityName = zip === "64106" ? "Kansas City, MO" : `ZIP ${zip}`;
-  const countyName = "Jackson County, MO";
+  // Server returns title-case county name; just append state
+  const cityName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : `ZIP ${zip}`;
+  const countyName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : "Loading...";
 
   const filteredPlans = useMemo(() => {
-    let plans = applyFilters(MOCK_PLANS, filters);
+    let result = applyFilters(plans, filters);
     if (showFavoritesOnly) {
-      plans = plans.filter((p) => favorites.has(p.id));
+      result = result.filter((p) => favorites.has(p.id));
     }
-    return plans;
-  }, [filters, showFavoritesOnly, favorites]);
+    return result;
+  }, [plans, filters, showFavoritesOnly, favorites]);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -354,8 +381,9 @@ export default function Plans() {
             <FilterSidebar
               filters={filters}
               onChange={setFilters}
-              totalCount={MOCK_PLANS.length}
+              totalCount={plans.length}
               filteredCount={filteredPlans.length}
+              availableCarriers={Array.from(new Set(plans.map((p) => p.carrier))).sort()}
             />
           </aside>
 
@@ -432,8 +460,29 @@ export default function Plans() {
               </div>
             )}
 
+            {/* Loading state */}
+            {plansLoading && (
+              <div className="text-center py-16">
+                <div className="w-12 h-12 rounded-full border-4 border-green-200 border-t-green-700 animate-spin mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">Loading Medicare Advantage plans for ZIP {zip}…</p>
+                <p className="text-xs text-gray-400 mt-1">Fetching real CMS 2026 data — this may take 10–20 seconds on first load</p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {plansError && (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-50">
+                  <Search size={28} className="text-red-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2" style={{ fontFamily: "'DM Serif Display', serif" }}>No Plans Found</h3>
+                <p className="text-gray-500 mb-4">{plansError}</p>
+                <p className="text-sm text-gray-400">Try a different ZIP code or check back later.</p>
+              </div>
+            )}
+
             {/* No results */}
-            {filteredPlans.length === 0 ? (
+            {!plansLoading && !plansError && filteredPlans.length === 0 ? (
               <div className="text-center py-16">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -484,10 +533,7 @@ export default function Plans() {
             {/* Bottom disclaimer */}
             <div className="mt-8 p-4 rounded-xl border border-gray-100 bg-white">
               <p className="text-xs text-gray-400 leading-relaxed">
-                <strong className="text-gray-500">Disclaimer:</strong> Plan information shown is
-                mock data for demonstration purposes only. Actual plan benefits, premiums, and
-                availability may vary. Always verify plan details with the insurance carrier before
-                enrolling. Medicare has neither reviewed nor endorsed this information.
+                <strong className="text-gray-500">Data Source:</strong> Plan information is sourced from the CMS CY2026 Medicare Advantage Landscape file. Benefit details are AI-estimated. Always verify plan details directly with the insurance carrier before enrolling. Medicare has neither reviewed nor endorsed this information.
               </p>
             </div>
           </main>
@@ -515,8 +561,9 @@ export default function Plans() {
               <FilterSidebar
                 filters={filters}
                 onChange={(f) => { setFilters(f); setSidebarOpen(false); }}
-                totalCount={MOCK_PLANS.length}
+                totalCount={plans.length}
                 filteredCount={filteredPlans.length}
+                availableCarriers={Array.from(new Set(plans.map((p) => p.carrier))).sort()}
               />
             </div>
           </div>

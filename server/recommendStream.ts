@@ -141,20 +141,20 @@ router.post("/recommend-stream", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    sendSSE(res, "error", JSON.stringify({ message: "ANTHROPIC_API_KEY not configured" }));
+  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+  const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+  if (!forgeApiUrl || !forgeApiKey) {
+    sendSSE(res, "error", JSON.stringify({ message: "Forge API not configured" }));
     res.end();
     return;
   }
 
   try {
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+    const forgeRes = await fetch(`${forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        "authorization": `Bearer ${forgeApiKey}`,
       },
       body: JSON.stringify({
         model: "claude-3-5-haiku-20241022",
@@ -164,16 +164,16 @@ router.post("/recommend-stream", async (req, res) => {
       }),
     });
 
-    if (!anthropicRes.ok) {
-      const errorText = await anthropicRes.text();
-      sendSSE(res, "error", JSON.stringify({ message: `Anthropic API error: ${anthropicRes.status} — ${errorText.slice(0, 200)}` }));
+    if (!forgeRes.ok) {
+      const errorText = await forgeRes.text();
+      sendSSE(res, "error", JSON.stringify({ message: `AI API error: ${forgeRes.status} — ${errorText.slice(0, 200)}` }));
       res.end();
       return;
     }
 
-    const reader = anthropicRes.body?.getReader();
+    const reader = forgeRes.body?.getReader();
     if (!reader) {
-      sendSSE(res, "error", JSON.stringify({ message: "No response body from Anthropic" }));
+      sendSSE(res, "error", JSON.stringify({ message: "No response body from AI" }));
       res.end();
       return;
     }
@@ -194,20 +194,22 @@ router.post("/recommend-stream", async (req, res) => {
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const raw = line.slice(6).trim();
-        if (raw === "[DONE]") continue;
+        if (raw === "[DONE]") {
+          sendSSE(res, "done", "{}");
+          continue;
+        }
 
         try {
           const evt = JSON.parse(raw) as {
-            type: string;
-            delta?: { type: string; text?: string };
+            choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
           };
 
-          if (
-            evt.type === "content_block_delta" &&
-            evt.delta?.type === "text_delta" &&
-            evt.delta.text
-          ) {
-            sendSSE(res, "delta", JSON.stringify(evt.delta.text));
+          const content = evt.choices?.[0]?.delta?.content;
+          if (content) {
+            sendSSE(res, "delta", JSON.stringify(content));
+          }
+          if (evt.choices?.[0]?.finish_reason === "stop") {
+            sendSSE(res, "done", "{}");
           }
         } catch {
           // skip malformed lines

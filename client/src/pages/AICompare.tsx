@@ -28,7 +28,6 @@ import { Streamdown } from "streamdown";
 import Header from "@/components/Header";
 import CarrierLogo from "@/components/CarrierLogo";
 import StarRating from "@/components/StarRating";
-import { MOCK_PLANS } from "@/lib/mockData";
 import type { MedicarePlan } from "@/lib/types";
 
 // ── localStorage cache helpers ────────────────────────────────────────────────
@@ -131,19 +130,20 @@ interface PlanSelectorProps {
   onChange: (id: string) => void;
   excludeIds?: string[];
   accentColor: string;
+  allPlans: MedicarePlan[];
 }
 
-function PlanSelector({ label, sublabel, value, onChange, excludeIds = [], accentColor }: PlanSelectorProps) {
+function PlanSelector({ label, sublabel, value, onChange, excludeIds = [], accentColor, allPlans }: PlanSelectorProps) {
   const [open, setOpen] = useState(false);
-  const selectedPlan = MOCK_PLANS.find((p) => p.id === value);
+  const selectedPlan = allPlans.find((p) => p.id === value);
 
   const grouped = useMemo(() => {
-    const carriers = Array.from(new Set(MOCK_PLANS.map((p) => p.carrier)));
+    const carriers = Array.from(new Set(allPlans.map((p) => p.carrier)));
     return carriers.map((carrier) => ({
       carrier,
-      plans: MOCK_PLANS.filter((p) => p.carrier === carrier && !excludeIds.includes(p.id)),
+      plans: allPlans.filter((p) => p.carrier === carrier && !excludeIds.includes(p.id)),
     }));
-  }, [excludeIds]);
+  }, [excludeIds, allPlans]);
 
   // Close on outside click
   const ref = useRef<HTMLDivElement>(null);
@@ -509,6 +509,22 @@ const PLAN_LABELS: [string, string, string] = ["Current Plan", "New Plan 1", "Ne
 
 export default function AICompare() {
   const [planIds, setPlanIds] = useState<[string, string, string]>(["", "", ""]);
+  const [allPlans, setAllPlans] = useState<MedicarePlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+
+  // Fetch plans from API on mount (use default ZIP 64106 for AI Compare)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const zip = params.get("zip") || "64106";
+    setPlansLoading(true);
+    fetch(`/api/plans?zip=${zip}`)
+      .then((r) => r.json())
+      .then((data: { plans?: MedicarePlan[] }) => {
+        setAllPlans(data.plans ?? []);
+      })
+      .catch(() => setAllPlans([]))
+      .finally(() => setPlansLoading(false));
+  }, []);
 
   // Progressive state
   const [phase, setPhase] = useState<ComparePhase>("idle");
@@ -530,7 +546,7 @@ export default function AICompare() {
     }
   }, []);
 
-  const plans = planIds.map((id) => MOCK_PLANS.find((p) => p.id === id) ?? null) as [
+  const plans = planIds.map((id) => allPlans.find((p) => p.id === id) ?? null) as [
     MedicarePlan | null,
     MedicarePlan | null,
     MedicarePlan | null,
@@ -754,6 +770,7 @@ export default function AICompare() {
               onChange={(id) => { setPlanIds([id, planIds[1], planIds[2]]); handleReset(); }}
               excludeIds={[planIds[1], planIds[2]].filter(Boolean)}
               accentColor={PLAN_COLORS[0]}
+              allPlans={allPlans}
             />
             <PlanSelector
               label="Plan You're Considering"
@@ -762,6 +779,7 @@ export default function AICompare() {
               onChange={(id) => { setPlanIds([planIds[0], id, planIds[2]]); handleReset(); }}
               excludeIds={[planIds[0], planIds[2]].filter(Boolean)}
               accentColor={PLAN_COLORS[1]}
+              allPlans={allPlans}
             />
             <PlanSelector
               label="Another Plan You're Considering"
@@ -770,6 +788,7 @@ export default function AICompare() {
               onChange={(id) => { setPlanIds([planIds[0], planIds[1], id]); handleReset(); }}
               excludeIds={[planIds[0], planIds[1]].filter(Boolean)}
               accentColor={PLAN_COLORS[2]}
+              allPlans={allPlans}
             />
           </div>
 

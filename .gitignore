@@ -108,3 +108,5 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+server/cms-landscape.csv
+server/cms-landscape-cache.csv

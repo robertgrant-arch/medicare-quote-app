@@ -185,3 +185,17 @@
 ## Save & Compare to My Current Plan Button
 - [x] Add "Save & Compare to My Current Plan" button to each RankedPlanCard
 - [x] Button navigates to /ai-compare?plan2=ID leaving plan1 empty for user to select
+
+## CMS Real Medicare Data Integration
+- [x] Download CMS CY2026 Landscape CSV and parse structure
+- [x] Build /api/plans endpoint: ZIP→county via CMS Marketplace API, CSV lookup, Claude Haiku transform
+- [x] Update Plans.tsx to fetch from /api/plans instead of MOCK_PLANS
+- [x] Update Home.tsx to fetch from /api/plans for ZIP search
+- [x] Update AICompare.tsx to fetch from /api/plans
+- [x] Update PlanRecommender.tsx to fetch from /api/plans
+- [x] Use Forge API (built-in LLM) instead of direct Anthropic API calls
+- [x] Update compareStream.ts to use Forge API with OpenAI-compatible streaming
+- [x] Update recommendStream.ts to use Forge API with OpenAI-compatible streaming
+- [x] FilterSidebar: dynamic carriers from real plan data (not hardcoded)
+- [x] Fix county name display to use Title Case
+- [x] Verify end-to-end with real ZIP codes (24 plans for ZIP 64106 Jackson County, MO)
