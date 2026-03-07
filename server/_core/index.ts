@@ -12,6 +12,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerCompareStreamRoute } from "../compareStream";
 import recommendStreamRouter from "../recommendStream";
 import { registerPlansRoute, prewarmPlanCache } from "../plansRouter";
+import { seedCmsDataSources, startCmsPipelineCron } from "../cmsPipeline";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -121,6 +122,9 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Pre-warm plan cache for common states in the background (non-blocking)
     prewarmPlanCache().catch((err) => console.warn("[Plans] Pre-warm failed:", err));
+    // Seed CMS data sources and start the daily sync cron
+    seedCmsDataSources().catch((err) => console.warn("[CMS] Seed failed:", err));
+    startCmsPipelineCron();
   });
 }
 

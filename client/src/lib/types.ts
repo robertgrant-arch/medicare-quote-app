@@ -66,6 +66,7 @@ export interface MedicarePlan {
   isBestMatch?: boolean;
   isMostPopular?: boolean;
   isNewPlan?: boolean;
+  isNonCommissionable?: boolean;
   enrollmentPeriod: string;
   effectiveDate: string;
   serviceArea: string;

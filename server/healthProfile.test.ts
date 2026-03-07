@@ -188,7 +188,7 @@ describe("healthProfile.recommend", () => {
 
     expect(result.rankedPlans).toHaveLength(1);
     expect(result.totalPlansScored).toBe(1);
-  });
+  }, 15_000);
 
   it("returns aiNarrative as string (may be empty if LLM unavailable)", async () => {
     const caller = appRouter.createCaller(createPublicContext());

@@ -371,3 +371,46 @@
 - [x] Add strong null/undefined guards in handleCompare before normalizePlan calls
 - [x] Fix SSE event/data pairing so error events are not appended as text content
 - [x] Verify TypeScript compiles clean
+
+## Feature: Daily CMS Data Pipeline
+- [ ] DB schema: cms_sync_log table (id, run_at, status, files_checked, files_updated, error_msg)
+- [ ] DB schema: cms_data_sources table (id, name, url, last_checked, last_updated, file_hash)
+- [ ] Cron job infrastructure (node-cron, daily at 2am) with mock CMS file checks
+- [ ] Manual "Sync Now" endpoint (POST /api/admin/sync-now)
+- [ ] Sync status tRPC procedure (getSyncStatus, getSyncHistory)
+
+## Feature: Admin Dashboard (/admin)
+- [ ] DB schema: carrier_overrides table (carrier_name, is_enabled, updated_at)
+- [ ] DB schema: plan_overrides table (plan_id, is_enabled, is_non_commissionable, non_comm_source, non_comm_effective_date, updated_at)
+- [ ] Pre-load 2026 non-commissionable plan flags by carrier
+- [ ] Admin tRPC router: getCarriers, toggleCarrier, getPlans, togglePlan, flagNonCommissionable
+- [ ] Admin tRPC router: getSyncStatus, getSyncHistory, triggerSync
+- [ ] /admin route with simple password auth (env var ADMIN_PASSWORD)
+- [ ] Carrier management table (name, active plans count, states, status toggle)
+- [ ] Plan management table (plan ID, name, carrier, type, premium, MOOP, commission status, toggle)
+- [ ] Non-commissionable filter view
+- [ ] Data Sync Status panel (last sync, next sync, history log, Sync Now button)
+- [ ] Filter/sort by carrier, state, ZIP, plan type, commission status
+
+## Feature: Connect Admin to Public Site
+- [ ] plansRouter: filter out disabled carriers and disabled plans
+- [ ] plansRouter: attach isNonCommissionable flag to plan objects
+- [ ] Plans.tsx: show "Non-Commissionable" badge on flagged plans
+- [ ] FilterSidebar: exclude disabled carriers from carrier filter list
+
+## Admin Dashboard & CMS Pipeline (from pasted_content_3.txt requirements)
+- [x] Database schema: carrier_overrides, plan_overrides, cms_data_sources, cms_sync_log tables
+- [x] pnpm db:push: all 4 new tables created in production DB
+- [x] CMS pipeline module (server/cmsPipeline.ts): cron job (daily 2am), manual trigger, sync status tracking
+- [x] Admin tRPC router (server/adminRouter.ts): carrier management, plan management, non-commissionable flags, sync status
+- [x] Admin router registered in routers.ts
+- [x] CMS pipeline startup wired into server/_core/index.ts (seed data sources + start cron)
+- [x] Admin Dashboard page (/admin): password auth (env ADMIN_PASSWORD), 4 tabs (Carriers, Plans, CMS Sync, Settings)
+- [x] Admin route registered in App.tsx
+- [x] Plans API: loadAdminOverrides() filters disabled carriers/plans, badges non-commissionable plans
+- [x] Plans API: sort by maxOutOfPocket ascending (lowest OOP first)
+- [x] PlanCard: isNonCommissionable badge (yellow, "Non-Commissionable" label with tooltip)
+- [x] MedicarePlan type: added isNonCommissionable?: boolean field
+- [x] Fixed runtime error: EMPTY_OVERRIDES constant prevents undefined from loadAdminOverrides
+- [x] Fixed field name mapping: carrier (not organization), maxOutOfPocket (not moop)
+- [x] Test timeout fix: "handles single plan input" test now has 15s timeout

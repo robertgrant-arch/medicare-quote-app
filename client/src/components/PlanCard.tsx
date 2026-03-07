@@ -89,6 +89,15 @@ export default function PlanCard({
       {!plan.isBestMatch && !plan.isMostPopular && plan.isNewPlan && (
         <div className="badge-new">New Plan</div>
       )}
+      {plan.isNonCommissionable && (
+        <div
+          className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full border"
+          style={{ backgroundColor: "#FEF9C3", color: "#92400E", borderColor: "#FDE68A" }}
+          title="This plan is not commissionable. We present it for your comparison but cannot earn a commission if you enroll."
+        >
+          Non-Commissionable
+        </div>
+      )}
 
       <div className="p-5">
         {/* ── Card Header ───────────────────────────────────────────────── */}

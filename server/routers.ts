@@ -5,6 +5,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { compareRouter } from "./compareRouter";
 import { pverifyRouter } from "./pverifyRouter";
 import { healthProfileRouter } from "./healthProfileRouter";
+import { adminRouter } from "./adminRouter";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -23,6 +24,7 @@ export const appRouter = router({
   compare: compareRouter,
   pverify: pverifyRouter,
   healthProfile: healthProfileRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

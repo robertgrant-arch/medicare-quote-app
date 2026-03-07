@@ -13,6 +13,9 @@
  */
 
 import { type Express } from "express";
+import { eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { carrierOverrides, planOverrides } from "../drizzle/schema";
 
 // ── CDN URLs for pre-processed per-state plan JSON files ─────────────────────
 const CDN_BASE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8";
@@ -198,13 +201,67 @@ function findPlansForCounty(stateData: Record<string, unknown[]>, countyName: st
   return [];
 }
 
+// ── Load admin overrides from DB ─────────────────────────────────────────────
+interface AdminOverrides {
+  disabledCarriers: Set<string>;
+  disabledPlanIds: Set<string>;
+  nonCommPlanIds: Set<string>;
+}
+
+const EMPTY_OVERRIDES: AdminOverrides = {
+  disabledCarriers: new Set<string>(),
+  disabledPlanIds: new Set<string>(),
+  nonCommPlanIds: new Set<string>(),
+};
+
+async function loadAdminOverrides(): Promise<AdminOverrides> {
+  try {
+    const dbConn = await getDb();
+    if (!dbConn) return EMPTY_OVERRIDES;
+
+    const [disabledCarrierRows, planRows] = await Promise.all([
+      dbConn.select({ carrierName: carrierOverrides.carrierName })
+        .from(carrierOverrides)
+        .where(eq(carrierOverrides.isEnabled, false)),
+      dbConn.select({ planId: planOverrides.planId, isEnabled: planOverrides.isEnabled, isNonCommissionable: planOverrides.isNonCommissionable })
+        .from(planOverrides),
+    ]);
+
+    return {
+      disabledCarriers: new Set(disabledCarrierRows.map((r) => r.carrierName.toLowerCase())),
+      disabledPlanIds: new Set(
+        planRows.filter((r) => !r.isEnabled).map((r) => r.planId.toLowerCase())
+      ),
+      nonCommPlanIds: new Set(
+        planRows.filter((r) => r.isNonCommissionable).map((r) => r.planId.toLowerCase())
+      ),
+    };
+  } catch (err) {
+    console.warn("[Plans] Failed to load admin overrides (non-fatal):", err);
+    return EMPTY_OVERRIDES;
+  }
+}
+
 // ── Annotate plans ──────────────────────────────────────────────────────────
 
-function annotatePlans(plans: unknown[]): unknown[] {
-  // Sort by star rating descending, then by premium ascending — return ALL plans
-  const sorted = [...plans].sort((a: any, b: any) => {
-    const starDiff = (b.starRating?.overall ?? 0) - (a.starRating?.overall ?? 0);
-    if (starDiff !== 0) return starDiff;
+function annotatePlans(plans: unknown[], overrides: AdminOverrides = EMPTY_OVERRIDES): unknown[] {
+  // Filter out disabled carriers and disabled plans
+  const filtered = plans.filter((plan: any) => {
+    // carrier field is "carrier" in the actual plan data
+    const carrier = (plan.carrier ?? plan.organization ?? plan.carrierName ?? "").toLowerCase();
+    // plan ID field is "id" (e.g. "H0028-054") in the actual plan data
+    const planId = (plan.id ?? plan.planId ?? "").toLowerCase();
+    if (overrides.disabledCarriers.has(carrier)) return false;
+    if (overrides.disabledPlanIds.has(planId)) return false;
+    return true;
+  });
+
+  // Sort by MOOP ascending (lowest out-of-pocket first), then premium ascending
+  // maxOutOfPocket is the field name in the actual plan data
+  const sorted = [...filtered].sort((a: any, b: any) => {
+    const moopA = a.maxOutOfPocket ?? a.outOfPocketMax ?? a.moop ?? Infinity;
+    const moopB = b.maxOutOfPocket ?? b.outOfPocketMax ?? b.moop ?? Infinity;
+    if (moopA !== moopB) return moopA - moopB;
     return (a.premium ?? 0) - (b.premium ?? 0);
   });
 
@@ -212,6 +269,7 @@ function annotatePlans(plans: unknown[]): unknown[] {
     ...plan,
     isBestMatch: idx === 0,
     isMostPopular: idx === 1,
+    isNonCommissionable: overrides.nonCommPlanIds.has((plan.id ?? plan.planId ?? "").toLowerCase()),
   }));
 }
 
@@ -261,8 +319,9 @@ export function registerPlansRoute(app: Express): void {
         });
       }
 
-      // Step 4: Annotate and return
-      const plans = annotatePlans(rawPlans);
+      // Step 4: Load admin overrides and annotate
+      const overrides = await loadAdminOverrides();
+      const plans = annotatePlans(rawPlans, overrides);
 
       return res.json({
         plans,
