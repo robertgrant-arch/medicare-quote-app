@@ -126,116 +126,317 @@ function AdminLogin({ onLogin }: { onLogin: (password: string) => void }) {
   );
 }
 
-// ─── Carrier Management Tab ────────────────────────────────────────────────────
+// US states list for the state dropdown
+const US_STATES: Array<{ abbr: string; name: string }> = [
+  { abbr: "AL", name: "Alabama" }, { abbr: "AK", name: "Alaska" },
+  { abbr: "AZ", name: "Arizona" }, { abbr: "AR", name: "Arkansas" },
+  { abbr: "CA", name: "California" }, { abbr: "CO", name: "Colorado" },
+  { abbr: "CT", name: "Connecticut" }, { abbr: "DC", name: "District of Columbia" },
+  { abbr: "DE", name: "Delaware" }, { abbr: "FL", name: "Florida" },
+  { abbr: "GA", name: "Georgia" }, { abbr: "HI", name: "Hawaii" },
+  { abbr: "ID", name: "Idaho" }, { abbr: "IL", name: "Illinois" },
+  { abbr: "IN", name: "Indiana" }, { abbr: "IA", name: "Iowa" },
+  { abbr: "KS", name: "Kansas" }, { abbr: "KY", name: "Kentucky" },
+  { abbr: "LA", name: "Louisiana" }, { abbr: "ME", name: "Maine" },
+  { abbr: "MD", name: "Maryland" }, { abbr: "MA", name: "Massachusetts" },
+  { abbr: "MI", name: "Michigan" }, { abbr: "MN", name: "Minnesota" },
+  { abbr: "MS", name: "Mississippi" }, { abbr: "MO", name: "Missouri" },
+  { abbr: "MT", name: "Montana" }, { abbr: "NE", name: "Nebraska" },
+  { abbr: "NV", name: "Nevada" }, { abbr: "NH", name: "New Hampshire" },
+  { abbr: "NJ", name: "New Jersey" }, { abbr: "NM", name: "New Mexico" },
+  { abbr: "NY", name: "New York" }, { abbr: "NC", name: "North Carolina" },
+  { abbr: "ND", name: "North Dakota" }, { abbr: "OH", name: "Ohio" },
+  { abbr: "OK", name: "Oklahoma" }, { abbr: "OR", name: "Oregon" },
+  { abbr: "PA", name: "Pennsylvania" }, { abbr: "RI", name: "Rhode Island" },
+  { abbr: "SC", name: "South Carolina" }, { abbr: "SD", name: "South Dakota" },
+  { abbr: "TN", name: "Tennessee" }, { abbr: "TX", name: "Texas" },
+  { abbr: "UT", name: "Utah" }, { abbr: "VT", name: "Vermont" },
+  { abbr: "VA", name: "Virginia" }, { abbr: "WA", name: "Washington" },
+  { abbr: "WV", name: "West Virginia" }, { abbr: "WI", name: "Wisconsin" },
+  { abbr: "WY", name: "Wyoming" },
+];
+
+// --- Carrier Management Tab ---
 function CarrierManagement({ adminPassword }: { adminPassword: string }) {
-  const [search, setSearch] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedCarriers, setSelectedCarriers] = useState<string[]>([]);
+  const [nonCommOnly, setNonCommOnly] = useState(false);
   const utils = trpc.useUtils();
 
-  const { data, isLoading, refetch } = trpc.admin.getCarriers.useQuery(
-    { adminPassword, search: search || undefined },
-    { refetchInterval: 30000 }
+  const { data: carriersData, isLoading: carriersLoading } = trpc.admin.getStateCarriers.useQuery(
+    { adminPassword, state: selectedState },
+    { enabled: selectedState.length === 2 }
   );
 
-  const toggleMutation = trpc.admin.toggleCarrier.useMutation({
-    onSuccess: () => utils.admin.getCarriers.invalidate(),
+  const { data: plansData, isLoading: plansLoading } = trpc.admin.getStatePlans.useQuery(
+    {
+      adminPassword,
+      state: selectedState,
+      carriers: selectedCarriers.length > 0 ? selectedCarriers : undefined,
+      nonCommOnly,
+    },
+    { enabled: selectedState.length === 2 }
+  );
+
+  const toggleCarrierMutation = trpc.admin.toggleCarrier.useMutation({
+    onSuccess: () => utils.admin.getStateCarriers.invalidate(),
   });
 
-  const carriers = data ?? [];
+  const carriers = carriersData?.carriers ?? [];
+  const plans = plansData?.plans ?? [];
+
+  const handleCarrierCheckbox = (carrierName: string, checked: boolean) => {
+    setSelectedCarriers((prev) =>
+      checked ? [...prev, carrierName] : prev.filter((c) => c !== carrierName)
+    );
+  };
+
+  const handleSelectAllCarriers = () => {
+    if (selectedCarriers.length === carriers.length) {
+      setSelectedCarriers([]);
+    } else {
+      setSelectedCarriers(carriers.map((c) => c.name));
+    }
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Carrier Management</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Carrier & Plan Management</h2>
           <p className="text-sm text-gray-500">
-            Disable a carrier to hide ALL their plans from public results.
+            Select a state to view all carriers and plans from CMS data. Disable carriers to hide their plans from public results.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw size={14} className="mr-1" /> Refresh
-        </Button>
       </div>
 
-      <div className="relative max-w-xs">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search carriers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Filter Row */}
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg border">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">State:</label>
+          <select
+            value={selectedState}
+            onChange={(e) => {
+              setSelectedState(e.target.value);
+              setSelectedCarriers([]);
+            }}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500 min-w-[200px]"
+          >
+            <option value="">-- Select a State --</option>
+            {US_STATES.map((s) => (
+              <option key={s.abbr} value={s.abbr}>
+                {s.name} ({s.abbr})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={nonCommOnly}
+            onChange={(e) => setNonCommOnly(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+          />
+          <span className="text-sm font-medium text-gray-700">Non-Commissionable Plans Only</span>
+        </label>
+
+        {selectedState && (
+          <span className="text-xs text-gray-500 ml-auto">
+            {carriersLoading ? "Loading..." : `${carriers.length} carriers in ${selectedState}`}
+          </span>
+        )}
       </div>
 
-      {isLoading ? (
+      {!selectedState ? (
+        <div className="text-center py-16 text-gray-400">
+          <Building2 size={48} className="mx-auto mb-4 text-gray-200" />
+          <p className="text-base font-medium text-gray-500">Select a state to get started</p>
+          <p className="text-sm mt-1">Choose a state from the dropdown above to view carriers and plans.</p>
+        </div>
+      ) : carriersLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="animate-spin text-gray-400" size={24} />
-        </div>
-      ) : carriers.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <Building2 size={40} className="mx-auto mb-3 text-gray-300" />
-          <p className="font-medium">No carrier overrides yet</p>
-          <p className="text-sm mt-1">
-            Carriers appear here once you toggle them. All carriers are enabled by default.
-          </p>
+          <span className="ml-2 text-gray-500">Loading carriers for {selectedState}...</span>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead>Carrier Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead className="text-right">Toggle</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {carriers.map((carrier) => (
-                <TableRow key={carrier.id}>
-                  <TableCell className="font-medium">{carrier.carrierName}</TableCell>
-                  <TableCell>
-                    {carrier.isEnabled ? (
-                      <Badge className="bg-green-100 text-green-800 border-green-200">
-                        <CheckCircle2 size={12} className="mr-1" /> Active
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-red-100 text-red-800 border-red-200">
-                        <XCircle size={12} className="mr-1" /> Disabled
-                      </Badge>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Carrier Checkboxes */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">Carriers in {selectedState}</CardTitle>
+                  <button
+                    onClick={handleSelectAllCarriers}
+                    className="text-xs text-red-600 hover:text-red-800 font-medium"
+                  >
+                    {selectedCarriers.length === carriers.length ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
+                <CardDescription className="text-xs">
+                  Check carriers to filter plans. Toggle the switch to enable/disable.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[500px] overflow-y-auto divide-y divide-gray-100">
+                  {carriers.map((carrier) => (
+                    <div
+                      key={carrier.name}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`carrier-${carrier.name}`}
+                        checked={selectedCarriers.includes(carrier.name)}
+                        onChange={(e) => handleCarrierCheckbox(carrier.name, e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 shrink-0"
+                      />
+                      <label
+                        htmlFor={`carrier-${carrier.name}`}
+                        className="flex-1 text-sm font-medium text-gray-800 cursor-pointer leading-tight"
+                      >
+                        {carrier.name}
+                      </label>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {carrier.isEnabled ? (
+                          <span className="text-xs text-green-600 font-medium">On</span>
+                        ) : (
+                          <span className="text-xs text-red-500 font-medium">Off</span>
+                        )}
+                        <Switch
+                          checked={carrier.isEnabled}
+                          onCheckedChange={(checked) =>
+                            toggleCarrierMutation.mutate({
+                              adminPassword,
+                              carrierName: carrier.name,
+                              isEnabled: checked,
+                            })
+                          }
+                          disabled={toggleCarrierMutation.isPending}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Plans List */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">
+                    Plans
+                    {selectedCarriers.length > 0
+                      ? ` — ${selectedCarriers.slice(0, 2).join(", ")}${selectedCarriers.length > 2 ? ` +${selectedCarriers.length - 2} more` : ""}`
+                      : ` — All Carriers in ${selectedState}`}
+                  </CardTitle>
+                  {plansData && (
+                    <span className="text-xs text-gray-500">{plansData.total} plans</span>
+                  )}
+                </div>
+                <CardDescription className="text-xs">
+                  {nonCommOnly
+                    ? "Showing non-commissionable plans only."
+                    : "Showing all plans. Check Non-Commissionable Only to filter."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {plansLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-gray-400" size={20} />
+                    <span className="ml-2 text-sm text-gray-500">Loading plans...</span>
+                  </div>
+                ) : plans.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <FileText size={32} className="mx-auto mb-3 text-gray-200" />
+                    <p className="text-sm font-medium text-gray-500">
+                      {nonCommOnly ? "No non-commissionable plans found" : "No plans found"}
+                    </p>
+                    {selectedCarriers.length > 0 && (
+                      <p className="text-xs mt-1">Try deselecting some carriers or removing filters.</p>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">
-                    {new Date(carrier.updatedAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Switch
-                      checked={carrier.isEnabled}
-                      onCheckedChange={(checked) =>
-                        toggleMutation.mutate({
-                          adminPassword,
-                          carrierName: carrier.carrierName,
-                          isEnabled: checked,
-                        })
-                      }
-                      disabled={toggleMutation.isPending}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                ) : (
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50 sticky top-0">
+                          <TableHead className="text-xs">Plan Name</TableHead>
+                          <TableHead className="text-xs">Carrier</TableHead>
+                          <TableHead className="text-xs">Type</TableHead>
+                          <TableHead className="text-xs">Premium</TableHead>
+                          <TableHead className="text-xs">MOOP</TableHead>
+                          <TableHead className="text-xs">Flags</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {plans.map((plan, idx) => {
+                          const p = plan as Record<string, unknown>;
+                          const planName = String(p.planName ?? p.name ?? "Unknown Plan");
+                          const carrier = String(p.carrier ?? p.organization ?? "");
+                          const planType = String(p.planType ?? p.type ?? "");
+                          const premium = p.monthlyPremium ?? p.premium;
+                          const moop = p.maxOutOfPocket ?? p.moop;
+                          const isNonComm = Boolean(p.isNonCommissionable);
+                          const planId = String(p.id ?? p.planId ?? "");
+
+                          return (
+                            <TableRow key={`${planId}-${idx}`} className={isNonComm ? "bg-amber-50" : ""}>
+                              <TableCell className="text-xs font-medium max-w-[200px]">
+                                <div className="truncate" title={planName}>{planName}</div>
+                                {planId && <div className="text-gray-400 text-[10px] font-mono truncate">{planId}</div>}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-600">{carrier}</TableCell>
+                              <TableCell className="text-xs">
+                                {planType && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                    {planType}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {premium !== undefined && premium !== null
+                                  ? `$${Number(premium).toFixed(0)}/mo`
+                                  : <span className="text-gray-400">—</span>}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {moop !== undefined && moop !== null
+                                  ? `$${Number(moop).toLocaleString()}`
+                                  : <span className="text-gray-400">—</span>}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {isNonComm && (
+                                  <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] px-1.5 py-0">
+                                    <DollarSignIcon size={9} className="mr-0.5" /> Non-Comm
+                                  </Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
         <AlertTriangle size={16} className="inline mr-2" />
-        <strong>Note:</strong> Carrier overrides only apply to carriers that have been explicitly
-        added here. To disable a carrier from the live plan data, add it here and toggle it off.
-        New carriers from CMS data will be enabled by default until manually overridden.
+        <strong>Note:</strong> Toggle a carrier's switch to enable or disable all their plans from public results.
+        Plans shown here come directly from CMS data. Non-commissionable flags are managed in the Non-Comm tab.
       </div>
     </div>
   );
 }
+
 
 // ─── Plan Management Tab ───────────────────────────────────────────────────────
 function PlanManagement({

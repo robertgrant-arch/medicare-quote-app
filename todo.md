@@ -418,3 +418,12 @@
 ## Production Publish
 - [x] ADMIN_PASSWORD set to 595market (verified via API test)
 - [x] All features complete and ready for production publish
+
+## Admin Carriers Tab Redesign
+- [ ] Backend: add admin.getCarriersByState procedure (state → carriers from CMS data)
+- [ ] Backend: add admin.getPlansByState procedure (state + carriers → plans from CMS data)
+- [ ] Frontend: state dropdown (50 states + DC) at top of Carriers tab
+- [ ] Frontend: "Non-Commissionable Plans Only" checkbox next to state dropdown
+- [ ] Frontend: carrier checkboxes list (all carriers in selected state)
+- [ ] Frontend: plan list below carriers (filtered by selected carriers, state, non-comm flag)
+- [ ] Frontend: non-commissionable badge visible on each plan card in admin view

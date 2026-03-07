@@ -26,6 +26,107 @@ import { getDb } from "./db";
 import { runCmsSync, getNextScheduledRun } from "./cmsPipeline";
 import { publicProcedure, router } from "./_core/trpc";
 
+// ─── Shared: load state plan data from CDN (same cache as plansRouter) ────────
+const CDN_BASE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8";
+const STATE_CDN_URLS: Record<string, string> = {
+  AL: `${CDN_BASE}/AL_67b904f5.json`, AR: `${CDN_BASE}/AR_44da840b.json`,
+  AZ: `${CDN_BASE}/AZ_822fc811.json`, CA: `${CDN_BASE}/CA_0e63b144.json`,
+  CO: `${CDN_BASE}/CO_d5d0202e.json`, CT: `${CDN_BASE}/CT_fe117f1a.json`,
+  DC: `${CDN_BASE}/DC_956b23b8.json`, DE: `${CDN_BASE}/DE_e49d3fed.json`,
+  FL: `${CDN_BASE}/FL_49f1876a.json`, GA: `${CDN_BASE}/GA_533e1fca.json`,
+  HI: `${CDN_BASE}/HI_fa323526.json`, IA: `${CDN_BASE}/IA_c0fbfe84.json`,
+  ID: `${CDN_BASE}/ID_36678396.json`, IL: `${CDN_BASE}/IL_4defe286.json`,
+  IN: `${CDN_BASE}/IN_dc82ef53.json`, KS: `${CDN_BASE}/KS_7e35aefd.json`,
+  KY: `${CDN_BASE}/KY_d429ac6a.json`, LA: `${CDN_BASE}/LA_135fa9eb.json`,
+  MA: `${CDN_BASE}/MA_a8cf20c4.json`, MD: `${CDN_BASE}/MD_e84fb99f.json`,
+  ME: `${CDN_BASE}/ME_32265cbc.json`, MI: `${CDN_BASE}/MI_2be468a6.json`,
+  MN: `${CDN_BASE}/MN_eda92d03.json`, MO: `${CDN_BASE}/MO_4e9fdf09.json`,
+  MS: `${CDN_BASE}/MS_c8f93956.json`, MT: `${CDN_BASE}/MT_686ff40b.json`,
+  NC: `${CDN_BASE}/NC_036848e7.json`, ND: `${CDN_BASE}/ND_f12b42a3.json`,
+  NE: `${CDN_BASE}/NE_960f49d1.json`, NH: `${CDN_BASE}/NH_d1021c0f.json`,
+  NJ: `${CDN_BASE}/NJ_4f264fd0.json`, NM: `${CDN_BASE}/NM_446e840a.json`,
+  NV: `${CDN_BASE}/NV_9ca45f94.json`, NY: `${CDN_BASE}/NY_d3c0c09e.json`,
+  OH: `${CDN_BASE}/OH_ec644008.json`, OK: `${CDN_BASE}/OK_3e52d056.json`,
+  OR: `${CDN_BASE}/OR_4d1de179.json`, PA: `${CDN_BASE}/PA_124dc2c6.json`,
+  PR: `${CDN_BASE}/PR_2ff56627.json`, RI: `${CDN_BASE}/RI_74672982.json`,
+  SC: `${CDN_BASE}/SC_3ceb6e53.json`, SD: `${CDN_BASE}/SD_0553bb69.json`,
+  TN: `${CDN_BASE}/TN_cf7b12c8.json`, TX: `${CDN_BASE}/TX_2dd68bdd.json`,
+  UT: `${CDN_BASE}/UT_ac1faf77.json`, VA: `${CDN_BASE}/VA_db8b8a4c.json`,
+  VT: `${CDN_BASE}/VT_8e463fe4.json`, WA: `${CDN_BASE}/WA_43e2f67b.json`,
+  WI: `${CDN_BASE}/WI_003da44b.json`, WV: `${CDN_BASE}/WV_c5df6929.json`,
+  WY: `${CDN_BASE}/WY_02219b63.json`,
+};
+
+// Simple in-memory cache for admin state data (separate from plansRouter cache)
+const adminStateCache = new Map<string, Record<string, unknown[]>>();
+
+async function loadStateDataForAdmin(stateAbbr: string): Promise<Record<string, unknown[]> | null> {
+  const cached = adminStateCache.get(stateAbbr);
+  if (cached) return cached;
+  const url = STATE_CDN_URLS[stateAbbr];
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return null;
+    const data = await res.json() as Record<string, unknown[]>;
+    if (adminStateCache.size >= 10) {
+      const firstKey = adminStateCache.keys().next().value;
+      if (firstKey) adminStateCache.delete(firstKey);
+    }
+    adminStateCache.set(stateAbbr, data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+// Extract all unique carriers from state data
+function extractCarriersFromStateData(stateData: Record<string, unknown[]>): string[] {
+  const carriers = new Set<string>();
+  for (const plans of Object.values(stateData)) {
+    for (const plan of plans) {
+      const p = plan as Record<string, unknown>;
+      const carrier = (p.carrier ?? p.organization ?? p.carrierName) as string | undefined;
+      if (carrier && typeof carrier === "string") carriers.add(carrier);
+    }
+  }
+  return Array.from(carriers).sort();
+}
+
+// Extract all plans from state data, optionally filtered by carriers
+function extractPlansFromStateData(
+  stateData: Record<string, unknown[]>,
+  carriers?: string[],
+  nonCommOnly?: boolean,
+  nonCommPlanIds?: Set<string>
+): Array<Record<string, unknown>> {
+  const allPlans: Array<Record<string, unknown>> = [];
+  const carrierSet = carriers && carriers.length > 0 ? new Set(carriers) : null;
+
+  for (const [county, plans] of Object.entries(stateData)) {
+    for (const plan of plans) {
+      const p = plan as Record<string, unknown>;
+      const carrier = (p.carrier ?? p.organization ?? p.carrierName) as string | undefined;
+      if (carrierSet && carrier && !carrierSet.has(carrier)) continue;
+      const planId = (p.id ?? p.planId ?? p.contractId) as string | undefined;
+      const isNonComm = planId ? (nonCommPlanIds?.has(planId) ?? false) : false;
+      if (nonCommOnly && !isNonComm) continue;
+      // Avoid duplicates (same plan in multiple counties)
+      const key = `${planId ?? p.planName}-${carrier}`;
+      if (!allPlans.some((existing) => `${existing._dedupeKey}` === key)) {
+        allPlans.push({ ...p, _county: county, _dedupeKey: key, isNonCommissionable: isNonComm });
+      }
+    }
+  }
+
+  return allPlans.sort((a, b) => {
+    const ca = String(a.carrier ?? a.organization ?? "");
+    const cb = String(b.carrier ?? b.organization ?? "");
+    if (ca !== cb) return ca.localeCompare(cb);
+    return String(a.planName ?? "").localeCompare(String(b.planName ?? ""));
+  });
+}
+
 // ─── Admin password check middleware ─────────────────────────────────────────
 // Uses ADMIN_PASSWORD env var. Falls back to "admin123" in dev only.
 function checkAdminPassword(password: string) {
@@ -396,5 +497,82 @@ export const adminRouter = router({
         .where(eq(carrierOverrides.isEnabled, false));
 
       return { carriers: disabled.map((c) => c.carrierName) };
+    }),
+
+  // ── Get all carriers in a state from CMS data ─────────────────────────────
+  getStateCarriers: publicProcedure
+    .input(adminInput.extend({
+      state: z.string().length(2),
+    }))
+    .query(async ({ input }) => {
+      checkAdminPassword(input.adminPassword);
+      const stateData = await loadStateDataForAdmin(input.state.toUpperCase());
+      if (!stateData) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `No plan data found for state: ${input.state}` });
+      }
+
+      const carriers = extractCarriersFromStateData(stateData);
+
+      // Load carrier overrides from DB to know which are disabled
+      const dbConn = await getDb();
+      const disabledSet = new Set<string>();
+      if (dbConn) {
+        const disabled = await dbConn
+          .select({ carrierName: carrierOverrides.carrierName })
+          .from(carrierOverrides)
+          .where(eq(carrierOverrides.isEnabled, false));
+        disabled.forEach((c) => disabledSet.add(c.carrierName));
+      }
+
+      return {
+        state: input.state.toUpperCase(),
+        carriers: carriers.map((name) => ({
+          name,
+          isEnabled: !disabledSet.has(name),
+        })),
+        totalCarriers: carriers.length,
+      };
+    }),
+
+  // ── Get all plans in a state from CMS data (filtered by carriers) ─────────
+  getStatePlans: publicProcedure
+    .input(adminInput.extend({
+      state: z.string().length(2),
+      carriers: z.array(z.string()).optional(),
+      nonCommOnly: z.boolean().optional(),
+    }))
+    .query(async ({ input }) => {
+      checkAdminPassword(input.adminPassword);
+      const stateData = await loadStateDataForAdmin(input.state.toUpperCase());
+      if (!stateData) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `No plan data found for state: ${input.state}` });
+      }
+
+      // Load non-commissionable plan IDs from DB
+      const dbConn = await getDb();
+      const nonCommPlanIds = new Set<string>();
+      if (dbConn) {
+        const nonCommPlans = await dbConn
+          .select({ planId: planOverrides.planId })
+          .from(planOverrides)
+          .where(eq(planOverrides.isNonCommissionable, true));
+        nonCommPlans.forEach((p) => nonCommPlanIds.add(p.planId));
+      }
+
+      const plans = extractPlansFromStateData(
+        stateData,
+        input.carriers,
+        input.nonCommOnly,
+        nonCommPlanIds
+      );
+
+      // Strip internal dedup key before returning
+      const cleanPlans = plans.map(({ _dedupeKey, ...rest }) => rest);
+
+      return {
+        state: input.state.toUpperCase(),
+        plans: cleanPlans,
+        total: cleanPlans.length,
+      };
     }),
 });
