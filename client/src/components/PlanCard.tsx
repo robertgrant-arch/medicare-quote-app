@@ -138,11 +138,32 @@ export default function PlanCard({
                 >
                   {plan.planType}
                 </span>
-                {plan.snpType && (
-                  <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
-                    {plan.snpType}
-                  </span>
-                )}
+                {plan.snpType && (() => {
+                  const st = plan.snpType ?? "";
+                  const isDual = st.toLowerCase().includes("dual") || plan.planName?.includes("D-SNP");
+                  const isChronic = st.toLowerCase().includes("chronic") || st.toLowerCase().includes("disabling") || plan.planName?.includes("C-SNP");
+                  const isInstitutional = st.toLowerCase().includes("institutional") || plan.planName?.includes("I-SNP");
+                  if (isDual) return (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded border" style={{ backgroundColor: "#EDE9FE", color: "#5B21B6", borderColor: "#C4B5FD" }}>
+                      Dual Eligible (D-SNP)
+                    </span>
+                  );
+                  if (isChronic) return (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded border" style={{ backgroundColor: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D" }}>
+                      Chronic Condition (C-SNP)
+                    </span>
+                  );
+                  if (isInstitutional) return (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded border" style={{ backgroundColor: "#F0FDF4", color: "#166534", borderColor: "#86EFAC" }}>
+                      Institutional (I-SNP)
+                    </span>
+                  );
+                  return (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded border" style={{ backgroundColor: "#FEF3C7", color: "#92400E", borderColor: "#FCD34D" }}>
+                      {plan.snpType}
+                    </span>
+                  );
+                })()}
                 <StarRating rating={plan.starRating.overall} size={12} />
               </div>
             </div>

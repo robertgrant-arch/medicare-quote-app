@@ -265,12 +265,22 @@ function annotatePlans(plans: unknown[], overrides: AdminOverrides = EMPTY_OVERR
     return (a.premium ?? 0) - (b.premium ?? 0);
   });
 
-  return sorted.map((plan: any, idx) => ({
-    ...plan,
-    isBestMatch: idx === 0,
-    isMostPopular: idx === 1,
-    isNonCommissionable: overrides.nonCommPlanIds.has((plan.id ?? plan.planId ?? "").toLowerCase()),
-  }));
+  return sorted.map((plan: any, idx) => {
+    const planId = (plan.id ?? plan.planId ?? "").toLowerCase();
+    const planName = (plan.planName ?? plan.name ?? "");
+    const snpType = (plan.snpType ?? "").toLowerCase();
+
+    // Auto-detect I-SNP plans as non-commissionable (institutional plans are typically non-comm)
+    const isISnp = snpType.includes("institutional") || planName.includes("I-SNP");
+    const isNonCommissionable = overrides.nonCommPlanIds.has(planId) || isISnp;
+
+    return {
+      ...plan,
+      isBestMatch: idx === 0,
+      isMostPopular: idx === 1,
+      isNonCommissionable,
+    };
+  });
 }
 
 // ── Register the /api/plans route ─────────────────────────────────────────────

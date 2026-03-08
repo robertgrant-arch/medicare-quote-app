@@ -109,7 +109,11 @@ function extractPlansFromStateData(
       const carrier = (p.carrier ?? p.organization ?? p.carrierName) as string | undefined;
       if (carrierSet && carrier && !carrierSet.has(carrier)) continue;
       const planId = (p.id ?? p.planId ?? p.contractId) as string | undefined;
-      const isNonComm = planId ? (nonCommPlanIds?.has(planId) ?? false) : false;
+      const planName = String(p.planName ?? p.name ?? "");
+      const snpType = String(p.snpType ?? "").toLowerCase();
+      // Auto-detect I-SNP plans as non-commissionable
+      const isISnp = snpType.includes("institutional") || planName.includes("I-SNP");
+      const isNonComm = isISnp || (planId ? (nonCommPlanIds?.has(planId) ?? false) : false);
       if (nonCommOnly && !isNonComm) continue;
       // Avoid duplicates (same plan in multiple counties)
       const key = `${planId ?? p.planName}-${carrier}`;
