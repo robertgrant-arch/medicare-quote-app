@@ -427,3 +427,10 @@
 - [ ] Frontend: carrier checkboxes list (all carriers in selected state)
 - [ ] Frontend: plan list below carriers (filtered by selected carriers, state, non-comm flag)
 - [ ] Frontend: non-commissionable badge visible on each plan card in admin view
+
+## Per-Plan Enable/Disable Toggle (Admin Carriers Tab)
+- [ ] Add togglePlanEnabled tRPC procedure to adminRouter (upsert planOverrides row with isEnabled flag)
+- [ ] Add getPlanOverrides procedure to return enabled/disabled state per planId for a state
+- [ ] Enforce planOverrides isEnabled=false in public plans API (filter disabled plans from results)
+- [ ] Add toggle column to plan table rows in AdminDashboard Carriers tab
+- [ ] Verify toggle state persists in DB and hides plans from public results

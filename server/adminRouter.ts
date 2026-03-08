@@ -292,6 +292,8 @@ export const adminRouter = router({
   togglePlan: publicProcedure
     .input(adminInput.extend({
       planId: z.string(),
+      planName: z.string().optional(),
+      carrierName: z.string().optional(),
       isEnabled: z.boolean(),
     }))
     .mutation(async ({ input }) => {
@@ -311,8 +313,11 @@ export const adminRouter = router({
           .set({ isEnabled: input.isEnabled, updatedAt: new Date() })
           .where(eq(planOverrides.planId, input.planId));
       } else {
+        // Create a new override record with plan metadata
         await dbConn.insert(planOverrides).values({
           planId: input.planId,
+          planName: input.planName ?? input.planId,
+          carrierName: input.carrierName ?? "Unknown",
           isEnabled: input.isEnabled,
         });
       }
@@ -548,15 +553,18 @@ export const adminRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: `No plan data found for state: ${input.state}` });
       }
 
-      // Load non-commissionable plan IDs from DB
+      // Load plan overrides from DB (non-commissionable + disabled)
       const dbConn = await getDb();
       const nonCommPlanIds = new Set<string>();
+      const disabledPlanIds = new Set<string>();
       if (dbConn) {
-        const nonCommPlans = await dbConn
-          .select({ planId: planOverrides.planId })
-          .from(planOverrides)
-          .where(eq(planOverrides.isNonCommissionable, true));
-        nonCommPlans.forEach((p) => nonCommPlanIds.add(p.planId));
+        const overrides = await dbConn
+          .select({ planId: planOverrides.planId, isNonCommissionable: planOverrides.isNonCommissionable, isEnabled: planOverrides.isEnabled })
+          .from(planOverrides);
+        overrides.forEach((p) => {
+          if (p.isNonCommissionable) nonCommPlanIds.add(p.planId);
+          if (p.isEnabled === false) disabledPlanIds.add(p.planId);
+        });
       }
 
       const plans = extractPlansFromStateData(
@@ -566,8 +574,14 @@ export const adminRouter = router({
         nonCommPlanIds
       );
 
-      // Strip internal dedup key before returning
-      const cleanPlans = plans.map(({ _dedupeKey, ...rest }) => rest);
+      // Annotate each plan with isEnabled (true by default, false if explicitly disabled)
+      const cleanPlans = plans.map(({ _dedupeKey, ...rest }) => {
+        const planId = String(rest.id ?? rest.planId ?? rest.contractId ?? "");
+        return {
+          ...rest,
+          isEnabled: !disabledPlanIds.has(planId),
+        };
+      });
 
       return {
         state: input.state.toUpperCase(),

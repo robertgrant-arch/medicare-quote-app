@@ -182,6 +182,10 @@ function CarrierManagement({ adminPassword }: { adminPassword: string }) {
     onSuccess: () => utils.admin.getStateCarriers.invalidate(),
   });
 
+  const togglePlanMutation = trpc.admin.togglePlan.useMutation({
+    onSuccess: () => utils.admin.getStatePlans.invalidate(),
+  });
+
   const carriers = carriersData?.carriers ?? [];
   const plans = plansData?.plans ?? [];
 
@@ -371,6 +375,7 @@ function CarrierManagement({ adminPassword }: { adminPassword: string }) {
                           <TableHead className="text-xs">Premium</TableHead>
                           <TableHead className="text-xs">MOOP</TableHead>
                           <TableHead className="text-xs">Flags</TableHead>
+                          <TableHead className="text-xs text-center">Enable</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -383,9 +388,10 @@ function CarrierManagement({ adminPassword }: { adminPassword: string }) {
                           const moop = p.maxOutOfPocket ?? p.moop;
                           const isNonComm = Boolean(p.isNonCommissionable);
                           const planId = String(p.id ?? p.planId ?? "");
+                          const isPlanEnabled = p.isEnabled !== false; // default true
 
                           return (
-                            <TableRow key={`${planId}-${idx}`} className={isNonComm ? "bg-amber-50" : ""}>
+                            <TableRow key={`${planId}-${idx}`} className={`${isNonComm ? "bg-amber-50" : ""} ${!isPlanEnabled ? "opacity-50" : ""}`}>
                               <TableCell className="text-xs font-medium max-w-[200px]">
                                 <div className="truncate" title={planName}>{planName}</div>
                                 {planId && <div className="text-gray-400 text-[10px] font-mono truncate">{planId}</div>}
@@ -414,6 +420,29 @@ function CarrierManagement({ adminPassword }: { adminPassword: string }) {
                                     <DollarSignIcon size={9} className="mr-0.5" /> Non-Comm
                                   </Badge>
                                 )}
+                                {!isPlanEnabled && (
+                                  <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] px-1.5 py-0 ml-1">
+                                    Hidden
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Switch
+                                    checked={isPlanEnabled}
+                                    onCheckedChange={(checked) => {
+                                      if (!planId) return;
+                                      togglePlanMutation.mutate({
+                                        adminPassword,
+                                        planId,
+                                        planName,
+                                        carrierName: carrier,
+                                        isEnabled: checked,
+                                      });
+                                    }}
+                                    disabled={!planId || togglePlanMutation.isPending}
+                                  />
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
