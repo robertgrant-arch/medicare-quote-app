@@ -160,6 +160,21 @@
     }
   }
 
+    @media (min-width: 768px) {
+    .container {
+      padding-left: 1.75rem;
+      padding-right: 1.75rem;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .container {
+      max-width: 1320px;
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
+  }
+
   /* ── Primary Button (Red) ── */
   .btn-primary {
     background-color: #C41E3A;
@@ -443,3 +458,45 @@
 .ai-analysis ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
 .ai-analysis li { color: #333333; font-size: 0.875rem; margin-bottom: 0.3rem; line-height: 1.55; }
 .ai-analysis strong { color: #1B365D; font-weight: 600; }
+
+
+/* ── Responsive Scaling Improvements ── */
+
+/* Better image scaling */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Improved section spacing on mobile */
+@media (max-width: 639px) {
+  section {
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+  h1 {
+    font-size: 1.875rem;
+    line-height: 1.2;
+  }
+  h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fix overflow on mobile */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Better card scaling */
+@media (max-width: 767px) {
+  .grid {
+    gap: 1rem;
+  }
+}
