@@ -112,7 +112,7 @@ async function streamFromAnthropic(apiKey: string, prompt: string, maxTokens: nu
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20250315',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
       stream: true,
       messages: [{ role: 'user', content: prompt }],
@@ -183,7 +183,7 @@ async function streamFromForge(apiUrl: string, apiKey: string, prompt: string, m
       'authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20250315',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
       stream: true,
       messages: [{ role: 'user', content: prompt }],
