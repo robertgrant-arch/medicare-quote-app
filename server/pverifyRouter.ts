@@ -8,10 +8,9 @@
  * Auth: POST https://api.pverify.com/Token (client_credentials grant)
  * Eligibility: POST https://api.pverify.com/api/EligibilitySummary
  *
- * PRIVACY: No PII (name, DOB, MBI) is persisted to any database or log.
+ * PRIVACY: No PII (MBI, SSN) is persisted to any database or log.
  * All sensitive inputs are used transiently and purged after the API call.
  */
-
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { ENV } from "./_core/env";
@@ -65,10 +64,8 @@ async function getPverifyToken(): Promise<string | null> {
 }
 
 interface PverifyEligibilityRequest {
-  firstName?: string;
-  lastName?: string;
-  dob?: string; // MM/DD/YYYY
   mbi?: string; // Medicare Beneficiary Identifier
+  ssn?: string; // Social Security Number
 }
 
 interface PverifyEligibilityResult {
@@ -111,12 +108,8 @@ async function callPverifyEligibility(req: PverifyEligibilityRequest): Promise<P
 
     if (req.mbi) {
       (payload as any).SubscriberMemberID = req.mbi;
-    } else if (req.firstName && req.lastName && req.dob) {
-      (payload as any).Subscriber = {
-        FirstName: req.firstName,
-        LastName: req.lastName,
-        DOB: req.dob,
-      };
+    } else if (req.ssn) {
+      (payload as any).SubscriberMemberID = req.ssn;
     } else {
       return null;
     }
@@ -167,7 +160,7 @@ async function callPverifyEligibility(req: PverifyEligibilityRequest): Promise<P
         specialistCopay: parseFloat(maInfo.SpecialistCopay ?? "35") || 35,
         urgentCareCopay: parseFloat(maInfo.UrgentCareCopay ?? "35") || 35,
         erCopay: parseFloat(maInfo.ERCopay ?? "90") || 90,
-        inpatientCost: maInfo.InpatientCost ?? "$275/day days 1–7",
+        inpatientCost: maInfo.InpatientCost ?? "$275/day days 1\u20137",
         drugTier1Copay: parseFloat(maInfo.DrugTier1Copay ?? "0") || 0,
         drugTier2Copay: parseFloat(maInfo.DrugTier2Copay ?? "5") || 5,
         drugTier3Copay: parseFloat(maInfo.DrugTier3Copay ?? "42") || 42,
@@ -213,7 +206,7 @@ function buildMockEligibilityResult(seed: string): PverifyEligibilityResult {
       specialistCopay: 35,
       urgentCareCopay: 35,
       erCopay: 90,
-      inpatientCost: "$275/day days 1–7",
+      inpatientCost: "$275/day days 1\u20137",
       drugTier1Copay: 0,
       drugTier2Copay: 5,
       drugTier3Copay: 42,
@@ -228,10 +221,10 @@ function buildMockEligibilityResult(seed: string): PverifyEligibilityResult {
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const EligibilityCheckSchema = z.object({
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
-  dob: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be MM/DD/YYYY"),
   mbi: z.string().max(20).optional(),
+  ssn: z.string().length(9).optional(),
+}).refine((data) => data.mbi || data.ssn, {
+  message: "Either MBI or SSN is required",
 });
 
 const LegacyEligibilityInputSchema = z.object({
@@ -280,7 +273,7 @@ const CurrentPlanSchema = z.object({
   hearingCoverage: z.string(),
 });
 
-// ─── Comparison helper ───────────────────────────────────────────────────────
+// ─── Comparison helper ─────────────────────────────────────────────────────
 
 function buildComparisonResponse(
   currentPlan: z.infer<typeof CurrentPlanSchema>,
@@ -295,13 +288,11 @@ function buildComparisonResponse(
     currentPlan.pcpCopay * 6 +
     currentPlan.specialistCopay * 4 +
     currentPlan.urgentCareCopay * 2;
-
   const potentialAnnual =
     potentialPlan.premium * 12 +
     potentialPlan.pcpCopay * 6 +
     potentialPlan.specialistCopay * 4 +
     potentialPlan.urgentCareCopay * 2;
-
   const savings = currentAnnual - potentialAnnual;
 
   const currentPros: string[] = [];
@@ -337,12 +328,10 @@ function buildComparisonResponse(
   else currentCons.push("No dental coverage");
   if (potentialPlan.dentalCoverage !== "Not covered") potentialPros.push("Dental coverage included");
   else potentialCons.push("No dental coverage");
-
   if (currentPlan.visionCoverage !== "Not covered") currentPros.push("Vision coverage included");
   else currentCons.push("No vision coverage");
   if (potentialPlan.visionCoverage !== "Not covered") potentialPros.push("Vision coverage included");
   else potentialCons.push("No vision coverage");
-
   if (currentPlan.hearingCoverage !== "Not covered") currentPros.push("Hearing aid coverage");
   else currentCons.push("No hearing coverage");
   if (potentialPlan.hearingCoverage !== "Not covered") potentialPros.push("Hearing aid coverage");
@@ -393,7 +382,7 @@ function buildComparisonResponse(
 
 export const pverifyRouter = router({
   /**
-   * New eligibility check accepting firstName, lastName, DOB, and optional MBI.
+   * Eligibility check accepting MBI or SSN.
    * Calls real pVerify API when credentials are configured; falls back to mock data.
    *
    * PRIVACY: No PII is persisted. All inputs are used transiently and purged after the call.
@@ -401,23 +390,21 @@ export const pverifyRouter = router({
   eligibilityCheck: publicProcedure
     .input(EligibilityCheckSchema)
     .mutation(async ({ input }) => {
-      let { firstName, lastName, dob, mbi } = input;
+      let { mbi, ssn } = input;
 
       // Try real pVerify API first
-      const realResult = await callPverifyEligibility({ firstName, lastName, dob, mbi });
+      const realResult = await callPverifyEligibility({ mbi, ssn });
 
       // PRIVACY: Purge PII immediately after use
-      firstName = "";
-      lastName = "";
-      dob = "";
       mbi = undefined;
+      ssn = undefined;
 
       if (realResult) {
         return { success: true, data: realResult };
       }
 
       // Fall back to mock data (when credentials not configured or API unavailable)
-      const seed = `${input.lastName}${input.dob}`;
+      const seed = input.mbi || input.ssn || "default";
       const mockResult = buildMockEligibilityResult(seed);
       return { success: true, data: mockResult };
     }),
