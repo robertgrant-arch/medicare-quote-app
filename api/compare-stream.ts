@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 /**
  * Vercel Serverless Function for /api/compare-stream
  * Streaming AI Plan Comparison via SSE
- * Accepts plan objects, calls Claude claude-haiku-4-5 with streaming.
+ * Supports both Forge API (OpenAI-compatible) and direct Anthropic API
  */
 
 interface PlanInput {
@@ -11,27 +11,6 @@ interface PlanInput {
   carrier: string;
   planName: string;
   planType: string;
-  snpType?: string | null;
-  premium: number;
-  deductible: number;
-  maxOutOfPocket: number;
-  partBPremiumReduction: number;
-  starRating: { overall: number; customerService?: number | null; drugPlan?: number | null; memberComplaints?: number | null };
-  copays: { primaryCare: string; specialist: string; urgentCare: string; emergency: string; inpatientHospital: string; outpatientSurgery: string };
-  rxDrugs: { tier1: string; tier2: string; tier3: string; tier4: string; deductible: string; gap: boolean };
-  extraBenefits: {
-    dental: { covered: boolean; details: string; annualLimit?: string | null };
-    vision: { covered: boolean; details: string; annualLimit?: string | null };
-    hearing: { covered: boolean; details: string; annualLimit?: string | null };
-    otc: { covered: boolean; details: string; annualLimit?: string | null };
-    fitness: { covered: boolean; details: string; annualLimit?: string | null };
-    transportation: { covered: boolean; details: string; annualLimit?: string | null };
-    telehealth: { covered: boolean; details: string; annualLimit?: string | null };
-    meals: { covered: boolean; details: string; annualLimit?: string | null };
-  };
-  networkSize: number;
-  enrollmentPeriod: string;
-  effectiveDate: string;
   [key: string]: unknown;
 }
 
@@ -46,9 +25,9 @@ function n(val: unknown): number {
   return isNaN(num) ? 0 : num;
 }
 
-function benefitList(p: PlanInput): string {
+function benefitList(p: any): string {
   const benefits: string[] = [];
-  const eb = p.extraBenefits || {} as any;
+  const eb = p.extraBenefits || {};
   if (eb.dental?.covered) benefits.push(`Dental (${s(eb.dental.details)})`);
   if (eb.vision?.covered) benefits.push(`Vision (${s(eb.vision.details)})`);
   if (eb.hearing?.covered) benefits.push(`Hearing (${s(eb.hearing.details)})`);
@@ -60,10 +39,10 @@ function benefitList(p: PlanInput): string {
   return benefits.join(', ') || 'None';
 }
 
-function planSummary(p: PlanInput, label: string): string {
-  const copays = p.copays || {} as any;
-  const rx = p.rxDrugs || {} as any;
-  const stars = p.starRating || {} as any;
+function planSummary(p: any, label: string): string {
+  const copays = p.copays || {};
+  const rx = p.rxDrugs || {};
+  const stars = p.starRating || {};
   return `${label}: ${s(p.planName)} (${s(p.carrier)}, ${s(p.planType)})
 - Premium: $${n(p.premium)}/mo | Deductible: $${n(p.deductible)} | MOOP: $${n(p.maxOutOfPocket).toLocaleString()}
 - PCP: ${s(copays.primaryCare)} | Specialist: ${s(copays.specialist)} | ER: ${s(copays.emergency)}
@@ -72,7 +51,7 @@ function planSummary(p: PlanInput, label: string): string {
 - Extra benefits: ${benefitList(p)}`;
 }
 
-function build2PlanPrompt(current: PlanInput, newPlan: PlanInput): string {
+function build2PlanPrompt(current: any, newPlan: any): string {
   return `You are a Medicare Advantage expert. Compare these two plans concisely. The user already sees a full data table — provide ONLY the narrative analysis below.
 
 ${planSummary(current, 'CURRENT PLAN')}
@@ -95,7 +74,7 @@ Respond in EXACTLY this markdown format (keep each section brief):
 1 short paragraph with a clear recommendation. Who should switch? Who should stay? Be specific.`;
 }
 
-function build3PlanPrompt(current: PlanInput, plan2: PlanInput, plan3: PlanInput): string {
+function build3PlanPrompt(current: any, plan2: any, plan3: any): string {
   return `You are a Medicare Advantage expert. Compare these three plans concisely. The user already sees a full side-by-side data table — provide ONLY the narrative analysis below.
 
 ${planSummary(current, 'PLAN 1 (Current Plan)')}
@@ -124,6 +103,142 @@ function sendSSE(res: VercelResponse, event: string, data: string) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+async function streamFromAnthropic(apiKey: string, prompt: string, maxTokens: number, res: VercelResponse) {
+  const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: maxTokens,
+      stream: true,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!anthropicRes.ok) {
+    const errorText = await anthropicRes.text();
+    sendSSE(res, 'error', `AI API error: ${anthropicRes.status} — ${errorText.slice(0, 200)}`);
+    res.end();
+    return;
+  }
+
+  const reader = anthropicRes.body?.getReader();
+  if (!reader) {
+    sendSSE(res, 'error', 'No response body from AI');
+    res.end();
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let doneSent = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (line.startsWith('event: message_stop')) {
+        if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
+        continue;
+      }
+      if (!line.startsWith('data: ')) continue;
+      const dataStr = line.slice(6).trim();
+      if (!dataStr) continue;
+
+      try {
+        const event = JSON.parse(dataStr);
+        if (event.type === 'content_block_delta' && event.delta?.text) {
+          sendSSE(res, 'delta', event.delta.text);
+        }
+        if (event.type === 'message_stop') {
+          if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
+        }
+      } catch {
+        // skip malformed JSON
+      }
+    }
+  }
+
+  if (!doneSent) {
+    sendSSE(res, 'done', '');
+  }
+  res.end();
+}
+
+async function streamFromForge(apiUrl: string, apiKey: string, prompt: string, maxTokens: number, res: VercelResponse) {
+  const forgeRes = await fetch(`${apiUrl.replace(/\/$/, '')}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: maxTokens,
+      stream: true,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!forgeRes.ok) {
+    const errorText = await forgeRes.text();
+    sendSSE(res, 'error', `AI API error: ${forgeRes.status} — ${errorText.slice(0, 200)}`);
+    res.end();
+    return;
+  }
+
+  const reader = forgeRes.body?.getReader();
+  if (!reader) {
+    sendSSE(res, 'error', 'No response body from AI');
+    res.end();
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let doneSent = false;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const dataStr = line.slice(6).trim();
+      if (dataStr === '[DONE]') {
+        if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
+        continue;
+      }
+      try {
+        const event = JSON.parse(dataStr) as any;
+        const content = event.choices?.[0]?.delta?.content;
+        if (content) sendSSE(res, 'delta', content);
+        if (event.choices?.[0]?.finish_reason === 'stop') {
+          if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  if (!doneSent) sendSSE(res, 'done', '');
+  res.end();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -136,27 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const currentPlan = body.currentPlan as PlanInput;
-  const newPlan = body.newPlan as PlanInput;
-  const thirdPlan = body.thirdPlan as PlanInput | undefined;
-
-  if (currentPlan.id === newPlan.id) {
-    res.status(400).json({ error: 'Please select different plans to compare.' });
-    return;
-  }
-
-  if (thirdPlan && (thirdPlan.id === currentPlan.id || thirdPlan.id === newPlan.id)) {
-    res.status(400).json({ error: 'Please select three different plans to compare.' });
-    return;
-  }
-
-  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
-  const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
-
-  if (!forgeApiUrl || !forgeApiKey) {
-    res.status(500).json({ error: 'Forge API is not configured.' });
-    return;
-  }
+  const { currentPlan, newPlan, thirdPlan } = body;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -168,78 +263,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const prompt = thirdPlan
       ? build3PlanPrompt(currentPlan, newPlan, thirdPlan)
       : build2PlanPrompt(currentPlan, newPlan);
+    const maxTokens = thirdPlan ? 1280 : 1024;
 
-    const forgeRes = await fetch(`${forgeApiUrl.replace(/\/$/, '')}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${forgeApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: thirdPlan ? 1280 : 1024,
-        stream: true,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      signal: AbortSignal.timeout(120_000),
-    });
+    // Try Anthropic API first, then Forge API
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+    const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
 
-    if (!forgeRes.ok) {
-      const errorText = await forgeRes.text();
-      sendSSE(res, 'error', `AI API error: ${forgeRes.status} — ${errorText.slice(0, 200)}`);
-      res.end();
-      return;
+    if (anthropicKey) {
+      await streamFromAnthropic(anthropicKey, prompt, maxTokens, res);
+    } else if (forgeApiUrl && forgeApiKey) {
+      await streamFromForge(forgeApiUrl, forgeApiKey, prompt, maxTokens, res);
+    } else {
+      res.status(500).json({ error: 'No AI API configured. Set ANTHROPIC_API_KEY or BUILT_IN_FORGE_API_URL + BUILT_IN_FORGE_API_KEY.' });
     }
-
-    const reader = forgeRes.body?.getReader();
-    if (!reader) {
-      sendSSE(res, 'error', 'No response body from AI');
-      res.end();
-      return;
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let doneSent = false;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const dataStr = line.slice(6).trim();
-
-        if (dataStr === '[DONE]') {
-          if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
-          continue;
-        }
-
-        try {
-          const event = JSON.parse(dataStr) as {
-            choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
-          };
-          const content = event.choices?.[0]?.delta?.content;
-          if (content) {
-            sendSSE(res, 'delta', content);
-          }
-          if (event.choices?.[0]?.finish_reason === 'stop') {
-            if (!doneSent) { sendSSE(res, 'done', ''); doneSent = true; }
-          }
-        } catch {
-          // skip malformed JSON lines
-        }
-      }
-    }
-
-    if (!doneSent) {
-      sendSSE(res, 'done', '');
-    }
-    res.end();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     sendSSE(res, 'error', `Streaming error: ${message}`);
