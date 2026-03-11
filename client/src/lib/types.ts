@@ -86,7 +86,7 @@ export interface FilterState {
   benefits: string[];
   snpCategories: SnpCategory[]; // SNP sub-type filters
   quickFilter: "all" | "ppo" | "zero-premium" | "hmo";
-  sortBy: "best-match" | "premium-low" | "premium-high" | "star-rating" | "moop-low";
+  sortBy: "best-match" | "premium-low" | "premium-high" | "star-rating" | "moop-low" | "total-cost" | "doctors-network";
 }
 
 export interface SavedPlan {
@@ -138,4 +138,22 @@ export function classifySnpType(snpType?: string, planName?: string): SnpCategor
   // If plan type is SNP but doesn't match above, it's other
   if (raw.includes('SNP')) return 'OTHER_SNP';
   return null;
+}
+
+
+// Doctor network status for plan cards
+export interface DoctorNetworkResult {
+  npi: string;
+  doctorName: string;
+  specialty: string;
+  inNetwork: boolean;
+}
+
+export interface PlanDoctorNetworkStatus {
+  planId: string;
+  contractId: string;
+  doctors: DoctorNetworkResult[];
+  allInNetwork: boolean;
+  inNetworkCount: number;
+  outOfNetworkCount: number;
 }
