@@ -742,7 +742,7 @@ export default function Plans() {
                   );
                 })}
               </div>
-                                </div>
+                                          )}
 
             {/* Bottom disclaimer */}
             <div className="mt-8 p-4 rounded-xl bg-white" style={{ border: "1px solid #E8F0FE" }}>
