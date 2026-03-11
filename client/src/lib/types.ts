@@ -3,6 +3,9 @@
 
 export type PlanType = "HMO" | "PPO" | "PFFS" | "SNP";
 
+// SNP sub-types for proper grouping
+export type SnpCategory = "DSNP" | "CSNP" | "ISNP" | "OTHER_SNP" | null;
+
 // Carrier is a string to support any CMS carrier name (e.g., "Aetna Medicare", "Devoted Health", etc.)
 export type Carrier = string;
 
@@ -70,7 +73,8 @@ export interface MedicarePlan {
   enrollmentPeriod: string;
   effectiveDate: string;
   serviceArea: string;
-  snpType?: string; // For SNP plans
+  snpType?: string; // Raw SNP type string from CMS data
+  snpCategory?: SnpCategory; // Normalized SNP category for grouping
   carrierLogoColor: string; // Brand color for carrier
   carrierLogoTextColor: string;
 }
@@ -80,6 +84,7 @@ export interface FilterState {
   carriers: string[];
   premiumRange: [number, number];
   benefits: string[];
+  snpCategories: SnpCategory[]; // SNP sub-type filters
   quickFilter: "all" | "ppo" | "zero-premium" | "hmo";
   sortBy: "best-match" | "premium-low" | "premium-high" | "star-rating" | "moop-low";
 }
@@ -103,4 +108,34 @@ export interface Doctor {
   specialty: string;
   npi: string;
   address: string;
+}
+
+// Eligibility flags for SNP plan filtering
+export interface EligibilityFlags {
+  isDualEligible: boolean;        // Has both Medicare + Medicaid → eligible for DSNP
+  hasChronicConditions: string[]; // e.g. ["diabetes", "CHF", "ESRD"] → eligible for CSNP
+  isInstitutional: boolean;       // Lives in institution → eligible for ISNP
+}
+
+// Guided workflow user profile
+export interface GuidedProfile {
+  zip: string;
+  currentPlanName?: string;
+  currentPlanId?: string;
+  currentPlanCarrier?: string;
+  drugs: RxDrug[];
+  doctors: Doctor[];
+  eligibility: EligibilityFlags;
+}
+
+// Helper to classify SNP type from raw CMS string
+export function classifySnpType(snpType?: string, planName?: string): SnpCategory {
+  if (!snpType && !planName) return null;
+  const raw = ((snpType || '') + ' ' + (planName || '')).toUpperCase();
+  if (raw.includes('D-SNP') || raw.includes('DSNP') || raw.includes('DUAL')) return 'DSNP';
+  if (raw.includes('C-SNP') || raw.includes('CSNP') || raw.includes('CHRONIC')) return 'CSNP';
+  if (raw.includes('I-SNP') || raw.includes('ISNP') || raw.includes('INSTITUTIONAL')) return 'ISNP';
+  // If plan type is SNP but doesn't match above, it's other
+  if (raw.includes('SNP')) return 'OTHER_SNP';
+  return null;
 }
