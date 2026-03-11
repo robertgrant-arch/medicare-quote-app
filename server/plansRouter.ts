@@ -16,6 +16,7 @@ import { type Express } from "express";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { carrierOverrides, planOverrides } from "../drizzle/schema";
+import { enrichPlansWithDrugCosts, type DrugInput } from "./formularyCalculator";
 
 // ── CDN URLs for pre-processed per-state plan JSON files ─────────────────────
 const CDN_BASE = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8";
@@ -333,15 +334,28 @@ export function registerPlansRoute(app: Express): void {
       const overrides = await loadAdminOverrides();
       const plans = annotatePlans(rawPlans, overrides);
 
-      return res.json({
-        plans,
+                // Step 5: Enrich with drug costs if drugs provided
+      let enrichedPlans = plans;
+      const drugsParam = req.query.drugs as string | undefined;
+      if (drugsParam) {
+        try {
+          const drugs: DrugInput[] = JSON.parse(decodeURIComponent(drugsParam));
+          if (Array.isArray(drugs) && drugs.length > 0) {
+            enrichedPlans = enrichPlansWithDrugCosts(plans, drugs);
+          }
+        } catch (parseErr) {
+          console.warn("[Plans] Failed to parse drugs param:", parseErr);
+        }
+
+              return res.json({
+        plans: enrichedPlans,
         location: {
-          stateAbbr,
-          countyName: toTitleCase(countyName),
+                              countyName: toTitleCase(countyName),
           zip,
-        },
+                  stateAbbr,
+                },
         totalAvailable: rawPlans.length,
-        showing: plans.length,
+        showing: enrichedPlans.length,
       });
     } catch (err) {
       console.error("[Plans] Unexpected error:", err);
