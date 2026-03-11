@@ -40,6 +40,7 @@ const DEFAULT_FILTERS: FilterState = {
   benefits: [],
   quickFilter: "all",
   sortBy: "moop-low",
+    snpCategories: [],
 };
 
 function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan[] {
@@ -76,6 +77,14 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
         (b) => p.extraBenefits[b as keyof typeof p.extraBenefits]?.covered
       )
     );
+  }
+
+    // SNP Categories
+  if (filters.snpCategories && filters.snpCategories.length > 0) {
+    result = result.filter((p) => {
+      const cat = p.snpCategory || null;
+      return filters.snpCategories.includes(cat as any);
+    });
   }
 
   // Sort
@@ -207,10 +216,18 @@ export default function Plans() {
     if (showFavoritesOnly) {
       result = result.filter((p) => favorites.has(p.id));
     }
+        // Group SNP plans together by category (DSNP, CSNP, ISNP grouped separately)
+    const SNP_ORDER: Record<string, number> = { DSNP: 1, CSNP: 2, ISNP: 3, OTHER_SNP: 4 };
+    const nonSnp = result.filter((p) => !p.snpCategory);
+    const snpPlans = result.filter((p) => !!p.snpCategory);
+    snpPlans.sort((a, b) => (SNP_ORDER[a.snpCategory!] || 99) - (SNP_ORDER[b.snpCategory!] || 99));
+    result = [...nonSnp, ...snpPlans];
+
     return result;
   }, [plans, filters, showFavoritesOnly, favorites, extraHelp]);
 
   // Memoize available carriers to avoid re-creating on every render
+  
   const availableCarriers = useMemo(
     () => Array.from(new Set(plans.map((p) => p.carrier))).sort(),
     [plans]
@@ -663,13 +680,42 @@ export default function Plans() {
                   const cp = eligibility?.currentPlan;
                   const premiumDiff = cp ? plan.premium - cp.premium : null;
                   const oopDiff = cp ? plan.maxOutOfPocket - cp.oopMax : null;
+                                  // SNP category section header
+                  const prevPlan = i > 0 ? filteredPlans[i - 1] : null;
+                  const showSnpHeader = plan.snpCategory && (!prevPlan || prevPlan.snpCategory !== plan.snpCategory);
+                  const SNP_LABELS: Record<string, string> = {
+                    DSNP: "Dual-Eligible Special Needs Plans (D-SNP)",
+                    CSNP: "Chronic Condition Special Needs Plans (C-SNP)",
+                    ISNP: "Institutional Special Needs Plans (I-SNP)",
+                    OTHER_SNP: "Other Special Needs Plans",
+                  };
                   const hasBetterPremium = premiumDiff !== null && premiumDiff < 0;
                   const hasBetterOOP = oopDiff !== null && oopDiff < 0;
                   const hasBetterBoth = hasBetterPremium && hasBetterOOP;
 
-                  return (
-                    <div key={plan.id} className="relative">
-                      {cp && (hasBetterPremium || hasBetterOOP) && (
+                                    return (
+                    <div key={plan.id} style={{ display: "contents" }}>
+                    {showSnpHeader && (
+                      <div className="col-span-full py-3 mt-2" key={`snp-header-${plan.snpCategory}`}>
+                        <div className="flex items-center gap-2">
+                                                    <Shield size={16} style={{ color: "#1B365D" }} />
+                                                                        <h3 className="text-sm font-bold" style={{ color: "#1B365D" }}>
+                            {SNP_LABELS[plan.snpCategory!] || "Special Needs Plans"}
+                          </h3>
+                          <div className="flex-1 h-px bg-gray-200" />
+                          <span className="text-xs text-gray-400 font-medium">
+                            {filteredPlans.filter((p) => p.snpCategory === plan.snpCategory).length} plan{filteredPlans.filter((p) => p.snpCategory === plan.snpCategory).length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 ml-6">
+                          {plan.snpCategory === "DSNP" && "For beneficiaries eligible for both Medicare and Medicaid"}
+                          {plan.snpCategory === "CSNP" && "For beneficiaries with specific chronic conditions"}
+                          {plan.snpCategory === "ISNP" && "For beneficiaries in institutional settings"}
+                          {plan.snpCategory === "OTHER_SNP" && "Other special needs plan types"}
+                        </p>
+                      </div>
+                    )}
+                                        <div className="relative">    {cp && (hasBetterPremium || hasBetterOOP) && (
                         <div
                           className="absolute -top-2 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm"
                           style={{ backgroundColor: hasBetterBoth ? "#C41E3A" : "#1B365D", color: "white" }}
@@ -692,10 +738,11 @@ export default function Plans() {
                         onCompareActivate={handleCompareActivate}
                       />
                     </div>
+                                          </>
                   );
                 })}
               </div>
-            )}
+                                </div>
 
             {/* Bottom disclaimer */}
             <div className="mt-8 p-4 rounded-xl bg-white" style={{ border: "1px solid #E8F0FE" }}>
