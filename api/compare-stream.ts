@@ -1,85 +1,74 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { z } from 'zod';
 
-const BenefitDetailSchema = z.object({
-  covered: z.boolean(),
-  details: z.string(),
-  annualLimit: z.string().optional(),
-});
+/**
+ * Vercel Serverless Function for /api/compare-stream
+ * Streaming AI Plan Comparison via SSE
+ * Accepts plan objects, calls Claude claude-haiku-4-5 with streaming.
+ */
 
-const PlanInputSchema = z.object({
-  id: z.string(),
-  carrier: z.string(),
-  planName: z.string(),
-  planType: z.string(),
-  snpType: z.string().optional(),
-  premium: z.number(),
-  deductible: z.number(),
-  maxOutOfPocket: z.number(),
-  partBPremiumReduction: z.number(),
-  starRating: z.object({
-    overall: z.number(),
-    customerService: z.number().optional(),
-    drugPlan: z.number().optional(),
-    memberComplaints: z.number().optional(),
-  }),
-  copays: z.object({
-    primaryCare: z.string(),
-    specialist: z.string(),
-    urgentCare: z.string(),
-    emergency: z.string(),
-    inpatientHospital: z.string(),
-    outpatientSurgery: z.string(),
-  }),
-  rxDrugs: z.object({
-    tier1: z.string(),
-    tier2: z.string(),
-    tier3: z.string(),
-    tier4: z.string(),
-    deductible: z.string(),
-    gap: z.boolean(),
-  }),
-  extraBenefits: z.object({
-    dental: BenefitDetailSchema,
-    vision: BenefitDetailSchema,
-    hearing: BenefitDetailSchema,
-    otc: BenefitDetailSchema,
-    fitness: BenefitDetailSchema,
-    transportation: BenefitDetailSchema,
-    telehealth: BenefitDetailSchema,
-    meals: BenefitDetailSchema,
-  }),
-  networkSize: z.number(),
-  enrollmentPeriod: z.string(),
-  effectiveDate: z.string(),
-  isBestMatch: z.boolean().optional(),
-  isMostPopular: z.boolean().optional(),
-  isNewPlan: z.boolean().optional(),
-  contractId: z.string().optional(),
-  planId: z.string().optional(),
-});
+interface PlanInput {
+  id: string;
+  carrier: string;
+  planName: string;
+  planType: string;
+  snpType?: string | null;
+  premium: number;
+  deductible: number;
+  maxOutOfPocket: number;
+  partBPremiumReduction: number;
+  starRating: { overall: number; customerService?: number | null; drugPlan?: number | null; memberComplaints?: number | null };
+  copays: { primaryCare: string; specialist: string; urgentCare: string; emergency: string; inpatientHospital: string; outpatientSurgery: string };
+  rxDrugs: { tier1: string; tier2: string; tier3: string; tier4: string; deductible: string; gap: boolean };
+  extraBenefits: {
+    dental: { covered: boolean; details: string; annualLimit?: string | null };
+    vision: { covered: boolean; details: string; annualLimit?: string | null };
+    hearing: { covered: boolean; details: string; annualLimit?: string | null };
+    otc: { covered: boolean; details: string; annualLimit?: string | null };
+    fitness: { covered: boolean; details: string; annualLimit?: string | null };
+    transportation: { covered: boolean; details: string; annualLimit?: string | null };
+    telehealth: { covered: boolean; details: string; annualLimit?: string | null };
+    meals: { covered: boolean; details: string; annualLimit?: string | null };
+  };
+  networkSize: number;
+  enrollmentPeriod: string;
+  effectiveDate: string;
+  [key: string]: unknown;
+}
 
-type PlanInput = z.infer<typeof PlanInputSchema>;
+function s(val: unknown): string {
+  if (val === null || val === undefined) return 'N/A';
+  return String(val);
+}
+
+function n(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  const num = Number(val);
+  return isNaN(num) ? 0 : num;
+}
 
 function benefitList(p: PlanInput): string {
   const benefits: string[] = [];
-  if (p.extraBenefits.dental.covered) benefits.push(`Dental (${p.extraBenefits.dental.details})`);
-  if (p.extraBenefits.vision.covered) benefits.push(`Vision (${p.extraBenefits.vision.details})`);
-  if (p.extraBenefits.hearing.covered) benefits.push(`Hearing (${p.extraBenefits.hearing.details})`);
-  if (p.extraBenefits.otc.covered) benefits.push(`OTC (${p.extraBenefits.otc.details})`);
-  if (p.extraBenefits.fitness.covered) benefits.push('Fitness');
-  if (p.extraBenefits.transportation.covered) benefits.push('Transportation');
-  if (p.extraBenefits.telehealth.covered) benefits.push('Telehealth');
-  if (p.extraBenefits.meals.covered) benefits.push('Meals after hospital');
+  const eb = p.extraBenefits || {} as any;
+  if (eb.dental?.covered) benefits.push(`Dental (${s(eb.dental.details)})`);
+  if (eb.vision?.covered) benefits.push(`Vision (${s(eb.vision.details)})`);
+  if (eb.hearing?.covered) benefits.push(`Hearing (${s(eb.hearing.details)})`);
+  if (eb.otc?.covered) benefits.push(`OTC (${s(eb.otc.details)})`);
+  if (eb.fitness?.covered) benefits.push('Fitness');
+  if (eb.transportation?.covered) benefits.push('Transportation');
+  if (eb.telehealth?.covered) benefits.push('Telehealth');
+  if (eb.meals?.covered) benefits.push('Meals after hospital');
   return benefits.join(', ') || 'None';
 }
 
 function planSummary(p: PlanInput, label: string): string {
-  return `${label}: ${p.planName} (${p.carrier}, ${p.planType})
-- Premium: $${p.premium}/mo | Deductible: $${p.deductible} | MOOP: $${p.maxOutOfPocket.toLocaleString()}
-- PCP: ${p.copays.primaryCare} | Specialist: ${p.copays.specialist} | ER: ${p.copays.emergency}
-- Rx: T1 ${p.rxDrugs.tier1} / T2 ${p.rxDrugs.tier2} / T3 ${p.rxDrugs.tier3} / T4 ${p.rxDrugs.tier4} | Gap: ${p.rxDrugs.gap ? 'Yes' : 'No'}
-- Stars: ${p.starRating.overall}/5 | Network: ${p.networkSize.toLocaleString()}+ providers
+  const copays = p.copays || {} as any;
+  const rx = p.rxDrugs || {} as any;
+  const stars = p.starRating || {} as any;
+  return `${label}: ${s(p.planName)} (${s(p.carrier)}, ${s(p.planType)})
+- Premium: $${n(p.premium)}/mo | Deductible: $${n(p.deductible)} | MOOP: $${n(p.maxOutOfPocket).toLocaleString()}
+- PCP: ${s(copays.primaryCare)} | Specialist: ${s(copays.specialist)} | ER: ${s(copays.emergency)}
+- Rx: T1 ${s(rx.tier1)} / T2 ${s(rx.tier2)} / T3 ${s(rx.tier3)} / T4 ${s(rx.tier4)} | Gap: ${rx.gap ? 'Yes' : 'No'}
+- Stars: ${n(stars.overall)}/5 | Network: ${n(p.networkSize).toLocaleString()}+ providers
 - Extra benefits: ${benefitList(p)}`;
 }
 
@@ -141,20 +130,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const parseResult = z
-    .object({
-      currentPlan: PlanInputSchema,
-      newPlan: PlanInputSchema,
-      thirdPlan: PlanInputSchema.optional(),
-    })
-    .safeParse(req.body);
-
-  if (!parseResult.success) {
-    res.status(400).json({ error: 'Invalid plan data', details: parseResult.error.flatten() });
+  const body = req.body;
+  if (!body || !body.currentPlan || !body.newPlan) {
+    res.status(400).json({ error: 'Missing currentPlan or newPlan in request body' });
     return;
   }
 
-  const { currentPlan, newPlan, thirdPlan } = parseResult.data;
+  const currentPlan = body.currentPlan as PlanInput;
+  const newPlan = body.newPlan as PlanInput;
+  const thirdPlan = body.thirdPlan as PlanInput | undefined;
 
   if (currentPlan.id === newPlan.id) {
     res.status(400).json({ error: 'Please select different plans to compare.' });
