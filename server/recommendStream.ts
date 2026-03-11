@@ -5,7 +5,6 @@
  * streams a personalized Claude Haiku recommendation token-by-token.
  * Uses raw fetch (same pattern as compareStream.ts) — no SDK dependency.
  */
-
 import { Router } from "express";
 import { z } from "zod";
 
@@ -44,6 +43,8 @@ const TopPlanSchema = z.object({
   maxOutOfPocket: z.number(),
   starRating: z.number(),
   estimatedCost: z.number(),
+  estimatedAnnualDrugCost: z.number().optional(),
+  estimatedTotalAnnualCost: z.number().optional(),
   rank: z.number(),
   whyRecommended: z.array(z.string()),
 });
@@ -90,6 +91,8 @@ function buildPrompt(
         `Rank #${p.rank}: ${p.planName} (${p.carrier})\n` +
         `  Type: ${p.planType} | Premium: $${p.premium}/mo | Max OOP: $${p.maxOutOfPocket.toLocaleString()} | Stars: ${p.starRating}★\n` +
         `  Estimated annual cost: $${p.estimatedCost.toLocaleString()}\n` +
+        `  Estimated annual drug cost: ${p.estimatedAnnualDrugCost != null ? '$' + p.estimatedAnnualDrugCost.toLocaleString() : 'N/A'}\n` +
+        `  Estimated total annual cost (premium + drugs): ${p.estimatedTotalAnnualCost != null ? '$' + p.estimatedTotalAnnualCost.toLocaleString() : 'N/A'}\n` +
         `  Why it matches: ${p.whyRecommended.join("; ")}`
     )
     .join("\n\n");
@@ -108,7 +111,7 @@ Write exactly 3 sections using ## headings:
 2-3 sentences summarizing this person's health situation and what type of plan fits them best.
 
 ## Why These Plans Were Selected
-3-4 bullet points explaining the key reasons these specific plans match their profile. Reference specific benefits, costs, or plan features that align with their answers.
+3-4 bullet points explaining the key reasons these specific plans match their profile. Reference specific benefits, costs, or plan features that align with their answers. When drug cost data is available, factor in formulary-based drug cost estimates to explain cost differences between plans.
 
 ## Our Top Recommendation
 1 short paragraph (3-4 sentences) explaining why the #1 ranked plan is the best fit, what they should watch out for, and one actionable next step.
@@ -117,13 +120,11 @@ Keep the tone warm, clear, and helpful. Avoid jargon. Do not repeat the cost num
 }
 
 // ── SSE helper ────────────────────────────────────────────────────────────────
-
 function sendSSE(res: import("express").Response, event: string, data: string) {
   res.write(`event: ${event}\ndata: ${data}\n\n`);
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
-
 router.post("/recommend-stream", async (req, res) => {
   // Validate input
   const parsed = RequestSchema.safeParse(req.body);
@@ -131,7 +132,6 @@ router.post("/recommend-stream", async (req, res) => {
     res.status(400).json({ error: "Invalid request", details: parsed.error.issues });
     return;
   }
-
   const { answers, topPlans } = parsed.data;
 
   // Set SSE headers
@@ -143,6 +143,7 @@ router.post("/recommend-stream", async (req, res) => {
 
   const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
   const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+
   if (!forgeApiUrl || !forgeApiKey) {
     sendSSE(res, "error", JSON.stringify({ message: "Forge API not configured" }));
     res.end();
@@ -185,7 +186,6 @@ router.post("/recommend-stream", async (req, res) => {
 
     while (true) {
       if (res.destroyed) break;
-
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -200,12 +200,10 @@ router.post("/recommend-stream", async (req, res) => {
           if (!doneSent) { sendSSE(res, "done", "{}"); doneSent = true; }
           continue;
         }
-
         try {
           const evt = JSON.parse(raw) as {
             choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
           };
-
           const content = evt.choices?.[0]?.delta?.content;
           if (content) {
             sendSSE(res, "delta", JSON.stringify(content));
