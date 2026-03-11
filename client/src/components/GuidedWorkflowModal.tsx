@@ -1,7 +1,7 @@
 /**
  * GuidedWorkflowModal - Post-ZIP guided workflow
  * Step 1: "Do you currently have a Medicare Advantage plan?"
- * If YES -> pVerify lookup (MBI or Name/DOB) -> store current plan -> doctors/drugs -> AI recommendation
+ * If YES -> pVerify lookup (MBI or SSN) -> store current plan -> doctors/drugs -> AI recommendation
  * If NO -> doctors/drugs lookup -> AI recommendation
  */
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -80,19 +80,17 @@ const STEP_TITLES: Record<Step, string> = {
   aiLoading: "Finding Your Best Plan",
 };
 
-const DOB_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
-
 export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) {
   const [step, setStep] = useState<Step>("maQuestion");
   const [hasMA, setHasMA] = useState<boolean | null>(null);
+
   // pVerify state
-  const [lookupMode, setLookupMode] = useState<"mbi" | "name">("mbi");
+  const [lookupMode, setLookupMode] = useState<"mbi" | "ssn">("mbi");
   const [mbi, setMbi] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [dob, setDob] = useState("");
+  const [ssn, setSsn] = useState("");
   const [verifyResult, setVerifyResult] = useState<MBIVerifyResult | null>(null);
   const [verifyError, setVerifyError] = useState("");
+
   // Doctor/Drug state
   const [doctorSearch, setDoctorSearch] = useState("");
   const [selectedDoctors, setSelectedDoctors] = useState<Doctor[]>([]);
@@ -104,6 +102,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [manualDoctorName, setManualDoctorName] = useState("");
   const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
   const [showManualDoctor, setShowManualDoctor] = useState(false);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup timeout on unmount
@@ -122,32 +121,29 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     },
   });
 
-  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, "");
-    if (val.length >= 3) val = val.slice(0, 2) + "/" + val.slice(2);
-    if (val.length >= 6) val = val.slice(0, 5) + "/" + val.slice(5);
-    setDob(val.slice(0, 10));
+  const handleSsnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setSsn(val);
   };
 
-  const validateNameDob = (): string | null => {
-    if (!firstName.trim() || !lastName.trim()) return "Please enter your first and last name.";
-    if (!DOB_REGEX.test(dob)) return "Date of birth must be MM/DD/YYYY.";
-    return null;
+  const formatSsn = (value: string) => {
+    if (value.length <= 3) return value;
+    if (value.length <= 5) return value.slice(0, 3) + "-" + value.slice(3);
+    return value.slice(0, 3) + "-" + value.slice(3, 5) + "-" + value.slice(5);
   };
 
   const handleVerify = () => {
     setVerifyError("");
     if (lookupMode === "mbi" && !mbi.trim()) {
-      setVerifyError("Please enter your Medicare ID.");
+      setVerifyError("Please enter your Medicare Beneficiary ID.");
       return;
     }
-    const nameError = validateNameDob();
-    if (nameError) { setVerifyError(nameError); return; }
+    if (lookupMode === "ssn" && ssn.length !== 9) {
+      setVerifyError("Please enter a valid 9-digit SSN.");
+      return;
+    }
     eligibilityMutation.mutate({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      dob,
-      ...(lookupMode === "mbi" ? { mbi: mbi.trim() } : {}),
+      ...(lookupMode === "mbi" ? { mbi: mbi.trim() } : { ssn: ssn.trim() }),
     });
   };
 
@@ -208,6 +204,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" style={{ border: "1px solid #E8F0FE", maxHeight: "90vh", overflowY: "auto" }}>
+
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1B365D 0%, #243E6B 100%)" }}>
           <div className="flex items-center gap-3">
@@ -223,6 +220,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
         </div>
 
         <div className="px-6 py-5">
+
           {/* STEP 1: MA Question */}
           {step === "maQuestion" && (
             <div className="space-y-4">
@@ -246,14 +244,15 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
             </div>
           )}
 
-          {/* STEP 2: pVerify Lookup (YES path) */}
+          {/* STEP 2: pVerify Lookup (YES path) - MBI or SSN only */}
           {step === "pverifyLookup" && (
             <div className="space-y-3">
               <p className="text-sm" style={{ color: "#555" }}>How would you like us to look up your current plan?</p>
               <div className="flex rounded-lg overflow-hidden border mb-2" style={{ borderColor: "#E5E7EB" }}>
                 <button onClick={() => setLookupMode("mbi")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "mbi" ? "#1B365D" : "white", color: lookupMode === "mbi" ? "white" : "#555" }}>Use Medicare ID</button>
-                <button onClick={() => setLookupMode("name")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "name" ? "#1B365D" : "white", color: lookupMode === "name" ? "white" : "#555" }}>Use Name & DOB</button>
+                <button onClick={() => setLookupMode("ssn")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "ssn" ? "#1B365D" : "white", color: lookupMode === "ssn" ? "white" : "#555" }}>Use SSN</button>
               </div>
+
               {lookupMode === "mbi" && (
                 <div>
                   <label className="text-xs font-semibold text-gray-600 block mb-1">Medicare Beneficiary ID (MBI)</label>
@@ -261,11 +260,15 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   <p className="text-xs text-gray-400 mt-1">Found on your red, white & blue Medicare card</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Smith" className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
-              </div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">Date of Birth</label><input type="text" value={dob} onChange={handleDobChange} placeholder="MM/DD/YYYY" inputMode="numeric" maxLength={10} className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
+
+              {lookupMode === "ssn" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Social Security Number (SSN)</label>
+                  <input type="password" value={formatSsn(ssn)} onChange={handleSsnChange} placeholder="XXX-XX-XXXX" maxLength={11} className="w-full px-3 py-2.5 border rounded-lg text-sm font-mono outline-none" style={{ borderColor: "#E5E7EB" }} />
+                  <p className="text-xs text-gray-400 mt-1">Your SSN is encrypted and never stored</p>
+                </div>
+              )}
+
               {verifyError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg"><AlertCircle size={13} />{verifyError}</div>}
               <div className="flex items-center gap-1.5 text-xs text-gray-400"><Lock size={11} />256-bit SSL · HIPAA-compliant · Data never stored</div>
             </div>
@@ -331,8 +334,10 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   </div>
                 )}
               </div>
+
               {/* Divider */}
               <div className="border-t" style={{ borderColor: "#E8F0FE" }} />
+
               {/* Drugs Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
