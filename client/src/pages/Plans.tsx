@@ -738,7 +738,7 @@ export default function Plans() {
                         onCompareActivate={handleCompareActivate}
                       />
                     </div>
-                                          </>
+                                          </div>
                   );
                 })}
               </div>
