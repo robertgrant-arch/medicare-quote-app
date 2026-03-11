@@ -8,8 +8,8 @@ import {
   Phone, Award, Zap, Lock, TrendingDown, HeartPulse, Stethoscope,
   BadgeCheck, Clock, DollarSign
 } from "lucide-react";
+import GuidedWorkflowModal, { type MBIVerifyResult } from "@/components/GuidedWorkflowModal";
 import Header from "@/components/Header";
-import MBIVerifyModal, { type MBIVerifyResult } from "@/components/MBIVerifyModal";
 
 const HERO_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8/medicare-doctor-network-UbrpVenqJHVZiygzeBgcKi.webp";
 
@@ -129,29 +129,35 @@ export default function Home() {
     navigate(`/plans?zip=${pendingZip}`);
   };
 
-  const handleMBIVerified = (result: MBIVerifyResult) => {
+  const handleWorkflowComplete = (data: { hasMA: boolean; verifyResult: MBIVerifyResult | null; doctors: any[]; drugs: any[] }) => {
     setShowMBIModal(false);
-    // Encode the eligibility result in sessionStorage so Plans.tsx can read it
+    // Store workflow data in sessionStorage for Plans.tsx
     try {
-      sessionStorage.setItem("mbi_eligibility", JSON.stringify(result));
+      if (data.verifyResult) {
+        sessionStorage.setItem("mbi_eligibility", JSON.stringify(data.verifyResult));
+      }
+      sessionStorage.setItem("workflow_data", JSON.stringify(data));
     } catch {
-      // sessionStorage unavailable — proceed without it
+      // sessionStorage unavailable
     }
-    navigate(`/plans?zip=${pendingZip}&verified=1`);
+    const params = new URLSearchParams({ zip: pendingZip });
+    if (data.verifyResult) params.set("verified", "1");
+    if (data.doctors.length > 0 || data.drugs.length > 0) params.set("personalized", "1");
+    navigate(`/plans?${params.toString()}`);
   };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFFFFF" }}>
       <Header />
 
-      {/* ── MBI Verify Modal ─────────────────────────────────────────────── */}
-      {showMBIModal && (
-        <MBIVerifyModal
-          zip={pendingZip}
-          onSkip={handleMBISkip}
-          onVerified={handleMBIVerified}
-        />
-      )}
+      {/* ── Guided Workflow Modal ─────────────────────────────────── */}
+        {showMBIModal && (
+          <GuidedWorkflowModal
+            zip={pendingZip}
+            onSkip={handleMBISkip}
+            onComplete={handleWorkflowComplete}
+          />
+        )}
 
       {/* ── Hero Section — Split Layout ──────────────────────────────────── */}
       <section className="relative overflow-hidden" style={{ backgroundColor: "#F7F8FA", minHeight: "600px" }}>
