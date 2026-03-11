@@ -44,6 +44,17 @@ function toTitleCase(str: string): string {
     .replace(/\bOf\b/g, 'of').replace(/\bThe\b/g, 'the');
 }
 
+// Classify SNP type from raw CMS data
+function classifySnpCategory(snpType?: string, planName?: string): string | null {
+  if (!snpType && !planName) return null;
+  const raw = ((snpType || '') + ' ' + (planName || '')).toUpperCase();
+  if (raw.includes('D-SNP') || raw.includes('DSNP') || raw.includes('DUAL')) return 'DSNP';
+  if (raw.includes('C-SNP') || raw.includes('CSNP') || raw.includes('CHRONIC')) return 'CSNP';
+  if (raw.includes('I-SNP') || raw.includes('ISNP') || raw.includes('INSTITUTIONAL')) return 'ISNP';
+  if (raw.includes('SNP')) return 'OTHER_SNP';
+  return null;
+}
+
 async function resolveZipToCounty(zip: string) {
   const cached = zipCache.get(zip);
   if (cached) return cached;
@@ -100,7 +111,15 @@ function annotatePlans(plans: any[]): any[] {
     const snpType = (plan.snpType ?? '').toLowerCase();
     const planName = plan.planName ?? plan.name ?? '';
     const isISnp = snpType.includes('institutional') || planName.includes('I-SNP');
-    return { ...plan, isBestMatch: idx === 0, isMostPopular: idx === 1, isNonCommissionable: isISnp };
+    // Classify SNP category for proper grouping (DSNP, CSNP, ISNP, OTHER_SNP)
+    const snpCategory = classifySnpCategory(plan.snpType, planName);
+    return {
+      ...plan,
+      isBestMatch: idx === 0,
+      isMostPopular: idx === 1,
+      isNonCommissionable: isISnp,
+      snpCategory, // Add normalized SNP category
+    };
   });
 }
 
@@ -122,17 +141,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: `Could not find county information for ZIP code ${zip}.`, plans: [], location: null });
     }
     const { stateAbbr, countyName } = location;
-
     const stateData = await getStateData(stateAbbr);
     if (!stateData) {
       return res.status(503).json({ error: `Plan data for ${stateAbbr} is temporarily unavailable.`, plans: [], location: { stateAbbr, countyName: toTitleCase(countyName), zip } });
     }
-
     const rawPlans = findPlansForCounty(stateData, countyName);
     if (rawPlans.length === 0) {
       return res.status(404).json({ error: `No Medicare Advantage plans found for ${toTitleCase(countyName)}, ${stateAbbr}.`, plans: [], location: { stateAbbr, countyName: toTitleCase(countyName), zip } });
     }
-
     const plans = annotatePlans(rawPlans);
     return res.status(200).json({
       plans,
