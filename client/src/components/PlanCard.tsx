@@ -19,9 +19,9 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Info,
+  Info,   UserRound,
 } from "lucide-react";
-import type { MedicarePlan } from "@/lib/types";
+import type { MedicarePlan, PlanDoctorNetworkStatus } from "@/lib/types";
 import StarRating from "./StarRating";
 import CarrierLogo from "./CarrierLogo";
 import InlineCompare from "./InlineCompare";
@@ -33,7 +33,7 @@ interface PlanCardProps {
   onEnroll: (plan: MedicarePlan) => void;
   animationDelay?: number;
   isCompareActive?: boolean;
-  onCompareActivate?: (planId: string | null) => void;
+  onCompareActivate?: (planId: string | null) => void;   doctorNetworkStatus?: PlanDoctorNetworkStatus;
 }
 
 const BENEFIT_ICONS = {
@@ -66,6 +66,7 @@ export default function PlanCard({
   animationDelay = 0,
   isCompareActive = false,
   onCompareActivate,
+    doctorNetworkStatus,
 }: PlanCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [heartAnimating, setHeartAnimating] = useState(false);
@@ -215,6 +216,33 @@ export default function PlanCard({
             <div className="text-[10px] text-gray-500 font-medium">max out-of-pocket</div>
           </div>
         </div>
+
+                  {/* — Doctor Network Status ——————————————————— */}
+          {doctorNetworkStatus && doctorNetworkStatus.doctors.length > 0 && (
+            <div className="mt-3 mb-1 px-3 py-2 rounded-lg" style={{ backgroundColor: '#F0F7FF', border: '1px solid #D0E2F7' }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <UserRound size={14} className="text-[#1B365D]" />
+                <span className="text-xs font-semibold text-[#1B365D]">Your Doctors</span>
+              </div>
+              <div className="space-y-1">
+                {doctorNetworkStatus.doctors.map((doc, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-700">{doc.doctorName}</span>
+                    <span className={`font-semibold flex items-center gap-1 ${doc.inNetwork ? 'text-green-600' : 'text-red-500'}`}>
+                      {doc.inNetwork ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                      {doc.inNetwork ? 'In Network' : 'Out of Network'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1.5 pt-1.5 border-t border-blue-200 flex items-center justify-between text-xs">
+                <span className="font-medium text-[#1B365D]">Network Match</span>
+                <span className={`font-bold ${doctorNetworkStatus.allInNetwork ? 'text-green-600' : doctorNetworkStatus.inNetworkCount > 0 ? 'text-yellow-600' : 'text-red-500'}`}>
+                  {doctorNetworkStatus.inNetworkCount}/{doctorNetworkStatus.doctors.length} In Network
+                </span>
+              </div>
+            </div>
+          )}
 
         {/* ── Key Copays ────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-2 mb-4">
