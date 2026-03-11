@@ -1,0 +1,400 @@
+/**
+ * GuidedWorkflowModal - Post-ZIP guided workflow
+ * Step 1: "Do you currently have a Medicare Advantage plan?"
+ * If YES -> pVerify lookup (MBI or Name/DOB) -> store current plan -> doctors/drugs -> AI recommendation
+ * If NO -> doctors/drugs lookup -> AI recommendation
+ */
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { POPULAR_DOCTORS } from "@/lib/mockData";
+import type { Doctor } from "@/lib/types";
+import {
+  Shield, Lock, X, ChevronRight, ChevronLeft, Info, CheckCircle2,
+  AlertCircle, Loader2, Stethoscope, Pill, Search, Plus, Trash2,
+  Sparkles, UserRound, ClipboardList
+} from "lucide-react";
+
+// Re-export MBIVerifyResult type for backward compatibility
+export interface MBIVerifyResult {
+  isActive: boolean;
+  partA: { active: boolean; effectiveDate: string | null };
+  partB: { active: boolean; effectiveDate: string | null };
+  currentPlan: {
+    planName: string;
+    planId: string;
+    carrier: string;
+    effectiveDate: string;
+    terminationDate: string;
+    premium: number;
+    deductible: number;
+    oopMax: number;
+    pcpCopay: number;
+    specialistCopay: number;
+    urgentCareCopay: number;
+    erCopay: number;
+    inpatientCost: string;
+    drugTier1Copay: number;
+    drugTier2Copay: number;
+    drugTier3Copay: number;
+    dentalCoverage: string;
+    visionCoverage: string;
+    hearingCoverage: string;
+  } | null;
+  isMockData: boolean;
+}
+
+interface DrugEntry {
+  name: string;
+  dosage: string;
+}
+
+type Step = "maQuestion" | "pverifyLookup" | "planFound" | "doctorsDrugs" | "aiLoading";
+
+interface Props {
+  zip: string;
+  onSkip: () => void;
+  onComplete: (data: {
+    hasMA: boolean;
+    verifyResult: MBIVerifyResult | null;
+    doctors: Doctor[];
+    drugs: DrugEntry[];
+  }) => void;
+}
+
+const COMMON_DRUGS = [
+  { name: "Lisinopril", dosage: "10mg" },
+  { name: "Metformin", dosage: "500mg" },
+  { name: "Atorvastatin", dosage: "20mg" },
+  { name: "Amlodipine", dosage: "5mg" },
+  { name: "Omeprazole", dosage: "20mg" },
+  { name: "Levothyroxine", dosage: "50mcg" },
+  { name: "Metoprolol", dosage: "25mg" },
+  { name: "Losartan", dosage: "50mg" },
+];
+
+export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) {
+  const [step, setStep] = useState<Step>("maQuestion");
+  const [hasMA, setHasMA] = useState<boolean | null>(null);
+
+  // pVerify state
+  const [lookupMode, setLookupMode] = useState<"mbi" | "name">("mbi");
+  const [mbi, setMbi] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
+  const [verifyResult, setVerifyResult] = useState<MBIVerifyResult | null>(null);
+  const [verifyError, setVerifyError] = useState("");
+
+  // Doctor/Drug state
+  const [doctorSearch, setDoctorSearch] = useState("");
+  const [selectedDoctors, setSelectedDoctors] = useState<Doctor[]>([]);
+  const [drugSearch, setDrugSearch] = useState("");
+  const [selectedDrugs, setSelectedDrugs] = useState<DrugEntry[]>([]);
+  const [manualDrugName, setManualDrugName] = useState("");
+  const [manualDrugDosage, setManualDrugDosage] = useState("");
+  const [showManualDrug, setShowManualDrug] = useState(false);
+  const [manualDoctorName, setManualDoctorName] = useState("");
+  const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
+  const [showManualDoctor, setShowManualDoctor] = useState(false);
+
+  const eligibilityMutation = trpc.pverify.eligibilityCheck.useMutation({
+    onSuccess: (data) => {
+      const result = data.data as MBIVerifyResult;
+      setVerifyResult(result);
+      setStep("planFound");
+    },
+    onError: (err) => {
+      setVerifyError(err.message || "Verification failed. You can skip this step.");
+    },
+  });
+
+  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length >= 3) val = val.slice(0, 2) + "/" + val.slice(2);
+    if (val.length >= 6) val = val.slice(0, 5) + "/" + val.slice(5);
+    setDob(val.slice(0, 10));
+  };
+
+  const handleVerify = () => {
+    setVerifyError("");
+    if (lookupMode === "mbi") {
+      if (!mbi.trim()) { setVerifyError("Please enter your Medicare ID."); return; }
+      if (!firstName.trim() || !lastName.trim() || !/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+        setVerifyError("Please also enter your name and date of birth."); return;
+      }
+      eligibilityMutation.mutate({ firstName: firstName.trim(), lastName: lastName.trim(), dob, mbi: mbi.trim() });
+    } else {
+      if (!firstName.trim() || !lastName.trim()) { setVerifyError("Please enter your first and last name."); return; }
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) { setVerifyError("Date of birth must be MM/DD/YYYY."); return; }
+      eligibilityMutation.mutate({ firstName: firstName.trim(), lastName: lastName.trim(), dob });
+    }
+  };
+
+  const filteredDoctors = POPULAR_DOCTORS.filter(
+    (d) =>
+      (d.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+        d.specialty.toLowerCase().includes(doctorSearch.toLowerCase())) &&
+      !selectedDoctors.find((sd) => sd.id === d.id)
+  );
+
+  const filteredDrugs = COMMON_DRUGS.filter(
+    (d) =>
+      d.name.toLowerCase().includes(drugSearch.toLowerCase()) &&
+      !selectedDrugs.find((sd) => sd.name === d.name)
+  );
+
+  const handleFinish = () => {
+    setStep("aiLoading");
+    setTimeout(() => {
+      onComplete({ hasMA: hasMA === true, verifyResult, doctors: selectedDoctors, drugs: selectedDrugs });
+    }, 1500);
+  };
+
+  const addManualDoctor = () => {
+    if (!manualDoctorName.trim()) return;
+    const doc: Doctor = {
+      id: `manual-${Date.now()}`,
+      name: manualDoctorName.trim(),
+      specialty: manualDoctorSpecialty.trim() || "General",
+      address: zip,
+      phone: "",
+      acceptingPatients: true,
+    };
+    setSelectedDoctors([...selectedDoctors, doc]);
+    setManualDoctorName(""); setManualDoctorSpecialty(""); setShowManualDoctor(false);
+  };
+
+  const addManualDrug = () => {
+    if (!manualDrugName.trim()) return;
+    setSelectedDrugs([...selectedDrugs, { name: manualDrugName.trim(), dosage: manualDrugDosage.trim() || "N/A" }]);
+    setManualDrugName(""); setManualDrugDosage(""); setShowManualDrug(false);
+  };
+
+  const stepTitle: Record<Step, string> = {
+    maQuestion: "Let's Personalize Your Results",
+    pverifyLookup: "Look Up Your Current Plan",
+    planFound: "Current Plan Found",
+    doctorsDrugs: "Add Your Doctors & Drugs",
+    aiLoading: "Finding Your Best Plan",
+  };
+
+  const isPending = eligibilityMutation.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" style={{ border: "1px solid #E8F0FE", maxHeight: "90vh", overflowY: "auto" }}>
+        {/* Header */}
+        <div className="px-6 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1B365D 0%, #243E6B 100%)" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
+              {step === "aiLoading" ? <Sparkles size={18} className="text-white" /> : <Shield size={18} className="text-white" />}
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white leading-tight">{stepTitle[step]}</h2>
+              <p className="text-white/70 text-xs">ZIP {zip}</p>
+            </div>
+          </div>
+          <button onClick={onSkip} className="text-white/60 hover:text-white transition-colors p-1 rounded"><X size={18} /></button>
+        </div>
+
+        <div className="px-6 py-5">
+          {/* STEP 1: MA Question */}
+          {step === "maQuestion" && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-4 rounded-xl text-sm" style={{ backgroundColor: "#EFF6FF", color: "#1E40AF" }}>
+                <Info size={16} className="mt-0.5 shrink-0" />
+                <div>This helps us find the best plan match for you. Your answer determines how we personalize your results.</div>
+              </div>
+              <p className="text-sm font-semibold text-center" style={{ color: "#1B365D" }}>Do you currently have a Medicare Advantage plan?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => { setHasMA(true); setStep("pverifyLookup"); }} className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all hover:border-[#1B365D] hover:bg-[#E8F0FE]" style={{ borderColor: "#E5E7EB" }}>
+                  <CheckCircle2 size={28} style={{ color: "#16A34A" }} />
+                  <span className="text-sm font-bold" style={{ color: "#1B365D" }}>Yes, I do</span>
+                  <span className="text-xs text-gray-500">We'll look up your current plan</span>
+                </button>
+                <button onClick={() => { setHasMA(false); setStep("doctorsDrugs"); }} className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all hover:border-[#C41E3A] hover:bg-[#FDEEF1]" style={{ borderColor: "#E5E7EB" }}>
+                  <X size={28} style={{ color: "#C41E3A" }} />
+                  <span className="text-sm font-bold" style={{ color: "#1B365D" }}>No, I don't</span>
+                  <span className="text-xs text-gray-500">We'll help you find one</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: pVerify Lookup (YES path) */}
+          {step === "pverifyLookup" && (
+            <div className="space-y-3">
+              <p className="text-sm" style={{ color: "#555" }}>How would you like us to look up your current plan?</p>
+              <div className="flex rounded-lg overflow-hidden border mb-2" style={{ borderColor: "#E5E7EB" }}>
+                <button onClick={() => setLookupMode("mbi")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "mbi" ? "#1B365D" : "white", color: lookupMode === "mbi" ? "white" : "#555" }}>Use Medicare ID</button>
+                <button onClick={() => setLookupMode("name")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "name" ? "#1B365D" : "white", color: lookupMode === "name" ? "white" : "#555" }}>Use Name & DOB</button>
+              </div>
+              {lookupMode === "mbi" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Medicare Beneficiary ID (MBI)</label>
+                  <input type="text" value={mbi} onChange={(e) => setMbi(e.target.value.toUpperCase())} placeholder="e.g. 1EG4-TE5-MK72" maxLength={20} className="w-full px-3 py-2.5 border rounded-lg text-sm font-mono outline-none" style={{ borderColor: "#E5E7EB" }} />
+                  <p className="text-xs text-gray-400 mt-1">Found on your red, white & blue Medicare card</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-semibold text-gray-600 block mb-1">First Name</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
+                <div><label className="text-xs font-semibold text-gray-600 block mb-1">Last Name</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Smith" className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
+              </div>
+              <div><label className="text-xs font-semibold text-gray-600 block mb-1">Date of Birth</label><input type="text" value={dob} onChange={handleDobChange} placeholder="MM/DD/YYYY" inputMode="numeric" maxLength={10} className="w-full px-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} /></div>
+              {verifyError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg"><AlertCircle size={13} />{verifyError}</div>}
+              <div className="flex items-center gap-1.5 text-xs text-gray-400"><Lock size={11} />256-bit SSL · HIPAA-compliant · Data never stored</div>
+            </div>
+          )}
+
+          {/* STEP 3: Plan Found */}
+          {step === "planFound" && (
+            <div className="text-center py-2">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: "#DCFCE7" }}>
+                <CheckCircle2 size={28} style={{ color: "#16A34A" }} />
+              </div>
+              <h3 className="text-lg font-bold mb-1" style={{ color: "#1B365D" }}>We Found Your Plan!</h3>
+              {verifyResult?.currentPlan && (
+                <div className="bg-gray-50 rounded-xl p-4 mt-3 text-left">
+                  <p className="text-sm font-bold" style={{ color: "#1B365D" }}>{verifyResult.currentPlan.planName}</p>
+                  <p className="text-xs text-gray-500">{verifyResult.currentPlan.carrier}</p>
+                  <div className="flex gap-4 mt-2 text-xs text-gray-600">
+                    <span>Premium: ${verifyResult.currentPlan.premium}/mo</span>
+                    <span>Deductible: ${verifyResult.currentPlan.deductible}</span>
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-gray-500 mt-3">Now let's add your doctors and prescriptions to find the best match.</p>
+            </div>
+          )}
+
+          {/* STEP 4: Doctors & Drugs */}
+          {step === "doctorsDrugs" && (
+            <div className="space-y-4">
+              {/* Doctors Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Stethoscope size={16} style={{ color: "#1B365D" }} />
+                  <span className="text-sm font-bold" style={{ color: "#1B365D" }}>Your Doctors</span>
+                </div>
+                <div className="relative mb-2">
+                  <Search size={14} className="absolute left-3 top-3 text-gray-400" />
+                  <input type="text" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} placeholder="Search doctors..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                </div>
+                {doctorSearch && filteredDoctors.length > 0 && (
+                  <div className="border rounded-lg max-h-32 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
+                    {filteredDoctors.slice(0, 5).map((d) => (
+                      <button key={d.id} onClick={() => { setSelectedDoctors([...selectedDoctors, d]); setDoctorSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center">
+                        <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.specialty}</span></div>
+                        <Plus size={14} className="text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedDoctors.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 mb-1">
+                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.specialty}</span></div>
+                    <button onClick={() => setSelectedDoctors(selectedDoctors.filter((sd) => sd.id !== d.id))}><Trash2 size={14} className="text-red-400" /></button>
+                  </div>
+                ))}
+                {!showManualDoctor ? (
+                  <button onClick={() => setShowManualDoctor(true)} className="text-xs font-medium flex items-center gap-1 mt-1" style={{ color: "#1B365D" }}><Plus size={12} />Add doctor manually</button>
+                ) : (
+                  <div className="border rounded-lg p-3 space-y-2 mt-1" style={{ borderColor: "#E5E7EB" }}>
+                    <input type="text" value={manualDoctorName} onChange={(e) => setManualDoctorName(e.target.value)} placeholder="Doctor name" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                    <input type="text" value={manualDoctorSpecialty} onChange={(e) => setManualDoctorSpecialty(e.target.value)} placeholder="Specialty (optional)" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                    <div className="flex gap-2"><button onClick={addManualDoctor} className="px-3 py-1.5 text-xs font-bold rounded-lg text-white" style={{ backgroundColor: "#1B365D" }}>Add</button><button onClick={() => setShowManualDoctor(false)} className="px-3 py-1.5 text-xs rounded-lg border" style={{ borderColor: "#E5E7EB" }}>Cancel</button></div>
+                  </div>
+                )}
+              </div>
+              {/* Divider */}
+              <div className="border-t" style={{ borderColor: "#E8F0FE" }} />
+              {/* Drugs Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Pill size={16} style={{ color: "#C41E3A" }} />
+                  <span className="text-sm font-bold" style={{ color: "#1B365D" }}>Your Prescriptions</span>
+                </div>
+                <div className="relative mb-2">
+                  <Search size={14} className="absolute left-3 top-3 text-gray-400" />
+                  <input type="text" value={drugSearch} onChange={(e) => setDrugSearch(e.target.value)} placeholder="Search medications..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                </div>
+                {drugSearch && filteredDrugs.length > 0 && (
+                  <div className="border rounded-lg max-h-32 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
+                    {filteredDrugs.slice(0, 5).map((d) => (
+                      <button key={d.name} onClick={() => { setSelectedDrugs([...selectedDrugs, d]); setDrugSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex justify-between items-center">
+                        <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.dosage}</span></div>
+                        <Plus size={14} className="text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedDrugs.map((d, i) => (
+                  <div key={`${d.name}-${i}`} className="flex items-center justify-between bg-red-50 rounded-lg px-3 py-2 mb-1">
+                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.dosage}</span></div>
+                    <button onClick={() => setSelectedDrugs(selectedDrugs.filter((_, idx) => idx !== i))}><Trash2 size={14} className="text-red-400" /></button>
+                  </div>
+                ))}
+                {!showManualDrug ? (
+                  <button onClick={() => setShowManualDrug(true)} className="text-xs font-medium flex items-center gap-1 mt-1" style={{ color: "#C41E3A" }}><Plus size={12} />Add medication manually</button>
+                ) : (
+                  <div className="border rounded-lg p-3 space-y-2 mt-1" style={{ borderColor: "#E5E7EB" }}>
+                    <input type="text" value={manualDrugName} onChange={(e) => setManualDrugName(e.target.value)} placeholder="Medication name" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                    <input type="text" value={manualDrugDosage} onChange={(e) => setManualDrugDosage(e.target.value)} placeholder="Dosage (optional)" className="w-full px-3 py-2 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                    <div className="flex gap-2"><button onClick={addManualDrug} className="px-3 py-1.5 text-xs font-bold rounded-lg text-white" style={{ backgroundColor: "#C41E3A" }}>Add</button><button onClick={() => setShowManualDrug(false)} className="px-3 py-1.5 text-xs rounded-lg border" style={{ borderColor: "#E5E7EB" }}>Cancel</button></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: AI Loading */}
+          {step === "aiLoading" && (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#EFF6FF" }}>
+                <Loader2 size={32} className="animate-spin" style={{ color: "#1B365D" }} />
+              </div>
+              <h3 className="text-lg font-bold mb-2" style={{ color: "#1B365D" }}>Analyzing Your Profile</h3>
+              <p className="text-sm text-gray-500">Our AI is comparing plans based on your doctors, prescriptions{hasMA ? ", and current coverage" : ""}...</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Buttons */}
+        {step !== "aiLoading" && step !== "maQuestion" && (
+          <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: "#F8FAFC", borderTop: "1px solid #E8F0FE" }}>
+            <button onClick={() => {
+              if (step === "pverifyLookup") setStep("maQuestion");
+              else if (step === "planFound") setStep("pverifyLookup");
+              else if (step === "doctorsDrugs" && hasMA) setStep("planFound");
+              else if (step === "doctorsDrugs") setStep("maQuestion");
+            }} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 flex items-center justify-center gap-1" style={{ borderColor: "#E5E7EB", color: "#555" }}>
+              <ChevronLeft size={15} />Back
+            </button>
+            {step === "pverifyLookup" && (
+              <button onClick={handleVerify} disabled={isPending} className="flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 text-white" style={{ backgroundColor: isPending ? "#9CA3AF" : "#C41E3A" }}>
+                {isPending ? <><Loader2 size={15} className="animate-spin" />Verifying...</> : <>Verify & Continue<ChevronRight size={15} /></>}
+              </button>
+            )}
+            {step === "planFound" && (
+              <button onClick={() => setStep("doctorsDrugs")} className="flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 text-white" style={{ backgroundColor: "#C41E3A" }}>
+                Next: Doctors & Drugs<ChevronRight size={15} />
+              </button>
+            )}
+            {step === "doctorsDrugs" && (
+              <button onClick={handleFinish} className="flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 text-white" style={{ backgroundColor: "#C41E3A" }}>
+                <Sparkles size={15} />Find My Best Plan
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Skip link for maQuestion */}
+        {step === "maQuestion" && (
+          <div className="px-6 py-3 text-center" style={{ backgroundColor: "#F8FAFC", borderTop: "1px solid #E8F0FE" }}>
+            <button onClick={onSkip} className="text-xs font-medium text-gray-400 hover:text-gray-600">Skip — Show All Plans Without Personalization</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
