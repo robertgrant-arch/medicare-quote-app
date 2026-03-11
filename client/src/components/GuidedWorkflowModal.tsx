@@ -4,14 +4,14 @@
  * If YES -> pVerify lookup (MBI or Name/DOB) -> store current plan -> doctors/drugs -> AI recommendation
  * If NO -> doctors/drugs lookup -> AI recommendation
  */
-import { useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { POPULAR_DOCTORS } from "@/lib/mockData";
 import type { Doctor } from "@/lib/types";
 import {
   Shield, Lock, X, ChevronRight, ChevronLeft, Info, CheckCircle2,
   AlertCircle, Loader2, Stethoscope, Pill, Search, Plus, Trash2,
-  Sparkles, UserRound, ClipboardList
+  Sparkles
 } from "lucide-react";
 
 // Re-export MBIVerifyResult type for backward compatibility
@@ -61,7 +61,7 @@ interface Props {
   }) => void;
 }
 
-const COMMON_DRUGS = [
+const COMMON_DRUGS: DrugEntry[] = [
   { name: "Lisinopril", dosage: "10mg" },
   { name: "Metformin", dosage: "500mg" },
   { name: "Atorvastatin", dosage: "20mg" },
@@ -72,10 +72,19 @@ const COMMON_DRUGS = [
   { name: "Losartan", dosage: "50mg" },
 ];
 
+const STEP_TITLES: Record<Step, string> = {
+  maQuestion: "Let's Personalize Your Results",
+  pverifyLookup: "Look Up Your Current Plan",
+  planFound: "Current Plan Found",
+  doctorsDrugs: "Add Your Doctors & Drugs",
+  aiLoading: "Finding Your Best Plan",
+};
+
+const DOB_REGEX = /^\d{2}\/\d{2}\/\d{4}$/;
+
 export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) {
   const [step, setStep] = useState<Step>("maQuestion");
   const [hasMA, setHasMA] = useState<boolean | null>(null);
-
   // pVerify state
   const [lookupMode, setLookupMode] = useState<"mbi" | "name">("mbi");
   const [mbi, setMbi] = useState("");
@@ -84,7 +93,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [dob, setDob] = useState("");
   const [verifyResult, setVerifyResult] = useState<MBIVerifyResult | null>(null);
   const [verifyError, setVerifyError] = useState("");
-
   // Doctor/Drug state
   const [doctorSearch, setDoctorSearch] = useState("");
   const [selectedDoctors, setSelectedDoctors] = useState<Doctor[]>([]);
@@ -96,6 +104,12 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [manualDoctorName, setManualDoctorName] = useState("");
   const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
   const [showManualDoctor, setShowManualDoctor] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   const eligibilityMutation = trpc.pverify.eligibilityCheck.useMutation({
     onSuccess: (data) => {
@@ -115,37 +129,49 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     setDob(val.slice(0, 10));
   };
 
-  const handleVerify = () => {
-    setVerifyError("");
-    if (lookupMode === "mbi") {
-      if (!mbi.trim()) { setVerifyError("Please enter your Medicare ID."); return; }
-      if (!firstName.trim() || !lastName.trim() || !/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
-        setVerifyError("Please also enter your name and date of birth."); return;
-      }
-      eligibilityMutation.mutate({ firstName: firstName.trim(), lastName: lastName.trim(), dob, mbi: mbi.trim() });
-    } else {
-      if (!firstName.trim() || !lastName.trim()) { setVerifyError("Please enter your first and last name."); return; }
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) { setVerifyError("Date of birth must be MM/DD/YYYY."); return; }
-      eligibilityMutation.mutate({ firstName: firstName.trim(), lastName: lastName.trim(), dob });
-    }
+  const validateNameDob = (): string | null => {
+    if (!firstName.trim() || !lastName.trim()) return "Please enter your first and last name.";
+    if (!DOB_REGEX.test(dob)) return "Date of birth must be MM/DD/YYYY.";
+    return null;
   };
 
-  const filteredDoctors = POPULAR_DOCTORS.filter(
-    (d) =>
-      (d.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+  const handleVerify = () => {
+    setVerifyError("");
+    if (lookupMode === "mbi" && !mbi.trim()) {
+      setVerifyError("Please enter your Medicare ID.");
+      return;
+    }
+    const nameError = validateNameDob();
+    if (nameError) { setVerifyError(nameError); return; }
+    eligibilityMutation.mutate({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dob,
+      ...(lookupMode === "mbi" ? { mbi: mbi.trim() } : {}),
+    });
+  };
+
+  // Memoized filtered lists
+  const filteredDoctors = useMemo(() =>
+    POPULAR_DOCTORS.filter(
+      (d) =>
+        (d.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
         d.specialty.toLowerCase().includes(doctorSearch.toLowerCase())) &&
-      !selectedDoctors.find((sd) => sd.id === d.id)
+        !selectedDoctors.find((sd) => sd.id === d.id)
+    ), [doctorSearch, selectedDoctors]
   );
 
-  const filteredDrugs = COMMON_DRUGS.filter(
-    (d) =>
-      d.name.toLowerCase().includes(drugSearch.toLowerCase()) &&
-      !selectedDrugs.find((sd) => sd.name === d.name)
+  const filteredDrugs = useMemo(() =>
+    COMMON_DRUGS.filter(
+      (d) =>
+        d.name.toLowerCase().includes(drugSearch.toLowerCase()) &&
+        !selectedDrugs.find((sd) => sd.name === d.name)
+    ), [drugSearch, selectedDrugs]
   );
 
   const handleFinish = () => {
     setStep("aiLoading");
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       onComplete({ hasMA: hasMA === true, verifyResult, doctors: selectedDoctors, drugs: selectedDrugs });
     }, 1500);
   };
@@ -170,12 +196,11 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     setManualDrugName(""); setManualDrugDosage(""); setShowManualDrug(false);
   };
 
-  const stepTitle: Record<Step, string> = {
-    maQuestion: "Let's Personalize Your Results",
-    pverifyLookup: "Look Up Your Current Plan",
-    planFound: "Current Plan Found",
-    doctorsDrugs: "Add Your Doctors & Drugs",
-    aiLoading: "Finding Your Best Plan",
+  const handleBack = () => {
+    if (step === "pverifyLookup") setStep("maQuestion");
+    else if (step === "planFound") setStep("pverifyLookup");
+    else if (step === "doctorsDrugs" && hasMA) setStep("planFound");
+    else if (step === "doctorsDrugs") setStep("maQuestion");
   };
 
   const isPending = eligibilityMutation.isPending;
@@ -190,7 +215,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
               {step === "aiLoading" ? <Sparkles size={18} className="text-white" /> : <Shield size={18} className="text-white" />}
             </div>
             <div>
-              <h2 className="text-base font-bold text-white leading-tight">{stepTitle[step]}</h2>
+              <h2 className="text-base font-bold text-white leading-tight">{STEP_TITLES[step]}</h2>
               <p className="text-white/70 text-xs">ZIP {zip}</p>
             </div>
           </div>
@@ -362,12 +387,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
         {/* Footer Buttons */}
         {step !== "aiLoading" && step !== "maQuestion" && (
           <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: "#F8FAFC", borderTop: "1px solid #E8F0FE" }}>
-            <button onClick={() => {
-              if (step === "pverifyLookup") setStep("maQuestion");
-              else if (step === "planFound") setStep("pverifyLookup");
-              else if (step === "doctorsDrugs" && hasMA) setStep("planFound");
-              else if (step === "doctorsDrugs") setStep("maQuestion");
-            }} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 flex items-center justify-center gap-1" style={{ borderColor: "#E5E7EB", color: "#555" }}>
+            <button onClick={handleBack} className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 flex items-center justify-center gap-1" style={{ borderColor: "#E5E7EB", color: "#555" }}>
               <ChevronLeft size={15} />Back
             </button>
             {step === "pverifyLookup" && (
