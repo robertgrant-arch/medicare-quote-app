@@ -21,7 +21,7 @@ import {
   XCircle,
   Info,   UserRound,
 } from "lucide-react";
-import type { MedicarePlan, PlanDoctorNetworkStatus } from "@/lib/types";
+import type { MedicarePlan, PlanDoctorNetworkStatus, RxDrug } from "@/lib/types";
 import StarRating from "./StarRating";
 import CarrierLogo from "./CarrierLogo";
 import InlineCompare from "./InlineCompare";
@@ -33,7 +33,7 @@ interface PlanCardProps {
   onEnroll: (plan: MedicarePlan) => void;
   animationDelay?: number;
   isCompareActive?: boolean;
-  onCompareActivate?: (planId: string | null) => void;   doctorNetworkStatus?: PlanDoctorNetworkStatus;
+  onCompareActivate?: (planId: string | null) => void;   doctorNetworkStatus?: PlanDoctorNetworkStatus;   rxDrugs?: RxDrug[];   subsidyLevel?: "full" | "partial" | "none";
 }
 
 const BENEFIT_ICONS = {
@@ -66,7 +66,7 @@ export default function PlanCard({
   animationDelay = 0,
   isCompareActive = false,
   onCompareActivate,
-    doctorNetworkStatus,
+    doctorNetworkStatus,   rxDrugs = [],   subsidyLevel = "none",
 }: PlanCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [heartAnimating, setHeartAnimating] = useState(false);
@@ -77,7 +77,7 @@ export default function PlanCard({
     setTimeout(() => setHeartAnimating(false), 400);
   };
 
-  const benefitKeys = Object.keys(BENEFIT_ICONS) as Array<keyof typeof BENEFIT_ICONS>;
+  // Estimate annual drug cost   const estimatedDrugCost = (() => {     if (!rxDrugs || rxDrugs.length === 0) return null;     // Parse tier costs from strings like "$0 copay", "$10", "25%"     const parseCost = (s: string): { type: 'flat' | 'pct'; val: number } => {       const pct = s.match(/(\d+)%/);       if (pct) return { type: 'pct', val: parseInt(pct[1]) / 100 };       const flat = s.match(/\$(\d+)/);       return { type: 'flat', val: flat ? parseInt(flat[1]) : 0 };     };     const tier1 = parseCost(plan.rxDrugs.tier1);     const tier2 = parseCost(plan.rxDrugs.tier2);     const tier3 = parseCost(plan.rxDrugs.tier3);     const tier4 = parseCost(plan.rxDrugs.tier4);     // Avg brand drug cost ~$200/mo, generic ~$20/mo, specialty ~$500/mo     const avgDrugCost = (tier: { type: 'flat' | 'pct'; val: number }, isGeneric: boolean) => {       const retail = isGeneric ? 20 : 200;       if (tier.type === 'flat') return tier.val;       return Math.round(tier.val * retail);     };     let annualCost = 0;     const drugDeductible = parseInt((plan.rxDrugs.deductible || '$0').replace(/[^\d]/g, '')) || 0;     // Subsidy reduces costs     const subsidyMult = subsidyLevel === 'full' ? 0.05 : subsidyLevel === 'partial' ? 0.35 : 1.0;     for (const drug of rxDrugs) {       const isGeneric = drug.isGeneric;       // Assign tier: generic=tier1, brand=tier2       const tierCost = isGeneric ? avgDrugCost(tier1, true) : avgDrugCost(tier2, false);       const monthlyAfterSubsidy = Math.round(tierCost * subsidyMult);       annualCost += monthlyAfterSubsidy * 12;     }     // Add drug deductible once (prorated if multiple drugs)     annualCost += Math.round(drugDeductible * subsidyMult);     // Donut hole: applies when total drug spend hits ICL (~$5,030)     // After ICL, beneficiary pays 25% coinsurance until catastrophic     const icl = plan.rxDrugs.gap ? 0 : 5030; // gap coverage eliminates donut hole     const hasGap = plan.rxDrugs.gap;     if (!hasGap && annualCost > icl) {       const donutHolePortion = annualCost - icl;       // In donut hole: 25% of drug costs (was 100%, now capped at 25%)       const donutHoleExtra = Math.round(donutHolePortion * 0.25);       annualCost = icl + donutHoleExtra;     }     return annualCost;   })();   const benefitKeys = Object.keys(BENEFIT_ICONS) as Array<keyof typeof BENEFIT_ICONS>;
 
   return (
     <div
@@ -188,7 +188,7 @@ export default function PlanCard({
         </div>
 
         {/* ── Pricing Row ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl" style={{ backgroundColor: "#F7F8FA" }}>
+        <div className={`grid ${estimatedDrugCost !== null ? 'grid-cols-4' : 'grid-cols-3'} gap-3 mb-4 p-3 rounded-xl`} style={{ backgroundColor: "#F7F8FA" }}>
           <div className="text-center">
             <div
               className="text-2xl font-bold"
