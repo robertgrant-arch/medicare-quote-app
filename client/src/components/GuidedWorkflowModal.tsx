@@ -437,7 +437,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   <Search size={14} className="absolute left-3 top-3 text-gray-400" />
                   <input type="text" value={drugSearch} onChange={(e) => setDrugSearch(e.target.value)} placeholder="Search medications..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
                 </div>
-                {{(rxLoading || rxResults.length > 0) && (
+                {(rxLoading || rxResults.length > 0) && (
                   <div className="border rounded-lg max-h-32 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
                     {rxLoading ? (<div className="px-3 py-2 text-xs text-gray-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin" />Searching...</div>) : rxResults.map((d) => (
                       <button key={d.displayName} onClick={() => { setSelectedDrugs([...selectedDrugs, { name: d.displayName, dosage: d.strength || "" }]); setDrugSearch(""); setRxResults([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex justify-between items-center">
