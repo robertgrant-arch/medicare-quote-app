@@ -6,7 +6,7 @@
  */
 import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
-import { POPULAR_DOCTORS } from "@/lib/mockData";
+import { POPULAR_DOCTORS, POPULAR_RX_DRUGS } from "@/lib/mockData";
 import type { Doctor } from "@/lib/types";
 import {
   Shield, Lock, X, ChevronRight, ChevronLeft, Info, CheckCircle2,
@@ -61,16 +61,7 @@ interface Props {
   }) => void;
 }
 
-const COMMON_DRUGS: DrugEntry[] = [
-  { name: "Lisinopril", dosage: "10mg" },
-  { name: "Metformin", dosage: "500mg" },
-  { name: "Atorvastatin", dosage: "20mg" },
-  { name: "Amlodipine", dosage: "5mg" },
-  { name: "Omeprazole", dosage: "20mg" },
-  { name: "Levothyroxine", dosage: "50mcg" },
-  { name: "Metoprolol", dosage: "25mg" },
-  { name: "Losartan", dosage: "50mg" },
-];
+const COMMON_DRUGS: DrugEntry[] = POPULAR_RX_DRUGS.map(d => ({ name: d.name, dosage: d.dosage }));
 
 const STEP_TITLES: Record<Step, string> = {
   maQuestion: "Let's Personalize Your Results",
