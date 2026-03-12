@@ -215,6 +215,17 @@ export default function PlanCard({
             </div>
             <div className="text-[10px] text-gray-500 font-medium">max out-of-pocket</div>
           </div>
+                  {estimatedDrugCost !== null && (
+          <div className="text-center border-l border-gray-200">
+            <div className="text-lg font-bold" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>
+              ${estimatedDrugCost.toLocaleString()}
+            </div>
+            <div className="text-[10px] text-gray-500 font-medium">est. drug cost/yr</div>
+            {plan.rxDrugs.gap && (
+              <div className="text-[9px] font-semibold mt-0.5" style={{ color: "#1B365D" }}>gap covered</div>
+            )}
+          </div>
+        )}
         </div>
 
                   {/* — Doctor Network Status ——————————————————— */}
@@ -450,7 +461,7 @@ export default function PlanCard({
             }}
           >
             Enroll Now
-          </button>
+  })();        </button>
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-all"
