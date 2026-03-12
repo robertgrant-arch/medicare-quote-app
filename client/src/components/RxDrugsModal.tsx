@@ -226,7 +226,7 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{drug.name}</p>
                       <p className="text-xs text-gray-500">
-                        {drug.dosage} {drug.dosage && drug.frequency ? " \u00b7 " : ""}{drug.frequency}
+                        {drug.dosage} {drug.dosage && drug.frequency ? " · " : ""}{drug.frequency}
                         {drug.isGeneric && (
                           <span className="ml-1.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-medium">Generic</span>
                         )}
@@ -275,7 +275,7 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{name}</p>
                           <p className="text-xs text-gray-500">
-                            {route}{result.strengths.length > 1 ? ` \u00b7 ${result.strengths.length} strengths` : result.strengths[0] ? ` \u00b7 ${result.strengths[0]}` : ""}
+                            {route}{result.strengths.length > 1 ? ` · ${result.strengths.length} strengths` : result.strengths[0] ? ` · ${result.strengths[0]}` : ""}
                           </p>
                         </div>
                       </div>
@@ -336,7 +336,7 @@ export default function RxDrugsModal({ open, onClose, selectedDrugs, onSave }: R
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{drug.name}</p>
                       <p className="text-xs text-gray-500">
-                        {drug.dosage} \u00b7 {drug.frequency}
+                        {drug.dosage} · {drug.frequency}
                         {drug.isGeneric && (
                           <span className="ml-1.5 text-green-700 bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-medium">Generic available</span>
                         )}
