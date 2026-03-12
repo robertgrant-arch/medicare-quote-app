@@ -4,7 +4,7 @@
  * If YES -> pVerify lookup (MBI or SSN) -> store current plan -> doctors/drugs -> AI recommendation
  * If NO -> doctors/drugs lookup -> AI recommendation
  */
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { POPULAR_RX_DRUGS } from "@/lib/mockData";
 import type { Doctor } from "@/lib/types";
@@ -105,6 +105,19 @@ interface Props {
 }
 
 const COMMON_DRUGS: DrugEntry[] = POPULAR_RX_DRUGS.map(d => ({ name: d.name, dosage: d.dosage }));
+const RXTERMS_API = "https://clinicaltables.nlm.nih.gov/api/rxterms/v3/search";
+interface RxTermResult { displayName: string; strength: string; }
+async function searchRxTerms(term: string): Promise<RxTermResult[]> {
+    if (!term || term.length < 2) return [];
+    try {
+          const res = await fetch(`${RXTERMS_API}?terms=${encodeURIComponent(term)}&ef=STRENGTHS_AND_FORMS&maxList=10`);
+          const data = await res.json();
+          if (data[0] === 0) return [];
+          const names = data[1] as string[];
+          const strengths = (data[2]?.["STRENGTHS_AND_FORMS"] || []) as string[][];
+          return names.map((n: string, i: number) => ({ displayName: n, strength: strengths[i]?.[0] || "" }));
+        } catch { return []; }
+  }
 
 const STEP_TITLES: Record<Step, string> = {
   maQuestion: "Let's Personalize Your Results",
@@ -133,6 +146,9 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [manualDrugName, setManualDrugName] = useState("");
   const [manualDrugDosage, setManualDrugDosage] = useState("");
   const [showManualDrug, setShowManualDrug] = useState(false);
+    const [rxResults, setRxResults] = useState<RxTermResult[]>([]);
+    const [rxLoading, setRxLoading] = useState(false);
+    const rxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualDoctorName, setManualDoctorName] = useState("");
   const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
   const [showManualDoctor, setShowManualDoctor] = useState(false);
@@ -143,7 +159,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (npiTimerRef.current) clearTimeout(npiTimerRef.current);
+      if (npiTimerRef.current) clearTimeout(npiTimerRef.current);       if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
     };
   }, []);
 
@@ -203,14 +219,19 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     });
   };
 
-  // Memoized filtered drug list
-  const filteredDrugs = useMemo(() =>
-    COMMON_DRUGS.filter(
-      (d) =>
-        d.name.toLowerCase().includes(drugSearch.toLowerCase()) &&
-        !selectedDrugs.find((sd) => sd.name === d.name)
-    ), [drugSearch, selectedDrugs]
-  );
+// Debounced live drug search via NIH RxTerms API
+    useEffect(() => {
+          if (!drugSearch || drugSearch.length < 2) {
+                  setRxResults([]); return;
+                }
+          setRxLoading(true);
+          if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
+          rxTimerRef.current = setTimeout(async () => {
+                  const results = await searchRxTerms(drugSearch);
+                  setRxResults(results.filter(r => !selectedDrugs.find(sd => sd.name === r.displayName)));
+                  setRxLoading(false);
+                }, 300);
+        }, [drugSearch, selectedDrugs]);
 
   const handleFinish = () => {
     setStep("aiLoading");
@@ -416,11 +437,11 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   <Search size={14} className="absolute left-3 top-3 text-gray-400" />
                   <input type="text" value={drugSearch} onChange={(e) => setDrugSearch(e.target.value)} placeholder="Search medications..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
                 </div>
-                {drugSearch && filteredDrugs.length > 0 && (
+                {{(rxLoading || rxResults.length > 0) && (
                   <div className="border rounded-lg max-h-32 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
-                    {filteredDrugs.slice(0, 5).map((d) => (
-                      <button key={d.name} onClick={() => { setSelectedDrugs([...selectedDrugs, d]); setDrugSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex justify-between items-center">
-                        <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.dosage}</span></div>
+                    {rxLoading ? (<div className="px-3 py-2 text-xs text-gray-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin" />Searching...</div>) : rxResults.map((d) => (
+                      <button key={d.displayName} onClick={() => { setSelectedDrugs([...selectedDrugs, { name: d.displayName, dosage: d.strength || "" }]); setDrugSearch(""); setRxResults([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex justify-between items-center">
+                        <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.displayName}</span><span className="text-xs text-gray-500 ml-2">{d.strength}</span></div>
                         <Plus size={14} className="text-gray-400" />
                       </button>
                     ))}
@@ -428,7 +449,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                 )}
                 {selectedDrugs.map((d, i) => (
                   <div key={`${d.name}-${i}`} className="flex items-center justify-between bg-red-50 rounded-lg px-3 py-2 mb-1">
-                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.dosage}</span></div>
+                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.strength}</span></div>
                     <button onClick={() => setSelectedDrugs(selectedDrugs.filter((_, idx) => idx !== i))}><Trash2 size={14} className="text-red-400" /></button>
                   </div>
                 ))}
