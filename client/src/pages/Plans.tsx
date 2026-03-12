@@ -735,7 +735,7 @@ export default function Plans() {
                         onEnroll={handleEnroll}
                         animationDelay={Math.min(i * 60, 400)}
                         isCompareActive={activeCompareId === plan.id}
-                        onCompareActivate={handleCompareActivate}
+                        onCompareActivate={handleCompareActivate}               rxDrugs={rxDrugs}               subsidyLevel={extraHelp === "full" ? "full" : extraHelp === "partial" ? "partial" : "none"}
                       />
                     </div>
                                           </div>
