@@ -1142,7 +1142,9 @@ export const MOCK_PLANS: MedicarePlan[] = [
   },
 ];
 
+
 export const POPULAR_RX_DRUGS = [
+  // --- Blood Pressure / Heart ---
   { id: "rx-1", name: "Metformin", dosage: "500mg", frequency: "Twice daily", isGeneric: true },
   { id: "rx-2", name: "Lisinopril", dosage: "10mg", frequency: "Once daily", isGeneric: true },
   { id: "rx-3", name: "Atorvastatin", dosage: "20mg", frequency: "Once daily", isGeneric: true },
@@ -1153,13 +1155,130 @@ export const POPULAR_RX_DRUGS = [
   { id: "rx-8", name: "Xarelto", dosage: "20mg", frequency: "Once daily", isGeneric: false },
   { id: "rx-9", name: "Entresto", dosage: "49/51mg", frequency: "Twice daily", isGeneric: false },
   { id: "rx-10", name: "Ozempic", dosage: "0.5mg", frequency: "Weekly injection", isGeneric: false },
+  { id: "rx-11", name: "Losartan", dosage: "50mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-12", name: "Metoprolol Succinate", dosage: "25mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-13", name: "Hydrochlorothiazide", dosage: "25mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-14", name: "Carvedilol", dosage: "12.5mg", frequency: "Twice daily", isGeneric: true },
+  { id: "rx-15", name: "Valsartan", dosage: "160mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-16", name: "Warfarin", dosage: "5mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-17", name: "Clopidogrel", dosage: "75mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-18", name: "Diltiazem", dosage: "120mg", frequency: "Once daily", isGeneric: true },
+  // --- Diabetes ---
+  { id: "rx-19", name: "Glipizide", dosage: "5mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-20", name: "Januvia", dosage: "100mg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-21", name: "Trulicity", dosage: "1.5mg", frequency: "Weekly injection", isGeneric: false },
+  { id: "rx-22", name: "Farxiga", dosage: "10mg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-23", name: "Lantus", dosage: "100 units/mL", frequency: "Once daily", isGeneric: false },
+  { id: "rx-24", name: "Humalog", dosage: "100 units/mL", frequency: "With meals", isGeneric: false },
+  { id: "rx-25", name: "Rybelsus", dosage: "7mg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-26", name: "Mounjaro", dosage: "5mg", frequency: "Weekly injection", isGeneric: false },
+  // --- Cholesterol ---
+  { id: "rx-27", name: "Rosuvastatin", dosage: "10mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-28", name: "Simvastatin", dosage: "20mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-29", name: "Pravastatin", dosage: "40mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-30", name: "Ezetimibe", dosage: "10mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-31", name: "Repatha", dosage: "140mg", frequency: "Every 2 weeks", isGeneric: false },
+  // --- Pain / Inflammation ---
+  { id: "rx-32", name: "Gabapentin", dosage: "300mg", frequency: "Three times daily", isGeneric: true },
+  { id: "rx-33", name: "Tramadol", dosage: "50mg", frequency: "Every 6 hours as needed", isGeneric: true },
+  { id: "rx-34", name: "Meloxicam", dosage: "15mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-35", name: "Pregabalin", dosage: "75mg", frequency: "Twice daily", isGeneric: true },
+  { id: "rx-36", name: "Celecoxib", dosage: "200mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-37", name: "Duloxetine", dosage: "60mg", frequency: "Once daily", isGeneric: true },
+  // --- Respiratory ---
+  { id: "rx-38", name: "Albuterol Inhaler", dosage: "90mcg", frequency: "As needed", isGeneric: true },
+  { id: "rx-39", name: "Symbicort", dosage: "160/4.5mcg", frequency: "Twice daily", isGeneric: false },
+  { id: "rx-40", name: "Spiriva", dosage: "18mcg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-41", name: "Breo Ellipta", dosage: "100/25mcg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-42", name: "Trelegy Ellipta", dosage: "100/62.5/25mcg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-43", name: "Montelukast", dosage: "10mg", frequency: "Once daily", isGeneric: true },
+  // --- Mental Health ---
+  { id: "rx-44", name: "Sertraline", dosage: "50mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-45", name: "Escitalopram", dosage: "10mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-46", name: "Trazodone", dosage: "50mg", frequency: "At bedtime", isGeneric: true },
+  { id: "rx-47", name: "Buspirone", dosage: "10mg", frequency: "Twice daily", isGeneric: true },
+  { id: "rx-48", name: "Mirtazapine", dosage: "15mg", frequency: "At bedtime", isGeneric: true },
+  // --- Thyroid ---
+  { id: "rx-49", name: "Levothyroxine", dosage: "50mcg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-50", name: "Synthroid", dosage: "100mcg", frequency: "Once daily", isGeneric: false },
+  // --- Eye Care ---
+  { id: "rx-51", name: "Latanoprost", dosage: "0.005%", frequency: "Once daily at bedtime", isGeneric: true },
+  { id: "rx-52", name: "Timolol Eye Drops", dosage: "0.5%", frequency: "Twice daily", isGeneric: true },
+  // --- GI / Acid Reflux ---
+  { id: "rx-53", name: "Pantoprazole", dosage: "40mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-54", name: "Famotidine", dosage: "20mg", frequency: "Twice daily", isGeneric: true },
+  { id: "rx-55", name: "Ondansetron", dosage: "4mg", frequency: "As needed", isGeneric: true },
+  // --- Bone Health ---
+  { id: "rx-56", name: "Alendronate", dosage: "70mg", frequency: "Once weekly", isGeneric: true },
+  { id: "rx-57", name: "Prolia", dosage: "60mg", frequency: "Every 6 months", isGeneric: false },
+  // --- Blood Thinners / Misc ---
+  { id: "rx-58", name: "Furosemide", dosage: "40mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-59", name: "Spironolactone", dosage: "25mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-60", name: "Tamsulosin", dosage: "0.4mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-61", name: "Finasteride", dosage: "5mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-62", name: "Potassium Chloride", dosage: "20mEq", frequency: "Once daily", isGeneric: true },
+  { id: "rx-63", name: "Prednisone", dosage: "10mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-64", name: "Allopurinol", dosage: "300mg", frequency: "Once daily", isGeneric: true },
+  { id: "rx-65", name: "Colchicine", dosage: "0.6mg", frequency: "Once daily", isGeneric: true },
+  // --- Specialty / Brand ---
+  { id: "rx-66", name: "Humira", dosage: "40mg", frequency: "Every 2 weeks", isGeneric: false },
+  { id: "rx-67", name: "Keytruda", dosage: "200mg", frequency: "Every 3 weeks", isGeneric: false },
+  { id: "rx-68", name: "Xeljanz", dosage: "5mg", frequency: "Twice daily", isGeneric: false },
+  { id: "rx-69", name: "Rinvoq", dosage: "15mg", frequency: "Once daily", isGeneric: false },
+  { id: "rx-70", name: "Stelara", dosage: "45mg", frequency: "Every 12 weeks", isGeneric: false },
 ];
 
 export const POPULAR_DOCTORS = [
+  // --- Primary Care / Internal Medicine ---
   { id: "dr-1", name: "Dr. Sarah Johnson, MD", specialty: "Internal Medicine", npi: "1234567890", address: "4400 Broadway Blvd, Kansas City, MO 64111" },
   { id: "dr-2", name: "Dr. Michael Chen, MD", specialty: "Cardiology", npi: "2345678901", address: "2301 Holmes St, Kansas City, MO 64108" },
   { id: "dr-3", name: "Dr. Patricia Williams, DO", specialty: "Family Medicine", npi: "3456789012", address: "1000 Carondelet Dr, Kansas City, MO 64114" },
   { id: "dr-4", name: "Dr. Robert Martinez, MD", specialty: "Endocrinology", npi: "4567890123", address: "4320 Wornall Rd, Kansas City, MO 64111" },
   { id: "dr-5", name: "Dr. Lisa Thompson, MD", specialty: "Orthopedics", npi: "5678901234", address: "2800 Clay Edwards Dr, Kansas City, MO 64116" },
   { id: "dr-6", name: "Dr. James Wilson, MD", specialty: "Pulmonology", npi: "6789012345", address: "1 Hospital Dr, Kansas City, MO 64108" },
+  { id: "dr-7", name: "Dr. Karen Davis, MD", specialty: "Family Medicine", npi: "7890123456", address: "6420 Prospect Ave, Kansas City, MO 64132" },
+  { id: "dr-8", name: "Dr. David Lee, MD", specialty: "Internal Medicine", npi: "8901234567", address: "11800 NW Plaza Cir, Kansas City, MO 64153" },
+  { id: "dr-9", name: "Dr. Jennifer Garcia, MD", specialty: "Geriatric Medicine", npi: "9012345678", address: "2330 E Meyer Blvd, Kansas City, MO 64132" },
+  { id: "dr-10", name: "Dr. William Brown, DO", specialty: "Family Medicine", npi: "1023456789", address: "7900 Lee's Summit Rd, Kansas City, MO 64139" },
+  // --- Cardiology ---
+  { id: "dr-11", name: "Dr. Amanda Foster, MD", specialty: "Cardiology", npi: "1123456780", address: "4330 Wornall Rd, Kansas City, MO 64111" },
+  { id: "dr-12", name: "Dr. Richard Kim, MD", specialty: "Cardiology", npi: "1223456780", address: "2316 E Meyer Blvd, Kansas City, MO 64132" },
+  { id: "dr-13", name: "Dr. Thomas Wright, MD", specialty: "Interventional Cardiology", npi: "1323456780", address: "6400 Prospect Ave, Kansas City, MO 64132" },
+  // --- Endocrinology / Diabetes ---
+  { id: "dr-14", name: "Dr. Michelle Patel, MD", specialty: "Endocrinology", npi: "1423456780", address: "2301 Holmes St, Suite 300, Kansas City, MO 64108" },
+  { id: "dr-15", name: "Dr. Steven Clark, MD", specialty: "Endocrinology", npi: "1523456780", address: "4400 Broadway, Suite 401, Kansas City, MO 64111" },
+  // --- Orthopedics ---
+  { id: "dr-16", name: "Dr. Christopher Hall, MD", specialty: "Orthopedic Surgery", npi: "1623456780", address: "3651 College Blvd, Leawood, KS 66211" },
+  { id: "dr-17", name: "Dr. Elizabeth Moore, MD", specialty: "Rheumatology", npi: "1723456780", address: "4320 Wornall Rd, Suite 500, Kansas City, MO 64111" },
+  // --- Pulmonology ---
+  { id: "dr-18", name: "Dr. Daniel Adams, MD", specialty: "Pulmonology", npi: "1823456780", address: "2300 Holmes St, Kansas City, MO 64108" },
+  { id: "dr-19", name: "Dr. Rachel Turner, MD", specialty: "Pulmonology", npi: "1923456780", address: "2800 Clay Edwards Dr, Suite 200, Kansas City, MO 64116" },
+  // --- Neurology ---
+  { id: "dr-20", name: "Dr. Andrew Phillips, MD", specialty: "Neurology", npi: "2023456780", address: "4400 Broadway Blvd, Suite 500, Kansas City, MO 64111" },
+  { id: "dr-21", name: "Dr. Laura Mitchell, MD", specialty: "Neurology", npi: "2123456780", address: "2316 E Meyer Blvd, Suite 100, Kansas City, MO 64132" },
+  // --- Gastroenterology ---
+  { id: "dr-22", name: "Dr. Jeffrey Roberts, MD", specialty: "Gastroenterology", npi: "2223456780", address: "4320 Wornall Rd, Suite 600, Kansas City, MO 64111" },
+  { id: "dr-23", name: "Dr. Susan Baker, MD", specialty: "Gastroenterology", npi: "2323456780", address: "2330 E Meyer Blvd, Suite 200, Kansas City, MO 64132" },
+  // --- Ophthalmology ---
+  { id: "dr-24", name: "Dr. Mark Campbell, MD", specialty: "Ophthalmology", npi: "2423456780", address: "3901 Rainbow Blvd, Kansas City, KS 66103" },
+  { id: "dr-25", name: "Dr. Nancy Evans, MD", specialty: "Ophthalmology", npi: "2523456780", address: "11800 NW Plaza Cir, Suite 300, Kansas City, MO 64153" },
+  // --- Dermatology ---
+  { id: "dr-26", name: "Dr. Brian Scott, MD", specialty: "Dermatology", npi: "2623456780", address: "4550 Broadway, Kansas City, MO 64111" },
+  // --- Urology ---
+  { id: "dr-27", name: "Dr. Gregory Nelson, MD", specialty: "Urology", npi: "2723456780", address: "2300 Holmes St, Suite 400, Kansas City, MO 64108" },
+  // --- Oncology ---
+  { id: "dr-28", name: "Dr. Catherine Young, MD", specialty: "Oncology", npi: "2823456780", address: "2330 E Meyer Blvd, Suite 300, Kansas City, MO 64132" },
+  { id: "dr-29", name: "Dr. Paul Hernandez, MD", specialty: "Oncology", npi: "2923456780", address: "4400 Broadway Blvd, Suite 700, Kansas City, MO 64111" },
+  // --- Psychiatry ---
+  { id: "dr-30", name: "Dr. Angela King, MD", specialty: "Psychiatry", npi: "3023456780", address: "6420 Prospect Ave, Suite 200, Kansas City, MO 64132" },
+  // --- ENT ---
+  { id: "dr-31", name: "Dr. Kevin White, MD", specialty: "Otolaryngology (ENT)", npi: "3123456780", address: "3901 Rainbow Blvd, Suite 200, Kansas City, KS 66103" },
+  // --- Nephrology ---
+  { id: "dr-32", name: "Dr. Diane Lewis, MD", specialty: "Nephrology", npi: "3223456780", address: "2301 Holmes St, Suite 500, Kansas City, MO 64108" },
+  // --- Pain Management ---
+  { id: "dr-33", name: "Dr. Jason Walker, MD", specialty: "Pain Management", npi: "3323456780", address: "7900 Lee's Summit Rd, Suite 100, Kansas City, MO 64139" },
+  // --- Podiatry ---
+  { id: "dr-34", name: "Dr. Maria Robinson, DPM", specialty: "Podiatry", npi: "3423456780", address: "11800 NW Plaza Cir, Suite 400, Kansas City, MO 64153" },
+  // --- Dentistry ---
+  { id: "dr-35", name: "Dr. Ryan Harris, DDS", specialty: "General Dentistry", npi: "3523456780", address: "4550 Broadway, Suite 200, Kansas City, MO 64111" },
 ];
