@@ -4,15 +4,58 @@
  * If YES -> pVerify lookup (MBI or SSN) -> store current plan -> doctors/drugs -> AI recommendation
  * If NO -> doctors/drugs lookup -> AI recommendation
  */
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import { POPULAR_DOCTORS, POPULAR_RX_DRUGS } from "@/lib/mockData";
+import { POPULAR_RX_DRUGS } from "@/lib/mockData";
 import type { Doctor } from "@/lib/types";
 import {
   Shield, Lock, X, ChevronRight, ChevronLeft, Info, CheckCircle2,
   AlertCircle, Loader2, Stethoscope, Pill, Search, Plus, Trash2,
   Sparkles
 } from "lucide-react";
+
+// NLM Clinical Tables API for live NPI doctor search
+const NLM_NPI_API = "https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search";
+
+interface NpiDoctor {
+  npi: string;
+  name: string;
+  specialty: string;
+  address: string;
+  phone: string;
+}
+
+async function searchNpiDoctors(query: string, limit = 10): Promise<NpiDoctor[]> {
+  if (!query || query.length < 2) return [];
+  try {
+    const params = new URLSearchParams({
+      terms: query,
+      maxList: String(limit),
+      ef: "NPI,name.full,provider_type,addr_practice.full,addr_practice.phone",
+    });
+    const res = await fetch(`${NLM_NPI_API}?${params}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    // NLM API returns [totalCount, codes, displayStrings, extraFields]
+    const total = data[0] as number;
+    if (total === 0) return [];
+    const extras = data[3] as Record<string, string[]>;
+    const npis = extras["NPI"] || [];
+    const names = extras["name.full"] || [];
+    const types = extras["provider_type"] || [];
+    const addresses = extras["addr_practice.full"] || [];
+    const phones = extras["addr_practice.phone"] || [];
+    return npis.map((npi: string, i: number) => ({
+      npi,
+      name: names[i] || "Unknown",
+      specialty: types[i] || "General",
+      address: addresses[i] || "",
+      phone: phones[i] || "",
+    }));
+  } catch {
+    return [];
+  }
+}
 
 // Re-export MBIVerifyResult type for backward compatibility
 export interface MBIVerifyResult {
@@ -74,16 +117,16 @@ const STEP_TITLES: Record<Step, string> = {
 export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) {
   const [step, setStep] = useState<Step>("maQuestion");
   const [hasMA, setHasMA] = useState<boolean | null>(null);
-
   // pVerify state
   const [lookupMode, setLookupMode] = useState<"mbi" | "ssn">("mbi");
   const [mbi, setMbi] = useState("");
   const [ssn, setSsn] = useState("");
   const [verifyResult, setVerifyResult] = useState<MBIVerifyResult | null>(null);
   const [verifyError, setVerifyError] = useState("");
-
   // Doctor/Drug state
   const [doctorSearch, setDoctorSearch] = useState("");
+  const [npiResults, setNpiResults] = useState<NpiDoctor[]>([]);
+  const [npiLoading, setNpiLoading] = useState(false);
   const [selectedDoctors, setSelectedDoctors] = useState<Doctor[]>([]);
   const [drugSearch, setDrugSearch] = useState("");
   const [selectedDrugs, setSelectedDrugs] = useState<DrugEntry[]>([]);
@@ -93,13 +136,35 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [manualDoctorName, setManualDoctorName] = useState("");
   const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
   const [showManualDoctor, setShowManualDoctor] = useState(false);
-
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const npiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (npiTimerRef.current) clearTimeout(npiTimerRef.current);
+    };
   }, []);
+
+  // Debounced NPI doctor search
+  useEffect(() => {
+    if (!doctorSearch || doctorSearch.length < 2) {
+      setNpiResults([]);
+      return;
+    }
+    setNpiLoading(true);
+    if (npiTimerRef.current) clearTimeout(npiTimerRef.current);
+    npiTimerRef.current = setTimeout(async () => {
+      const results = await searchNpiDoctors(doctorSearch, 8);
+      // Filter out already-selected doctors
+      const filtered = results.filter(
+        (r) => !selectedDoctors.find((sd) => sd.id === r.npi)
+      );
+      setNpiResults(filtered);
+      setNpiLoading(false);
+    }, 300);
+  }, [doctorSearch, selectedDoctors]);
 
   const eligibilityMutation = trpc.pverify.eligibilityCheck.useMutation({
     onSuccess: (data) => {
@@ -138,16 +203,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     });
   };
 
-  // Memoized filtered lists
-  const filteredDoctors = useMemo(() =>
-    POPULAR_DOCTORS.filter(
-      (d) =>
-        (d.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
-        d.specialty.toLowerCase().includes(doctorSearch.toLowerCase())) &&
-        !selectedDoctors.find((sd) => sd.id === d.id)
-    ), [doctorSearch, selectedDoctors]
-  );
-
+  // Memoized filtered drug list
   const filteredDrugs = useMemo(() =>
     COMMON_DRUGS.filter(
       (d) =>
@@ -161,6 +217,20 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     timerRef.current = setTimeout(() => {
       onComplete({ hasMA: hasMA === true, verifyResult, doctors: selectedDoctors, drugs: selectedDrugs });
     }, 1500);
+  };
+
+  const addNpiDoctor = (doc: NpiDoctor) => {
+    const doctor: Doctor = {
+      id: doc.npi,
+      name: doc.name,
+      specialty: doc.specialty,
+      address: doc.address,
+      phone: doc.phone,
+      acceptingPatients: true,
+    };
+    setSelectedDoctors([...selectedDoctors, doctor]);
+    setDoctorSearch("");
+    setNpiResults([]);
   };
 
   const addManualDoctor = () => {
@@ -195,7 +265,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" style={{ border: "1px solid #E8F0FE", maxHeight: "90vh", overflowY: "auto" }}>
-
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #1B365D 0%, #243E6B 100%)" }}>
           <div className="flex items-center gap-3">
@@ -211,7 +280,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
         </div>
 
         <div className="px-6 py-5">
-
           {/* STEP 1: MA Question */}
           {step === "maQuestion" && (
             <div className="space-y-4">
@@ -235,7 +303,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
             </div>
           )}
 
-          {/* STEP 2: pVerify Lookup (YES path) - MBI or SSN only */}
+          {/* STEP 2: pVerify Lookup */}
           {step === "pverifyLookup" && (
             <div className="space-y-3">
               <p className="text-sm" style={{ color: "#555" }}>How would you like us to look up your current plan?</p>
@@ -243,7 +311,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                 <button onClick={() => setLookupMode("mbi")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "mbi" ? "#1B365D" : "white", color: lookupMode === "mbi" ? "white" : "#555" }}>Use Medicare ID</button>
                 <button onClick={() => setLookupMode("ssn")} className="flex-1 py-2 text-sm font-semibold" style={{ backgroundColor: lookupMode === "ssn" ? "#1B365D" : "white", color: lookupMode === "ssn" ? "white" : "#555" }}>Use SSN</button>
               </div>
-
               {lookupMode === "mbi" && (
                 <div>
                   <label className="text-xs font-semibold text-gray-600 block mb-1">Medicare Beneficiary ID (MBI)</label>
@@ -251,7 +318,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   <p className="text-xs text-gray-400 mt-1">Found on your red, white & blue Medicare card</p>
                 </div>
               )}
-
               {lookupMode === "ssn" && (
                 <div>
                   <label className="text-xs font-semibold text-gray-600 block mb-1">Social Security Number (SSN)</label>
@@ -259,7 +325,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   <p className="text-xs text-gray-400 mt-1">Your SSN is encrypted and never stored</p>
                 </div>
               )}
-
               {verifyError && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg"><AlertCircle size={13} />{verifyError}</div>}
               <div className="flex items-center gap-1.5 text-xs text-gray-400"><Lock size={11} />256-bit SSL · HIPAA-compliant · Data never stored</div>
             </div>
@@ -294,24 +359,36 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                 <div className="flex items-center gap-2 mb-2">
                   <Stethoscope size={16} style={{ color: "#1B365D" }} />
                   <span className="text-sm font-bold" style={{ color: "#1B365D" }}>Your Doctors</span>
+                  <span className="text-xs text-gray-400 ml-auto">Live NPI Registry Search</span>
                 </div>
                 <div className="relative mb-2">
                   <Search size={14} className="absolute left-3 top-3 text-gray-400" />
-                  <input type="text" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} placeholder="Search doctors..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                  <input type="text" value={doctorSearch} onChange={(e) => setDoctorSearch(e.target.value)} placeholder="Search any doctor by name..." className="w-full pl-9 pr-3 py-2.5 border rounded-lg text-sm outline-none" style={{ borderColor: "#E5E7EB" }} />
+                  {npiLoading && <Loader2 size={14} className="absolute right-3 top-3 text-gray-400 animate-spin" />}
                 </div>
-                {doctorSearch && filteredDoctors.length > 0 && (
-                  <div className="border rounded-lg max-h-32 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
-                    {filteredDoctors.slice(0, 5).map((d) => (
-                      <button key={d.id} onClick={() => { setSelectedDoctors([...selectedDoctors, d]); setDoctorSearch(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center">
-                        <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.specialty}</span></div>
-                        <Plus size={14} className="text-gray-400" />
+                {doctorSearch.length >= 2 && npiResults.length > 0 && (
+                  <div className="border rounded-lg max-h-40 overflow-y-auto mb-2" style={{ borderColor: "#E5E7EB" }}>
+                    {npiResults.map((d) => (
+                      <button key={d.npi} onClick={() => addNpiDoctor(d)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center border-b last:border-b-0" style={{ borderColor: "#F3F4F6" }}>
+                        <div className="flex-1 min-w-0">
+                          <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-blue-600 ml-2">{d.specialty}</span></div>
+                          <div className="text-xs text-gray-400 truncate">{d.address}</div>
+                        </div>
+                        <Plus size={14} className="text-gray-400 shrink-0 ml-2" />
                       </button>
                     ))}
                   </div>
                 )}
+                {doctorSearch.length >= 2 && !npiLoading && npiResults.length === 0 && (
+                  <p className="text-xs text-gray-400 mb-2">No results found. Try a different name or add manually.</p>
+                )}
                 {selectedDoctors.map((d) => (
                   <div key={d.id} className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 mb-1">
-                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.specialty}</span></div>
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span>
+                      <span className="text-xs text-gray-500 ml-2">{d.specialty}</span>
+                      {d.address && <div className="text-xs text-gray-400 truncate">{d.address}</div>}
+                    </div>
                     <button onClick={() => setSelectedDoctors(selectedDoctors.filter((sd) => sd.id !== d.id))}><Trash2 size={14} className="text-red-400" /></button>
                   </div>
                 ))}
