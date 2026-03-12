@@ -39,7 +39,7 @@ async function searchNpiDoctors(query: string, limit = 10): Promise<NpiDoctor[]>
     // NLM API returns [totalCount, codes, displayStrings, extraFields]
     const total = data[0] as number;
     if (total === 0) return [];
-    const extras = data[3] as Record<string, string[]>;
+        const extras = data[2] as Record<string, string[]>;
     const npis = extras["NPI"] || [];
     const names = extras["name.full"] || [];
     const types = extras["provider_type"] || [];
