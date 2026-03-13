@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Sparkles, FlaskConical, BarChart3, Info, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react';
 import { scoreAllPlans, MODEL_A_CONFIG, MODEL_B_CONFIG } from '@/lib/aiRecommendationEngine';
-import type { ScoringModel } from '@/lib/aiRecommendationEngine';
+import type { ScoringModel, ScoringModelType } from '@/lib/aiRecommendationEngine';
 import type { MedicarePlan, RxDrug, Doctor } from '@/lib/types';
 
 interface Props {
@@ -15,9 +15,9 @@ const FACTOR_LABELS: Record<string, string> = {
   premium: 'Monthly Premium',
   moop: 'Max Out-of-Pocket',
   starRating: 'Star Rating',
-  doctorNetwork: 'Doctor Network',
+  doctorMatch: 'Doctor Network',
   extraBenefits: 'Extra Benefits',
-  copays: 'Copays',
+  copayBurden: 'Copays', drugDeductible: 'Drug Deductible',
 };
 
 const RESEARCH_SOURCES = [
@@ -30,7 +30,7 @@ const RESEARCH_SOURCES = [
 ];
 
 export default function AdminAIModels({ plans, rxDrugs = [], doctors = [] }: Props) {
-  const [activeModel, setActiveModel] = useState<ScoringModel>('B');
+  const [activeModel, setActiveModel] = useState<ScoringModelType>('B');
   const [expandedSource, setExpandedSource] = useState<number | null>(null);
   const [showWeightDetails, setShowWeightDetails] = useState(false);
 
@@ -57,7 +57,7 @@ export default function AdminAIModels({ plans, rxDrugs = [], doctors = [] }: Pro
 
       {/* Model Toggle */}
       <div className="flex gap-3 mb-6">
-        {(['A', 'B'] as ScoringModel[]).map((model) => (
+        {(['A', 'B'] as ScoringModelType[]).map((model) => (
           <button
             key={model}
             onClick={() => setActiveModel(model)}
