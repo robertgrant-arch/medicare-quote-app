@@ -10,7 +10,7 @@ export interface FilterSidebarProps {
   onChange: (filters: FilterState) => void;
   totalCount: number;
   filteredCount: number;
-  availableCarriers?: string[]; // Dynamic carriers from real plan data
+  plans?: any[]; // Plans array for dynamic counts   availableCarriers?: string[]; // Dynamic carriers from real plan data
 }
 
 const PLAN_TYPES: PlanType[] = ["HMO", "PPO", "PFFS", "SNP"];
@@ -59,7 +59,7 @@ export default function FilterSidebar({
   onChange,
   totalCount,
   filteredCount,
-  availableCarriers,
+  plans = [], availableCarriers,
 }: FilterSidebarProps) {
   const CARRIERS = availableCarriers && availableCarriers.length > 0 ? availableCarriers : DEFAULT_CARRIERS;
   const togglePlanType = (type: PlanType) => {
@@ -168,7 +168,7 @@ export default function FilterSidebar({
                 {type}
               </span>
               <span className="ml-auto text-xs text-gray-400">
-                {type === "HMO" ? "12" : type === "PPO" ? "10" : type === "SNP" ? "1" : "1"}
+                {type === "SNP" ? plans.filter((p: any) => p.snpCategory).length : plans.filter((p: any) => !p.snpCategory && p.planType === type).length}
               </span>
             </label>
           ))}
