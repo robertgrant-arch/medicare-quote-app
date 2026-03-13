@@ -3,6 +3,7 @@
  * Step 1: "Do you currently have a Medicare Advantage plan?"
  * If YES -> pVerify lookup (MBI or SSN) -> store current plan -> doctors/drugs -> AI recommendation
  * If NO -> doctors/drugs lookup -> AI recommendation
+ * v2: uses /api/doctors with ZIP-based 25-mile radius filtering
  */
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
@@ -11,11 +12,8 @@ import type { Doctor } from "@/lib/types";
 import {
   Shield, Lock, X, ChevronRight, ChevronLeft, Info, CheckCircle2,
   AlertCircle, Loader2, Stethoscope, Pill, Search, Plus, Trash2,
-  Sparkles
+  Sparkles, MapPin
 } from "lucide-react";
-
-// NLM Clinical Tables API for live NPI doctor search
-const NLM_NPI_API = "https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search";
 
 interface NpiDoctor {
   npi: string;
@@ -23,34 +21,23 @@ interface NpiDoctor {
   specialty: string;
   address: string;
   phone: string;
+  distance: number | null;
 }
 
-async function searchNpiDoctors(query: string, limit = 10): Promise<NpiDoctor[]> {
+async function searchNpiDoctors(query: string, zip: string, limit = 10): Promise<NpiDoctor[]> {
   if (!query || query.length < 2) return [];
   try {
-    const params = new URLSearchParams({
-      terms: query,
-      maxList: String(limit),
-      ef: "NPI,name.full,provider_type,addr_practice.full,addr_practice.phone",
-    });
-    const res = await fetch(`${NLM_NPI_API}?${params}`);
+    const params = new URLSearchParams({ name: query, zip });
+    const res = await fetch(`/api/doctors?${params}`);
     if (!res.ok) return [];
     const data = await res.json();
-    // NLM API returns [totalCount, codes, displayStrings, extraFields]
-    const total = data[0] as number;
-    if (total === 0) return [];
-        const extras = data[2] as Record<string, string[]>;
-    const npis = extras["NPI"] || [];
-    const names = extras["name.full"] || [];
-    const types = extras["provider_type"] || [];
-    const addresses = extras["addr_practice.full"] || [];
-    const phones = extras["addr_practice.phone"] || [];
-    return npis.map((npi: string, i: number) => ({
-      npi,
-      name: names[i] || "Unknown",
-      specialty: types[i] || "General",
-      address: addresses[i] || "",
-      phone: phones[i] || "",
+    return (data.doctors || []).slice(0, limit).map((d: any) => ({
+      npi: d.npi,
+      name: d.name,
+      specialty: d.specialty,
+      address: d.address,
+      phone: d.phone || "",
+      distance: d.distance,
     }));
   } catch {
     return [];
@@ -105,19 +92,20 @@ interface Props {
 }
 
 const COMMON_DRUGS: DrugEntry[] = POPULAR_RX_DRUGS.map(d => ({ name: d.name, dosage: d.dosage }));
+
 const RXTERMS_API = "https://clinicaltables.nlm.nih.gov/api/rxterms/v3/search";
 interface RxTermResult { displayName: string; strength: string; }
 async function searchRxTerms(term: string): Promise<RxTermResult[]> {
-    if (!term || term.length < 2) return [];
-    try {
-          const res = await fetch(`${RXTERMS_API}?terms=${encodeURIComponent(term)}&ef=STRENGTHS_AND_FORMS&maxList=10`);
-          const data = await res.json();
-          if (data[0] === 0) return [];
-          const names = data[1] as string[];
-          const strengths = (data[2]?.["STRENGTHS_AND_FORMS"] || []) as string[][];
-          return names.map((n: string, i: number) => ({ displayName: n, strength: strengths[i]?.[0] || "" }));
-        } catch { return []; }
-  }
+  if (!term || term.length < 2) return [];
+  try {
+    const res = await fetch(`${RXTERMS_API}?terms=${encodeURIComponent(term)}&ef=STRENGTHS_AND_FORMS&maxList=10`);
+    const data = await res.json();
+    if (data[0] === 0) return [];
+    const names = data[1] as string[];
+    const strengths = (data[2]?.["STRENGTHS_AND_FORMS"] || []) as string[][];
+    return names.map((n: string, i: number) => ({ displayName: n, strength: strengths[i]?.[0] || "" }));
+  } catch { return []; }
+}
 
 const STEP_TITLES: Record<Step, string> = {
   maQuestion: "Let's Personalize Your Results",
@@ -146,24 +134,22 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
   const [manualDrugName, setManualDrugName] = useState("");
   const [manualDrugDosage, setManualDrugDosage] = useState("");
   const [showManualDrug, setShowManualDrug] = useState(false);
-    const [rxResults, setRxResults] = useState<RxTermResult[]>([]);
-    const [rxLoading, setRxLoading] = useState(false);
-    const rxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rxResults, setRxResults] = useState<RxTermResult[]>([]);
+  const [rxLoading, setRxLoading] = useState(false);
+  const rxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualDoctorName, setManualDoctorName] = useState("");
   const [manualDoctorSpecialty, setManualDoctorSpecialty] = useState("");
   const [showManualDoctor, setShowManualDoctor] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const npiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (npiTimerRef.current) clearTimeout(npiTimerRef.current);       if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
+      if (npiTimerRef.current) clearTimeout(npiTimerRef.current); if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
     };
   }, []);
-
-  // Debounced NPI doctor search
+  // Debounced NPI doctor search - now uses /api/doctors with ZIP
   useEffect(() => {
     if (!doctorSearch || doctorSearch.length < 2) {
       setNpiResults([]);
@@ -172,7 +158,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     setNpiLoading(true);
     if (npiTimerRef.current) clearTimeout(npiTimerRef.current);
     npiTimerRef.current = setTimeout(async () => {
-      const results = await searchNpiDoctors(doctorSearch, 8);
+      const results = await searchNpiDoctors(doctorSearch, zip, 8);
       // Filter out already-selected doctors
       const filtered = results.filter(
         (r) => !selectedDoctors.find((sd) => sd.id === r.npi)
@@ -180,8 +166,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
       setNpiResults(filtered);
       setNpiLoading(false);
     }, 300);
-  }, [doctorSearch, selectedDoctors]);
-
+  }, [doctorSearch, selectedDoctors, zip]);
   const eligibilityMutation = trpc.pverify.eligibilityCheck.useMutation({
     onSuccess: (data) => {
       const result = data.data as MBIVerifyResult;
@@ -192,18 +177,15 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
       setVerifyError(err.message || "Verification failed. You can skip this step.");
     },
   });
-
   const handleSsnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, "").slice(0, 9);
     setSsn(val);
   };
-
   const formatSsn = (value: string) => {
     if (value.length <= 3) return value;
     if (value.length <= 5) return value.slice(0, 3) + "-" + value.slice(3);
     return value.slice(0, 3) + "-" + value.slice(3, 5) + "-" + value.slice(5);
   };
-
   const handleVerify = () => {
     setVerifyError("");
     if (lookupMode === "mbi" && !mbi.trim()) {
@@ -218,28 +200,25 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
       ...(lookupMode === "mbi" ? { mbi: mbi.trim() } : { ssn: ssn.trim() }),
     });
   };
-
 // Debounced live drug search via NIH RxTerms API
-    useEffect(() => {
-          if (!drugSearch || drugSearch.length < 2) {
-                  setRxResults([]); return;
-                }
-          setRxLoading(true);
-          if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
-          rxTimerRef.current = setTimeout(async () => {
-                  const results = await searchRxTerms(drugSearch);
-                  setRxResults(results.filter(r => !selectedDrugs.find(sd => sd.name === r.displayName)));
-                  setRxLoading(false);
-                }, 300);
-        }, [drugSearch, selectedDrugs]);
-
+  useEffect(() => {
+    if (!drugSearch || drugSearch.length < 2) {
+      setRxResults([]); return;
+    }
+    setRxLoading(true);
+    if (rxTimerRef.current) clearTimeout(rxTimerRef.current);
+    rxTimerRef.current = setTimeout(async () => {
+      const results = await searchRxTerms(drugSearch);
+      setRxResults(results.filter(r => !selectedDrugs.find(sd => sd.name === r.displayName)));
+      setRxLoading(false);
+    }, 300);
+  }, [drugSearch, selectedDrugs]);
   const handleFinish = () => {
     setStep("aiLoading");
     timerRef.current = setTimeout(() => {
       onComplete({ hasMA: hasMA === true, verifyResult, doctors: selectedDoctors, drugs: selectedDrugs });
     }, 1500);
   };
-
   const addNpiDoctor = (doc: NpiDoctor) => {
     const doctor: Doctor = {
       id: doc.npi,
@@ -253,7 +232,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     setDoctorSearch("");
     setNpiResults([]);
   };
-
   const addManualDoctor = () => {
     if (!manualDoctorName.trim()) return;
     const doc: Doctor = {
@@ -267,22 +245,18 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
     setSelectedDoctors([...selectedDoctors, doc]);
     setManualDoctorName(""); setManualDoctorSpecialty(""); setShowManualDoctor(false);
   };
-
   const addManualDrug = () => {
     if (!manualDrugName.trim()) return;
     setSelectedDrugs([...selectedDrugs, { name: manualDrugName.trim(), dosage: manualDrugDosage.trim() || "N/A" }]);
     setManualDrugName(""); setManualDrugDosage(""); setShowManualDrug(false);
   };
-
   const handleBack = () => {
     if (step === "pverifyLookup") setStep("maQuestion");
     else if (step === "planFound") setStep("pverifyLookup");
     else if (step === "doctorsDrugs" && hasMA) setStep("planFound");
     else if (step === "doctorsDrugs") setStep("maQuestion");
   };
-
   const isPending = eligibilityMutation.isPending;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" style={{ border: "1px solid #E8F0FE", maxHeight: "90vh", overflowY: "auto" }}>
@@ -299,7 +273,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
           </div>
           <button onClick={onSkip} className="text-white/60 hover:text-white transition-colors p-1 rounded"><X size={18} /></button>
         </div>
-
         <div className="px-6 py-5">
           {/* STEP 1: MA Question */}
           {step === "maQuestion" && (
@@ -323,7 +296,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
               </div>
             </div>
           )}
-
           {/* STEP 2: pVerify Lookup */}
           {step === "pverifyLookup" && (
             <div className="space-y-3">
@@ -350,7 +322,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
               <div className="flex items-center gap-1.5 text-xs text-gray-400"><Lock size={11} />256-bit SSL · HIPAA-compliant · Data never stored</div>
             </div>
           )}
-
           {/* STEP 3: Plan Found */}
           {step === "planFound" && (
             <div className="text-center py-2">
@@ -371,7 +342,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
               <p className="text-sm text-gray-500 mt-3">Now let's add your doctors and prescriptions to find the best match.</p>
             </div>
           )}
-
           {/* STEP 4: Doctors & Drugs */}
           {step === "doctorsDrugs" && (
             <div className="space-y-4">
@@ -380,7 +350,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                 <div className="flex items-center gap-2 mb-2">
                   <Stethoscope size={16} style={{ color: "#1B365D" }} />
                   <span className="text-sm font-bold" style={{ color: "#1B365D" }}>Your Doctors</span>
-                  <span className="text-xs text-gray-400 ml-auto">Live NPI Registry Search</span>
+                  <span className="text-xs text-gray-400 ml-auto">Within 25 miles of {zip}</span>
                 </div>
                 <div className="relative mb-2">
                   <Search size={14} className="absolute left-3 top-3 text-gray-400" />
@@ -393,7 +363,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                       <button key={d.npi} onClick={() => addNpiDoctor(d)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center border-b last:border-b-0" style={{ borderColor: "#F3F4F6" }}>
                         <div className="flex-1 min-w-0">
                           <div><span className="font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-blue-600 ml-2">{d.specialty}</span></div>
-                          <div className="text-xs text-gray-400 truncate">{d.address}</div>
+                          <div className="text-xs text-gray-400 truncate">{d.address}{d.distance !== null && <span className="ml-1 text-blue-500 font-medium">· {d.distance} mi</span>}</div>
                         </div>
                         <Plus size={14} className="text-gray-400 shrink-0 ml-2" />
                       </button>
@@ -401,7 +371,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   </div>
                 )}
                 {doctorSearch.length >= 2 && !npiLoading && npiResults.length === 0 && (
-                  <p className="text-xs text-gray-400 mb-2">No results found. Try a different name or add manually.</p>
+                  <p className="text-xs text-gray-400 mb-2">No doctors found within 25 miles. Try a different name or add manually.</p>
                 )}
                 {selectedDoctors.map((d) => (
                   <div key={d.id} className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 mb-1">
@@ -423,10 +393,8 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                   </div>
                 )}
               </div>
-
               {/* Divider */}
               <div className="border-t" style={{ borderColor: "#E8F0FE" }} />
-
               {/* Drugs Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -449,7 +417,7 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
                 )}
                 {selectedDrugs.map((d, i) => (
                   <div key={`${d.name}-${i}`} className="flex items-center justify-between bg-red-50 rounded-lg px-3 py-2 mb-1">
-                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.strength}</span></div>
+                    <div><span className="text-sm font-medium" style={{ color: "#1B365D" }}>{d.name}</span><span className="text-xs text-gray-500 ml-2">{d.dosage}</span></div>
                     <button onClick={() => setSelectedDrugs(selectedDrugs.filter((_, idx) => idx !== i))}><Trash2 size={14} className="text-red-400" /></button>
                   </div>
                 ))}
@@ -465,7 +433,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
               </div>
             </div>
           )}
-
           {/* STEP 5: AI Loading */}
           {step === "aiLoading" && (
             <div className="text-center py-8">
@@ -477,7 +444,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
             </div>
           )}
         </div>
-
         {/* Footer Buttons */}
         {step !== "aiLoading" && step !== "maQuestion" && (
           <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: "#F8FAFC", borderTop: "1px solid #E8F0FE" }}>
@@ -501,7 +467,6 @@ export default function GuidedWorkflowModal({ zip, onSkip, onComplete }: Props) 
             )}
           </div>
         )}
-
         {/* Skip link for maQuestion */}
         {step === "maQuestion" && (
           <div className="px-6 py-3 text-center" style={{ backgroundColor: "#F8FAFC", borderTop: "1px solid #E8F0FE" }}>
