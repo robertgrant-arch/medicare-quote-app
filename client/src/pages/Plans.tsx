@@ -29,7 +29,7 @@ import PlanCard from "@/components/PlanCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
-import EnrollModal from "@/components/EnrollModal"; import AIRecommendationBanner from "@/components/AIRecommendationBanner"; import { scoreAllPlans } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
+import EnrollModal from "@/components/EnrollModal"; import AIRecommendationBanner from "@/components/AIRecommendationBanner"; import { scoreAllPlans, MODEL_A, MODEL_B } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
 import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
 import type { MBIVerifyResult } from "@/components/MBIVerifyModal"; import { useSessionState } from "@/hooks/useSessionState";
 
