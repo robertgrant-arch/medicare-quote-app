@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { trpc } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc"; import AdminAIModels from "@/components/AdminAIModels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -56,10 +56,10 @@ import {
   ChevronRight,
   Loader2,
   LogOut,
-} from "lucide-react";
+Sparkles, } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type Tab = "carriers" | "plans" | "noncomm" | "sync";
+type Tab = "carriers" | "plans" | "noncomm" | "sync" | "ai-models";
 
 // ─── Login Screen ──────────────────────────────────────────────────────────────
 function AdminLogin({ onLogin }: { onLogin: (password: string) => void }) {
@@ -1050,7 +1050,7 @@ export default function AdminDashboard() {
     { id: "carriers", label: "Carriers", icon: <Building2 size={16} /> },
     { id: "plans", label: "Plans", icon: <FileText size={16} /> },
     { id: "noncomm", label: "Non-Commissionable", icon: <DollarSignIcon size={16} /> },
-    { id: "sync", label: "Data Sync", icon: <Database size={16} /> },
+    { id: "sync", label: "Data Sync", icon: <Database size={16} /> }, { id: "ai-models", label: "AI Models", icon: <Sparkles size={16} /> }, icon: <Database size={16} /> },
   ];
 
   return (
@@ -1104,7 +1104,8 @@ export default function AdminDashboard() {
         {activeTab === "plans" && <PlanManagement adminPassword={adminPassword} />}
         {activeTab === "noncomm" && <NonCommissionableTab adminPassword={adminPassword} />}
         {activeTab === "sync" && <SyncStatusTab adminPassword={adminPassword} />}
-      </main>
+                {activeTab === "ai-models" && <div className="p-6 bg-white rounded-xl shadow-sm max-w-2xl"><AdminAIModels plans={[]} /></div>}
+</main>
     </div>
   );
 }
