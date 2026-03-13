@@ -29,7 +29,7 @@ import PlanCard from "@/components/PlanCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
-import EnrollModal from "@/components/EnrollModal";
+import EnrollModal from "@/components/EnrollModal"; import AIRecommendationBanner from "@/components/AIRecommendationBanner"; import { scoreAllPlans } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
 import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
 import type { MBIVerifyResult } from "@/components/MBIVerifyModal"; import { useSessionState } from "@/hooks/useSessionState";
 
@@ -147,7 +147,7 @@ export default function Plans() {
   const [locationInfo, setLocationInfo] = useState<{ stateAbbr: string; countyName: string } | null>(null);
   const [eligibility, setEligibility] = useState<MBIVerifyResult | null>(null);
   const [showCurrentPlanBanner, setShowCurrentPlanBanner] = useState(true);
-    const [doctorNetworkMap, setDoctorNetworkMap] = useState<Record<string, PlanDoctorNetworkStatus>>({});
+    const [aiModel, setAiModel] = useState<ScoringModel>('B');   const [doctorNetworkM, setDoctorNetworkMap] = useState<Record<string, PlanDoctorNetworkStatus>>({});
 
   // Read MBI eligibility from sessionStorage (set by Home.tsx after modal verification)
   useEffect(() => {
@@ -286,7 +286,7 @@ export default function Plans() {
 
   // Memoize available carriers to avoid re-creating on every render
   
-  const availableCarriers = useMemo(
+  const aiScores = useMemo(() => scoreAllPlans(filteredPlans, { rxDrugs, doctors }, aiModel), [filteredPlans, rxDrugs, doctors, aiModel]);   const topPlan = aiScores.length > 0 ? aiScores[0] : null;   const availableCarriers = useMemo(
     () => Array.from(new Set(plans.map((p) => p.carrier))).sort(),
     [plans]
   );
@@ -632,7 +632,7 @@ export default function Plans() {
               </div>
             )}
 
-            {/* Personalization banner */}
+            {/* AI Recommendation Banner */}           {topPlan && (             <AIRecommendationBanner               plan={topPlan.plan}               score={topPlan}               model={aiModel}               onViewPlan={() => {}}             />           )}           {/* Personalization banner */}
             {(rxDrugs.length > 0 || doctors.length > 0) && (
               <div
                 className="rounded-xl p-3 mb-4 flex items-center gap-3 border"
