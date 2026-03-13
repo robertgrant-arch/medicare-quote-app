@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/plans.ts": {
+      "includeFiles": "server/**"
+    }
+  },
   "rewrites": [
     { "source": "/api/plans", "destination": "/api/plans" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
