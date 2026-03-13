@@ -1,11 +1,10 @@
 // DoctorsModal — Add doctors to check in-network coverage
 // Design: Bold Civic Design | Primary: #1B365D | CTA: #C41E3A
+// v2: zip code filter with 25-mile radius search
 
-import { useState, useEffect, useCallback } from "react";
-import { X, UserRound, Search, Plus, Trash2, CheckCircle2, MapPin, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, UserRound, Search, Plus, Trash2, CheckCircle2, MapPin, Loader2, Navigation } from "lucide-react";
 import type { Doctor } from "@/lib/types";
-
-const NPI_API_BASE = "https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search";
 
 interface DoctorsModalProps {
   open: boolean;
@@ -15,12 +14,16 @@ interface DoctorsModalProps {
   zip?: string;
 }
 
-interface NpiResult {
+interface DoctorResult {
   npi: string;
   name: string;
   specialty: string;
   address: string;
   phone: string;
+  city: string;
+  state: string;
+  zip: string;
+  distance: number | null;
 }
 
 function useDebounce(value: string, delay: number) {
@@ -32,44 +35,24 @@ function useDebounce(value: string, delay: number) {
   return debounced;
 }
 
-async function searchNpiDoctors(term: string, state?: string): Promise<NpiResult[]> {
-  if (!term || term.length < 2) return [];
-  const params = new URLSearchParams({
-    terms: term,
-    maxList: "10",
-    ef: "NPI,name.full,provider_type,addr_practice.full,addr_practice.phone",
-  });
-  if (state) {
-    params.set("q", `addr_practice.state:${state}`);
-  }
-  const res = await fetch(`${NPI_API_BASE}?${params}`);
+async function searchDoctors(name: string, zip: string): Promise<DoctorResult[]> {
+  if (!name || name.length < 2) return [];
+  const params = new URLSearchParams({ name, zip });
+  const res = await fetch(`/api/doctors?${params}`);
+  if (!res.ok) return [];
   const data = await res.json();
-  const count = data[0] as number;
-  if (count === 0) return [];
-  const fields = data[2] as Record<string, string[]>;
-  const results: NpiResult[] = [];
-  for (let i = 0; i < fields["NPI"].length; i++) {
-    results.push({
-      npi: fields["NPI"][i],
-      name: fields["name.full"][i],
-      specialty: fields["provider_type"][i],
-      address: fields["addr_practice.full"][i],
-      phone: fields["addr_practice.phone"]?.[i] || "",
-    });
-  }
-  return results;
+  return data.doctors || [];
 }
 
-export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, zip }: DoctorsModalProps) {
+export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, zip: defaultZip }: DoctorsModalProps) {
   const [search, setSearch] = useState("");
+  const [zipInput, setZipInput] = useState(defaultZip || "");
   const [doctors, setDoctors] = useState<Doctor[]>(selectedDoctors);
-  const [searchResults, setSearchResults] = useState<NpiResult[]>([]);
+  const [searchResults, setSearchResults] = useState<DoctorResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const debouncedSearch = useDebounce(search, 350);
-
-  // Derive state from zip if available
-  const state = zip ? undefined : undefined; // Could map zip to state later
+  const debouncedSearch = useDebounce(search, 500);
+  const debouncedZip = useDebounce(zipInput, 600);
 
   useEffect(() => {
     if (!open) {
@@ -78,8 +61,9 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
       setHasSearched(false);
     } else {
       setDoctors(selectedDoctors);
+      setZipInput(defaultZip || "");
     }
-  }, [open, selectedDoctors]);
+  }, [open, selectedDoctors, defaultZip]);
 
   useEffect(() => {
     if (!debouncedSearch || debouncedSearch.length < 2) {
@@ -89,7 +73,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
     }
     let cancelled = false;
     setIsLoading(true);
-    searchNpiDoctors(debouncedSearch, state).then((results) => {
+    searchDoctors(debouncedSearch, debouncedZip).then((results) => {
       if (!cancelled) {
         setSearchResults(results);
         setIsLoading(false);
@@ -103,7 +87,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
       }
     });
     return () => { cancelled = true; };
-  }, [debouncedSearch, state]);
+  }, [debouncedSearch, debouncedZip]);
 
   if (!open) return null;
 
@@ -111,7 +95,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
     (r) => !doctors.find((d) => d.npi === r.npi)
   );
 
-  const addDoctor = (result: NpiResult) => {
+  const addDoctor = (result: DoctorResult) => {
     const doctor: Doctor = {
       id: result.npi,
       name: result.name,
@@ -131,6 +115,8 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
     onClose();
   };
 
+  const zipIsValid = debouncedZip.length === 5 && /^\d{5}$/.test(debouncedZip);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -138,7 +124,6 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-
       {/* Modal */}
       <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
@@ -164,7 +149,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
                 Add Your Doctors
               </h2>
               <p className="text-xs text-gray-500">
-                Search the NPI registry to find your doctors
+                Search by name within 25 miles of your ZIP code
               </p>
             </div>
           </div>
@@ -176,8 +161,29 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
           </button>
         </div>
 
-        {/* Search */}
-        <div className="p-4 border-b border-gray-100">
+        {/* ZIP + Search inputs */}
+        <div className="p-4 border-b border-gray-100 space-y-2">
+          {/* ZIP Code row */}
+          <div className="flex items-center gap-2">
+            <div className="relative w-36">
+              <Navigation size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={zipInput}
+                onChange={(e) => setZipInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                placeholder="ZIP code"
+                maxLength={5}
+                className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+              />
+            </div>
+            <span className="text-xs text-gray-400 flex-1">
+              {zipIsValid
+                ? "Searching within 25 miles"
+                : "Enter ZIP to filter by location"}
+            </span>
+          </div>
+
+          {/* Doctor name search */}
           <div className="relative">
             {isLoading ? (
               <Loader2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
@@ -194,7 +200,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
             />
           </div>
           {search.length > 0 && search.length < 2 && (
-            <p className="text-xs text-gray-400 mt-1 ml-1">Type at least 2 characters to search</p>
+            <p className="text-xs text-gray-400 ml-1">Type at least 2 characters to search</p>
           )}
         </div>
 
@@ -240,7 +246,7 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
           {filteredResults.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Search Results
+                Search Results {zipIsValid && `(within 25 mi of ${debouncedZip})`}
               </p>
               {filteredResults.map((r) => (
                 <div
@@ -262,6 +268,9 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
                         <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                           <MapPin size={10} />
                           {r.address}
+                          {r.distance !== null && (
+                            <span className="ml-1 text-blue-500 font-medium">· {r.distance} mi</span>
+                          )}
                         </p>
                       )}
                     </div>
@@ -282,15 +291,16 @@ export default function DoctorsModal({ open, onClose, selectedDoctors, onSave, z
             <div className="text-center py-8">
               <UserRound size={32} className="mx-auto text-gray-300 mb-2" />
               <p className="text-sm text-gray-500">No doctors found for "{search}"</p>
-              <p className="text-xs text-gray-400 mt-1">Try a different name or spelling</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {zipIsValid ? `No results within 25 miles of ${debouncedZip}. Try a different ZIP or name.` : "Try a different name or spelling"}
+              </p>
             </div>
           )}
-
           {!hasSearched && doctors.length === 0 && (
             <div className="text-center py-8">
               <Search size={32} className="mx-auto text-gray-300 mb-2" />
               <p className="text-sm text-gray-500">Search for your doctors above</p>
-              <p className="text-xs text-gray-400 mt-1">We'll check if they're in-network for each plan</p>
+              <p className="text-xs text-gray-400 mt-1">Enter a ZIP code and doctor name to find providers near you</p>
             </div>
           )}
         </div>
