@@ -147,7 +147,7 @@ export default function Plans() {
   const [locationInfo, setLocationInfo] = useState<{ stateAbbr: string; countyName: string } | null>(null);
   const [eligibility, setEligibility] = useState<MBIVerifyResult | null>(null);
   const [showCurrentPlanBanner, setShowCurrentPlanBanner] = useState(true);
-    const [aiModel, setAiModel] = useState<ScoringModel>('B');   const [doctorNetworkM, setDoctorNetworkMap] = useState<Record<string, PlanDoctorNetworkStatus>>({});
+    const [aiModel, setAiModel] = useState<ScoringModel>('B');   const [doctorNetworkMap, setDoctorNetworkMap] = useState<Record<string, PlanDoctorNetworkStatus>>({});
 
   // Read MBI eligibility from sessionStorage (set by Home.tsx after modal verification)
   useEffect(() => {
