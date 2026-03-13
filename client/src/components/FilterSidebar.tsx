@@ -142,7 +142,7 @@ export default function FilterSidebar({
           }
           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none"
           style={{ fontFamily: "'Inter', sans-serif" }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }} // v2
           onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
         >
           <option value="moop-low">Lowest Out-of-Pocket Cost</option>
