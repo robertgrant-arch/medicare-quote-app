@@ -798,6 +798,7 @@ export default function Plans() {
         onClose={() => setDoctorsModalOpen(false)}
         selectedDoctors={doctors}
         onSave={setDoctors}
+          zip={zip}
       />
       <EnrollModal
         open={enrollModalOpen}
