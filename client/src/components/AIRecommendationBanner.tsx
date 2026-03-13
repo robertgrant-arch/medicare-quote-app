@@ -13,7 +13,7 @@ interface Props {
 export default function AIRecommendationBanner({ plan, score, model, onViewPlan }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  const eb = plan.extraBenefits;
+  const eb = plan.extraBenefits || {};
   const benefitCount = Object.values(eb).filter(b => b?.covered).length;
   const totalCost = plan.premium * 12 + ((plan as any).estAnnualDrugCost ?? 0);
 
