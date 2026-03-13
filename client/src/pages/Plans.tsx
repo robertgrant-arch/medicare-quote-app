@@ -30,7 +30,7 @@ import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
 import EnrollModal from "@/components/EnrollModal";
-import type { FilterState, MedicarePlan, RxDrug, Doctor } from "@/lib/types";
+import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
 import type { MBIVerifyResult } from "@/components/MBIVerifyModal";
 
 const DEFAULT_FILTERS: FilterState = {
@@ -147,6 +147,7 @@ export default function Plans() {
   const [locationInfo, setLocationInfo] = useState<{ stateAbbr: string; countyName: string } | null>(null);
   const [eligibility, setEligibility] = useState<MBIVerifyResult | null>(null);
   const [showCurrentPlanBanner, setShowCurrentPlanBanner] = useState(true);
+    const [doctorNetworkMap, setDoctorNetworkMap] = useState<Record<string, PlanDoctorNetworkStatus>>({});
 
   // Read MBI eligibility from sessionStorage (set by Home.tsx after modal verification)
   useEffect(() => {
@@ -193,6 +194,37 @@ export default function Plans() {
       })
       .finally(() => setPlansLoading(false));
   }, [zip, rxDrugs]);
+
+    // Fetch doctor network status when doctors or plans change
+  useEffect(() => {
+    if (doctors.length === 0 || plans.length === 0) {
+      setDoctorNetworkMap({});
+      return;
+    }
+    const fetchNetworkStatus = async () => {
+      try {
+        const res = await fetch("/api/provider-network", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            doctors: doctors.map(d => ({ npi: d.npi, name: d.name, specialty: d.specialty })),
+            plans: plans.map(p => ({ planId: p.planId, contractId: p.contractId, carrier: p.carrier, networkSize: p.networkSize })),
+            zip,
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const map: Record<string, PlanDoctorNetworkStatus> = {};
+        for (const r of data.results) {
+          map[r.planId] = r;
+        }
+        setDoctorNetworkMap(map);
+      } catch (err) {
+        console.error("[Plans] provider-network error:", err);
+      }
+    };
+    fetchNetworkStatus();
+  }, [doctors, plans, zip]);
 
   // Server returns title-case county name; just append state
   const countyName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : "Loading...";
@@ -737,6 +769,7 @@ export default function Plans() {
                         animationDelay={Math.min(i * 60, 400)}
                         isCompareActive={activeCompareId === plan.id}
                         onCompareActivate={handleCompareActivate}               rxDrugs={rxDrugs}               subsidyLevel={extraHelp === "full" ? "full" : extraHelp === "partial" ? "partial" : "none"}
+                    doctorNetworkStatus={doctorNetworkMap[plan.planId] || undefined}
                       />
                     </div>
                                           </div>
