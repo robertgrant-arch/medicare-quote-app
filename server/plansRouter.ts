@@ -334,29 +334,38 @@ export function registerPlansRoute(app: Express): void {
       const overrides = await loadAdminOverrides();
       const plans = annotatePlans(rawPlans, overrides);
 
-                // Step 5: Enrich with drug costs if drugs provided
-      let enrichedPlans = plans;
-      const drugsParam = req.query.drugs as string | undefined;
-      if (drugsParam) {
-        try {
-          const drugs: DrugInput[] = JSON.parse(decodeURIComponent(drugsParam));
-          if (Array.isArray(drugs) && drugs.length > 0) {
-            enrichedPlans = enrichPlansWithDrugCosts(plans, drugs);
+                      // Step 5: Enrich with drug costs if drugs provided
+        let enrichedPlans = plans;
+        const drugsParam = req.query.drugs;
+        if (drugsParam) {
+          try {
+            // Handle both string and pre-parsed object from Express query parser
+            let drugs: DrugInput[];
+            if (typeof drugsParam === 'string') {
+              drugs = JSON.parse(drugsParam);
+            } else if (Array.isArray(drugsParam)) {
+              drugs = drugsParam as unknown as DrugInput[];
+            } else {
+              drugs = [];
+            }
+            if (Array.isArray(drugs) && drugs.length > 0) {
+              enrichedPlans = enrichPlansWithDrugCosts(plans, drugs);
+            }
+          } catch (parseErr) {
+            console.warn("[Plans] Failed to parse drugs param:", parseErr);
           }
-        } catch (parseErr) {
-          console.warn("[Plans] Failed to parse drugs param:", parseErr);
         }
 
-              return res.json({
-        plans: enrichedPlans,
-        location: {
-                              countyName: toTitleCase(countyName),
-          zip,
-                  stateAbbr,
-                },
-        totalAvailable: rawPlans.length,
-        showing: enrichedPlans.length,
-      });
+        return res.json({
+          plans: enrichedPlans,
+          location: {
+            countyName: toTitleCase(countyName),
+            zip,
+            stateAbbr,
+          },
+          totalAvailable: rawPlans.length,
+          showing: enrichedPlans.length,
+        });
     } catch (err) {
       console.error("[Plans] Unexpected error:", err);
       return res.status(500).json({
