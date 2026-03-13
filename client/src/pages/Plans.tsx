@@ -29,7 +29,7 @@ import PlanCard from "@/components/PlanCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
-import EnrollModal from "@/components/EnrollModal"; import AIRecommendationBanner from "@/components/AIRecommendationBanner"; import { scoreAllPlans, MODEL_A, MODEL_B } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
+import EnrollModal from "@/components/EnrollModal"; import AITop3Cards from "@/components/AITop3Cards"; import { scoreAllPlans, MODEL_A, MODEL_B } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
 import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
 import type { MBIVerifyResult } from "@/components/MBIVerifyModal"; import { useSessionState } from "@/hooks/useSessionState";
 
@@ -632,7 +632,7 @@ export default function Plans() {
               </div>
             )}
 
-            {/* AI Recommendation Banner */}           {topPlan && (             <AIRecommendationBanner               plan={topPlan.plan}               score={topPlan}               model={aiModel}               onViewPlan={() => {}}             />           )}           {/* Personalization banner */}
+            {/* AI Recommendation Banner */}           {topPlan && (             <AITop3Cards               scores={aiScores}                             model={aiModel}               onEnroll={handleEnroll}             />           )}           {/* Personalization banner */}
             {(rxDrugs.length > 0 || doctors.length > 0) && (
               <div
                 className="rounded-xl p-3 mb-4 flex items-center gap-3 border"
