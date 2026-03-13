@@ -31,7 +31,7 @@ import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
 import EnrollModal from "@/components/EnrollModal";
 import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
-import type { MBIVerifyResult } from "@/components/MBIVerifyModal";
+import type { MBIVerifyResult } from "@/components/MBIVerifyModal"; import { useSessionState } from "@/hooks/useSessionState";
 
 const DEFAULT_FILTERS: FilterState = {
   planType: [],
@@ -130,8 +130,8 @@ export default function Plans() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [rxDrugs, setRxDrugs] = useState<RxDrug[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [rxDrugs, setRxDrugs] = useSessionState<RxDrug[]>("mqe_rxDrugs", []);
+  const [doctors, setDoctors] = useSessionState<Doctor[]>("mqe_doctors", []);
   const [rxModalOpen, setRxModalOpen] = useState(false);
   const [doctorsModalOpen, setDoctorsModalOpen] = useState(false);
   const [enrollModalOpen, setEnrollModalOpen] = useState(false);
