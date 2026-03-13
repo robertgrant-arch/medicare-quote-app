@@ -21,6 +21,7 @@ import {
   Info,
   UserRound,
   X,
+  DollarSign,
 } from "lucide-react";
 import type { MedicarePlan, PlanDoctorNetworkStatus, RxDrug } from "@/lib/types";
 import StarRating from "./StarRating";
@@ -77,6 +78,7 @@ export default function PlanCard({
   const [expanded, setExpanded] = useState(false);
   const [heartAnimating, setHeartAnimating] = useState(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [drugCostExpanded, setDrugCostExpanded] = useState(false);
 
   const handleFavorite = () => {
     setHeartAnimating(true);
@@ -92,6 +94,7 @@ export default function PlanCard({
   const drugBreakdowns = planAny.formularyDrugCost?.drugBreakdowns ?? [];
   const reachesCatastrophic = planAny.formularyDrugCost?.reachesCatastrophic ?? false;
   const deductibleApplied = planAny.formularyDrugCost?.deductibleApplied ?? 0;
+  const monthCatastrophicReached = planAny.formularyDrugCost?.monthCatastrophicReached ?? null;
 
   return (
     <>
@@ -158,34 +161,6 @@ export default function PlanCard({
           </div>
         </div>
 
-        {/* Drug Cost Estimate - Now uses server-calculated per-plan cost */}
-        {drugCost !== null && (
-          <div className="mx-4 mt-2 p-2.5 rounded-lg" style={{ backgroundColor: reachesCatastrophic ? "#FEF2F2" : "#FFF7ED", border: `1px solid ${reachesCatastrophic ? "#FECACA" : "#FED7AA"}` }}>
-            <div className="flex items-center gap-2">
-              <Pill size={14} className={reachesCatastrophic ? "text-red-500 shrink-0" : "text-orange-500 shrink-0"} />
-              <div className="flex-1">
-                <p className="text-xs font-bold" style={{ color: reachesCatastrophic ? "#991B1B" : "#9A3412" }}>Est. Drug Cost: ${drugCost.toLocaleString()}/yr</p>
-                <p className="text-[9px]" style={{ color: reachesCatastrophic ? "#DC2626" : "#F97316" }}>
-                  Based on {rxDrugs.length} medication{rxDrugs.length > 1 ? "s" : ""}
-                  {deductibleApplied > 0 ? ` · $${deductibleApplied} deductible` : ""}
-                  {reachesCatastrophic ? " · Hits $2,100 OOP cap" : ""}
-                  {subsidyLevel !== "none" ? ` · ${subsidyLevel} subsidy` : ""}
-                </p>
-              </div>
-            </div>
-            {drugBreakdowns.length > 0 && expanded && (
-              <div className="mt-2 pt-2 border-t" style={{ borderColor: reachesCatastrophic ? "#FECACA" : "#FED7AA" }}>
-                {drugBreakdowns.map((bd: any, idx: number) => (
-                  <div key={idx} className="flex justify-between text-[10px] py-0.5">
-                    <span className="text-gray-600">{bd.drugName} (Tier {bd.tier})</span>
-                    <span className="font-semibold" style={{ color: "#1B365D" }}>${bd.annualCost}/yr</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Doctor Network Status */}
         {doctorNetworkStatus && doctorNetworkStatus.doctors.length > 0 && (
           <div className="mx-4 mt-2 p-3 rounded-lg" style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0" }}>
@@ -223,7 +198,7 @@ export default function PlanCard({
           ))}
         </div>
 
-        {/* Rx Drug Coverage */}
+        {/* Rx Drug Coverage - with integrated drug cost calculator */}
         <div className="px-4 py-3" style={{ borderTop: "1px solid #E8F0FE" }}>
           <div className="flex items-center gap-2 mb-2">
             <Pill size={13} style={{ color: "#1B365D" }} />
@@ -246,6 +221,72 @@ export default function PlanCard({
           </div>
           {plan.rxDrugs.deductible !== "$0" && (
             <p className="text-[10px] text-gray-400 mt-1">Drug deductible: {plan.rxDrugs.deductible}</p>
+          )}
+
+          {/* Estimated Drug Cost - clickable with monthly breakdown */}
+          {drugCost !== null && (
+            <div
+              className="mt-3 p-3 rounded-lg cursor-pointer transition-all hover:shadow-sm"
+              style={{ backgroundColor: reachesCatastrophic ? "#FEF2F2" : "#F0F9FF", border: `1px solid ${reachesCatastrophic ? "#FECACA" : "#BAE6FD"}` }}
+              onClick={() => setDrugCostExpanded(!drugCostExpanded)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: reachesCatastrophic ? "#FEE2E2" : "#E0F2FE" }}>
+                    <DollarSign size={16} className={reachesCatastrophic ? "text-red-500" : "text-blue-500"} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: "#1B365D" }}>Est. Annual Drug Cost</p>
+                    <p className="text-[9px] text-gray-400">
+                      Based on {rxDrugs.length} medication{rxDrugs.length > 1 ? "s" : ""}
+                      {reachesCatastrophic ? " · Hits $2,100 OOP cap" : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-extrabold" style={{ color: reachesCatastrophic ? "#DC2626" : "#1B365D" }}>${drugCost.toLocaleString()}</span>
+                  <span className="text-[9px] text-gray-400">/yr</span>
+                  {drugCostExpanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+                </div>
+              </div>
+
+              {/* Monthly Breakdown - shown when clicked */}
+              {drugCostExpanded && drugBreakdowns.length > 0 && (
+                <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${reachesCatastrophic ? "#FECACA" : "#BAE6FD"}` }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Monthly Drug Breakdown</p>
+                    <p className="text-[10px] font-semibold" style={{ color: "#1B365D" }}>${Math.round(drugCost / 12).toLocaleString()}/mo avg</p>
+                  </div>
+                  {drugBreakdowns.map((bd: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between py-1.5" style={{ borderBottom: idx < drugBreakdowns.length - 1 ? "1px solid #F3F4F6" : "none" }}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${bd.tier === 1 ? 'bg-green-50 text-green-600' : bd.tier === 2 ? 'bg-blue-50 text-blue-600' : bd.tier === 3 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>T{bd.tier}</span>
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: "#1B365D" }}>{bd.drugName}</p>
+                          <p className="text-[9px] text-gray-400">Retail: ${bd.monthlyRetailCost}/mo · Copay: ${bd.monthlyCopay}/mo</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold" style={{ color: "#1B365D" }}>${Math.round(bd.annualCost / 12)}/mo</p>
+                        <p className="text-[9px] text-gray-400">${bd.annualCost}/yr</p>
+                      </div>
+                    </div>
+                  ))}
+                  {deductibleApplied > 0 && (
+                    <div className="flex justify-between text-[10px] mt-2 pt-2" style={{ borderTop: "1px solid #E5E7EB" }}>
+                      <span className="text-gray-500">Drug deductible applied</span>
+                      <span className="font-semibold" style={{ color: "#1B365D" }}>${deductibleApplied}</span>
+                    </div>
+                  )}
+                  {reachesCatastrophic && monthCatastrophicReached && (
+                    <div className="flex items-center gap-1.5 mt-2 pt-2" style={{ borderTop: "1px solid #E5E7EB" }}>
+                      <AlertCircle size={11} className="text-red-400" />
+                      <span className="text-[10px] text-red-500 font-semibold">$2,100 OOP cap reached in month {monthCatastrophicReached} — $0 cost after</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
