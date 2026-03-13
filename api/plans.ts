@@ -41,16 +41,23 @@ const TIER_COPAYS: Record<number, {preferred: number; standard: number}> = {
 function enrichPlansWithDrugCosts(plans: any[], drugs: DrugInput[]): any[] {
   return plans.map((plan: any) => {
     const isPreferred = plan.planName?.toLowerCase().includes('preferred') || false;
-    const drugDetails = drugs.map(d => {
+    const drugBreakdowns = drugs.map(d => {
       const key = d.name.toLowerCase().trim();
       const profile = DRUG_DB[key];
-      if (!profile) return { name: d.name, dosage: d.dosage, covered: false, tier: null, monthlyCost: null, annualCost: null };
+      if (!profile) return { drugName: d.name, dosage: d.dosage, covered: false, tier: 0, monthlyCopay: 0, monthlyRetailCost: 0, annualCost: 0 };
       const copay = TIER_COPAYS[profile.tier];
-      const monthly = isPreferred ? copay.preferred : copay.standard;
-      return { name: d.name, dosage: d.dosage, covered: true, tier: profile.tier, monthlyCost: monthly, annualCost: monthly * 12 };
+      const monthlyCopay = isPreferred ? copay.preferred : copay.standard;
+      return { drugName: d.name, dosage: d.dosage, covered: true, tier: profile.tier, monthlyCopay, monthlyRetailCost: profile.avgMonthlyCost, annualCost: monthlyCopay * 12 };
     });
-    const totalAnnualDrugCost = drugDetails.reduce((sum, d) => sum + (d.annualCost || 0), 0);
-    return { ...plan, drugCoverage: { drugs: drugDetails, totalAnnualDrugCost, drugsChecked: drugs.length, drugsCovered: drugDetails.filter(d => d.covered).length } };
+    const totalAnnual = drugBreakdowns.reduce((sum, d) => sum + d.annualCost, 0);
+    const deductibleAmt = plan.rxDrugs?.deductible ? parseInt(plan.rxDrugs.deductible.replace(/[^0-9]/g, '')) || 0 : 0;
+    const totalWithDeductible = totalAnnual + deductibleAmt;
+    const oopCap = 2100;
+    const reachesCat = totalWithDeductible >= oopCap;
+    const finalCost = reachesCat ? oopCap : totalWithDeductible;
+    let monthCatReached: number | null = null;
+    if (reachesCat) { let running = deductibleAmt; for (let m = 1; m <= 12; m++) { running += totalAnnual / 12; if (running >= oopCap) { monthCatReached = m; break; } } }
+    return { ...plan, estimatedAnnualDrugCost: finalCost, formularyDrugCost: { drugBreakdowns, deductibleApplied: deductibleAmt, reachesCatastrophic: reachesCat, monthCatastrophicReached: monthCatReached, totalAnnualCost: finalCost }, drugCoverage: { drugs: drugBreakdowns, totalAnnualDrugCost: finalCost, drugsChecked: drugs.length, drugsCovered: drugBreakdowns.filter(d => d.covered).length } };
   });
 }
 // CDN URLs for pre-processed per-state plan JSON files
