@@ -456,6 +456,7 @@ export default function Plans() {
               totalCount={plans.length}
               filteredCount={filteredPlans.length}
               availableCarriers={availableCarriers}
+                                plans={plans}
             />
           </aside>
 
