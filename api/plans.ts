@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { enrichPlansWithDrugCosts, type DrugInput } from '../server/formularyCalculator';
-
+import { enrichPlansWithDrugCosts, type DrugInput } from './formularyCalculator';
 // CDN URLs for pre-processed per-state plan JSON files
 const CDN_BASE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8';
 
