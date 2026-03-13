@@ -179,11 +179,11 @@ export default function Plans() {
           const data = JSON.parse(stored);
           // Load doctors from workflow
           if (data.doctors && Array.isArray(data.doctors) && data.doctors.length > 0) {
-            setDoctors(data.doctors);
+            setDoctors(data.doctors.map((doc: any) => ({ id: doc.id, name: doc.name, specialty: doc.specialty || '', npi: doc.npi || doc.id, address: doc.address || '' })));
           }
           // Load drugs from workflow
           if (data.drugs && Array.isArray(data.drugs) && data.drugs.length > 0) {
-            setRxDrugs(data.drugs.map((d: any) => ({ name: d.name, dosage: d.dosage || "", quantity: 30, frequency: "monthly" })));
+            setRxDrugs(data.drugs.map((d: any) => ({ id: d.id || d.name, name: d.name, dosage: d.dosage || "", frequency: d.frequency || "monthly", isGeneric: true })));
           }
           // Clear after reading so it doesn't persist across ZIP changes
           sessionStorage.removeItem("workflow_data");
