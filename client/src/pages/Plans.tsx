@@ -176,7 +176,7 @@ export default function Plans() {
     if (!zip || !/^\d{5}$/.test(zip)) return;
     setPlansLoading(true);
     setPlansError(null);
-    const drugsParam = params.get('drugs'); fetch(`/api/plans?zip=${zip}${drugsParam ? `&drugs=${encodeURIComponent(drugsParam)}` : ''}`)${zip}`)
+    const drugsParam = params.get('drugs'); fetch(`/api/plans?zip=${zip}${drugsParam ? `&drugs=${encodeURIComponent(drugsParam)}` : ''}`)
       .then((r) => r.json())
       .then((data: { plans?: MedicarePlan[]; location?: { stateAbbr: string; countyName: string }; error?: string }) => {
         if (data.error) {
