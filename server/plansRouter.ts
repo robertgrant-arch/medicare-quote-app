@@ -339,15 +339,21 @@ export function registerPlansRoute(app: Express): void {
         const drugsParam = req.query.drugs;
         if (drugsParam) {
           try {
-            // Handle both string and pre-parsed object from Express query parser
+                        // Handle Express qs parser: it converts JSON arrays in query strings
+            // into nested objects like {'0': {name: 'valsartan'}, '1': {name: 'ozempic'}}
+            // Also handle raw JSON strings and proper arrays
             let drugs: DrugInput[];
             if (typeof drugsParam === 'string') {
               drugs = JSON.parse(drugsParam);
             } else if (Array.isArray(drugsParam)) {
               drugs = drugsParam as unknown as DrugInput[];
+            } else if (typeof drugsParam === 'object' && drugsParam !== null) {
+              // Express qs parser converted array to object with numeric keys
+              drugs = Object.values(drugsParam) as unknown as DrugInput[];
             } else {
               drugs = [];
             }
+                        console.log('[Plans] drugsParam type:', typeof drugsParam, 'isArray:', Array.isArray(drugsParam), 'parsed drugs:', JSON.stringify(drugs));
             if (Array.isArray(drugs) && drugs.length > 0) {
               enrichedPlans = enrichPlansWithDrugCosts(plans, drugs);
             }
