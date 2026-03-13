@@ -162,7 +162,7 @@ function getEstAnnualDrugCost(plan: MedicarePlan): number {
   return typeof p.estAnnualDrugCost === 'number' ? p.estAnnualDrugCost : 0;
 }
 
-export function scoreAllPlans(
+export function scoreAllPlansInternal(
   plans: MedicarePlan[],
   model: ScoringModel,
   doctors: Doctor[]
