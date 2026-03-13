@@ -91,7 +91,7 @@ export default function AIRecommendationBanner({ plan, score, model, onViewPlan 
             { label: 'Monthly Premium', value: plan.premium === 0 ? '$0' : `$${plan.premium}/mo` },
             { label: 'Est. Annual Cost', value: `$${totalCost.toLocaleString()}/yr` },
             { label: 'Max Out-of-Pocket', value: `$${plan.maxOutOfPocket.toLocaleString()}` },
-            { label: 'Extra Benefits', value: `${benefitCount}/8` },
+            {(model.so{ label: 'Est. Drug Cost', value: ((plan as any).estAnnualDrugCost ?? 0) === 0 ? 'N/A' : `$${((plan as any).estAnnualDrugCost).toLocaleString()}/yr` },               { label: 'Extra Benefits', value: `${benefitCount}/8` },{(score.breakdown || []).filter({(model.sources || []).slice(0, 3).join(urces || []).length > 0 && (
           ].map(({ label, value }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 16px', minWidth: '110px', textAlign: 'center' }}>
               <div style={{ color: 'white', fontSize: '18px', fontWeight: 800, fontFamily: "'DM Sans', sans-serif" }}>{value}</div>
@@ -127,7 +127,7 @@ export default function AIRecommendationBanner({ plan, score, model, onViewPlan 
             AI Score Breakdown &mdash; {model.name} Model
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-            {score.breakdown.filter(b => b.weight > 0).map(b => {
+            {(model.so{(score.breakdown || []).filter({(model.sources || []).slice(0, 3).join(urces || []).length > 0 && (b => b.weight > 0).map(b => {
               const pct = b.weight > 0 ? (b.contribution / b.weight) * 100 : 0;
               return (
                 <div key={b.factor} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -148,9 +148,9 @@ export default function AIRecommendationBanner({ plan, score, model, onViewPlan 
               This recommendation is based on your entered doctors and medications. Model weights can be adjusted in the Admin panel. This is not a substitute for advice from a licensed insurance agent.
             </span>
           </div>
-          {model.sources.length > 0 && (
+          {(model.sources || []).length > 0 && (
             <div style={{ marginTop: '8px', color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: "'DM Sans', sans-serif" }}>
-              Research sources: {model.sources.slice(0, 3).join(' · ')}
+              Research sources: {(model.so{(model.sources || []).slice(0, 3).join(urces || []).length > 0 && (' · ')}
             </div>
           )}
         </div>
