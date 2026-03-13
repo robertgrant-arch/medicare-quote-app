@@ -168,6 +168,32 @@ export default function Plans() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+    // Read workflow data (doctors & drugs) from sessionStorage (set by Home.tsx GuidedWorkflowModal)
+  useEffect(() => {
+    const personalized = params.get("personalized");
+    if (personalized === "1") {
+      try {
+        const stored = sessionStorage.getItem("workflow_data");
+        if (stored) {
+          const data = JSON.parse(stored);
+          // Load doctors from workflow
+          if (data.doctors && Array.isArray(data.doctors) && data.doctors.length > 0) {
+            setDoctors(data.doctors);
+          }
+          // Load drugs from workflow
+          if (data.drugs && Array.isArray(data.drugs) && data.drugs.length > 0) {
+            setRxDrugs(data.drugs.map((d: any) => ({ name: d.name, dosage: d.dosage || "", quantity: 30, frequency: "monthly" })));
+          }
+          // Clear after reading so it doesn't persist across ZIP changes
+          sessionStorage.removeItem("workflow_data");
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const handleCompareActivate = (planId: string | null) => {
     setActiveCompareId(planId);
   };
