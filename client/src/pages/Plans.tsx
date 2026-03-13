@@ -57,7 +57,7 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
 
   // Plan type
   if (filters.planType.length > 0) {
-    result = result.filter((p) => filters.planType.includes(p.planType));
+    result = result.filter((p) => { const effectiveType = p.snpCategory ? "SNP" : p.planType; return filters.planType.includes(effectiveType); });
   }
 
   // Carriers
