@@ -1050,7 +1050,8 @@ export default function AdminDashboard() {
     { id: "carriers", label: "Carriers", icon: <Building2 size={16} /> },
     { id: "plans", label: "Plans", icon: <FileText size={16} /> },
     { id: "noncomm", label: "Non-Commissionable", icon: <DollarSignIcon size={16} /> },
-    { id: "sync", label: "Data Sync", icon: <Database size={16} /> }, { id: "ai-models", label: "AI Models", icon: <Sparkles size={16} /> }, icon: <Database size={16} /> },
+    { id: "sync", label: "Data Sync", icon: <Database size={16} /> },
+    { id: "ai-models", label: "AI Models", icon: <Sparkles size={16} /> },
   ];
 
   return (
