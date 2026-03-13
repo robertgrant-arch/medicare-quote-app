@@ -74,7 +74,7 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
   if (filters.benefits.length > 0) {
     result = result.filter((p) =>
       filters.benefits.every(
-        (b) => p.extraBenefits[b as keyof typeof p.extraBenefits]?.covered
+        (b) => (p.extraBenefits || {} as any)[b as keyof typeof p.extraBenefits]?.covered
       )
     );
   }
