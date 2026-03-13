@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { enrichPlansWithDrugCosts, type DrugInput } from '../server/formularyCalculator';
 
 // CDN URLs for pre-processed per-state plan JSON files
 const CDN_BASE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8';
@@ -44,7 +45,6 @@ function toTitleCase(str: string): string {
     .replace(/\bOf\b/g, 'of').replace(/\bThe\b/g, 'the');
 }
 
-// Classify SNP type from raw CMS data
 function classifySnpCategory(snpType?: string, planName?: string): string | null {
   if (!snpType && !planName) return null;
   const raw = ((snpType || '') + ' ' + (planName || '')).toUpperCase();
@@ -111,16 +111,36 @@ function annotatePlans(plans: any[]): any[] {
     const snpType = (plan.snpType ?? '').toLowerCase();
     const planName = plan.planName ?? plan.name ?? '';
     const isISnp = snpType.includes('institutional') || planName.includes('I-SNP');
-    // Classify SNP category for proper grouping (DSNP, CSNP, ISNP, OTHER_SNP)
     const snpCategory = classifySnpCategory(plan.snpType, planName);
     return {
       ...plan,
       isBestMatch: idx === 0,
       isMostPopular: idx === 1,
       isNonCommissionable: isISnp,
-      snpCategory, // Add normalized SNP category
+      snpCategory,
     };
   });
+}
+
+// Parse drugs from query parameter (handles Vercel query parsing)
+function parseDrugsParam(drugsParam: string | string[] | undefined): DrugInput[] {
+  if (!drugsParam) return [];
+  try {
+    if (typeof drugsParam === 'string') {
+      return JSON.parse(drugsParam);
+    }
+    if (Array.isArray(drugsParam)) {
+      // Vercel may split repeated params into array
+      return JSON.parse(drugsParam[0]);
+    }
+    // Handle object form from query parser
+    if (typeof drugsParam === 'object') {
+      return Object.values(drugsParam) as unknown as DrugInput[];
+    }
+  } catch (err) {
+    console.warn('[Plans API] Failed to parse drugs param:', err);
+  }
+  return [];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -141,15 +161,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: `Could not find county information for ZIP code ${zip}.`, plans: [], location: null });
     }
     const { stateAbbr, countyName } = location;
+
     const stateData = await getStateData(stateAbbr);
     if (!stateData) {
       return res.status(503).json({ error: `Plan data for ${stateAbbr} is temporarily unavailable.`, plans: [], location: { stateAbbr, countyName: toTitleCase(countyName), zip } });
     }
+
     const rawPlans = findPlansForCounty(stateData, countyName);
     if (rawPlans.length === 0) {
       return res.status(404).json({ error: `No Medicare Advantage plans found for ${toTitleCase(countyName)}, ${stateAbbr}.`, plans: [], location: { stateAbbr, countyName: toTitleCase(countyName), zip } });
     }
-    const plans = annotatePlans(rawPlans);
+
+    let plans = annotatePlans(rawPlans);
+
+    // Step 5: Enrich with drug costs if drugs parameter provided
+    const drugsParam = req.query.drugs;
+    const drugs = parseDrugsParam(drugsParam as string | string[] | undefined);
+    if (drugs.length > 0) {
+      plans = enrichPlansWithDrugCosts(plans, drugs);
+    }
+
     return res.status(200).json({
       plans,
       location: { stateAbbr, countyName: toTitleCase(countyName), zip },
