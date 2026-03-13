@@ -176,7 +176,7 @@ export default function Plans() {
     if (!zip || !/^\d{5}$/.test(zip)) return;
     setPlansLoading(true);
     setPlansError(null);
-    const drugsParam = params.get('drugs'); fetch(`/api/plans?zip=${zip}${drugsParam ? `&drugs=${encodeURIComponent(drugsParam)}` : ''}`)
+    const drugsStr = rxDrugs.length > 0 ? JSON.stringify(rxDrugs.map(d => ({ name: d.name, dosage: d.dosage }))) : ''; fetch(`/api/plans?zip=${zip}${drugsStr ? `&drugs=${encodeURIComponent(drugsStr)}` : ''}`)
       .then((r) => r.json())
       .then((data: { plans?: MedicarePlan[]; location?: { stateAbbr: string; countyName: string }; error?: string }) => {
         if (data.error) {
@@ -192,7 +192,7 @@ export default function Plans() {
         console.error("[Plans] fetch error:", err);
       })
       .finally(() => setPlansLoading(false));
-  }, [zip]);
+  }, [zip, rxDrugs]);
 
   // Server returns title-case county name; just append state
   const countyName = locationInfo ? `${locationInfo.countyName}, ${locationInfo.stateAbbr}` : "Loading...";
