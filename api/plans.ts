@@ -1,5 +1,58 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { enrichPlansWithDrugCosts, type DrugInput } from '../server/formularyCalculator';
+// Inline drug cost enrichment (self-contained for Vercel serverless)
+interface DrugInput { name: string; dosage?: string; }
+interface DrugProfile { tier: 1|2|3|4; avgMonthlyCost: number; isGeneric: boolean; }
+const DRUG_DB: Record<string, DrugProfile> = {
+  'amlodipine': { tier: 1, avgMonthlyCost: 8, isGeneric: true },
+  'lisinopril': { tier: 1, avgMonthlyCost: 6, isGeneric: true },
+  'metformin': { tier: 1, avgMonthlyCost: 7, isGeneric: true },
+  'atorvastatin': { tier: 1, avgMonthlyCost: 9, isGeneric: true },
+  'omeprazole': { tier: 1, avgMonthlyCost: 8, isGeneric: true },
+  'losartan': { tier: 1, avgMonthlyCost: 10, isGeneric: true },
+  'metoprolol': { tier: 1, avgMonthlyCost: 7, isGeneric: true },
+  'levothyroxine': { tier: 1, avgMonthlyCost: 12, isGeneric: true },
+  'simvastatin': { tier: 1, avgMonthlyCost: 6, isGeneric: true },
+  'hydrochlorothiazide': { tier: 1, avgMonthlyCost: 5, isGeneric: true },
+  'gabapentin': { tier: 1, avgMonthlyCost: 11, isGeneric: true },
+  'sertraline': { tier: 1, avgMonthlyCost: 9, isGeneric: true },
+  'valsartan': { tier: 1, avgMonthlyCost: 15, isGeneric: true },
+  'furosemide': { tier: 1, avgMonthlyCost: 6, isGeneric: true },
+  'pantoprazole': { tier: 1, avgMonthlyCost: 10, isGeneric: true },
+  'montelukast': { tier: 1, avgMonthlyCost: 12, isGeneric: true },
+  'rosuvastatin': { tier: 1, avgMonthlyCost: 11, isGeneric: true },
+  'clopidogrel': { tier: 1, avgMonthlyCost: 8, isGeneric: true },
+  'warfarin': { tier: 1, avgMonthlyCost: 7, isGeneric: true },
+  'duloxetine': { tier: 1, avgMonthlyCost: 13, isGeneric: true },
+  'eliquis': { tier: 3, avgMonthlyCost: 550, isGeneric: false },
+  'jardiance': { tier: 3, avgMonthlyCost: 520, isGeneric: false },
+  'ozempic': { tier: 3, avgMonthlyCost: 900, isGeneric: false },
+  'xarelto': { tier: 3, avgMonthlyCost: 500, isGeneric: false },
+  'entresto': { tier: 3, avgMonthlyCost: 580, isGeneric: false },
+  'humira': { tier: 4, avgMonthlyCost: 5800, isGeneric: false },
+  'keytruda': { tier: 4, avgMonthlyCost: 9500, isGeneric: false },
+  'stelara': { tier: 4, avgMonthlyCost: 6200, isGeneric: false },
+};
+const TIER_COPAYS: Record<number, {preferred: number; standard: number}> = {
+  1: { preferred: 0, standard: 3 },
+  2: { preferred: 8, standard: 15 },
+  3: { preferred: 42, standard: 47 },
+  4: { preferred: 95, standard: 95 },
+};
+function enrichPlansWithDrugCosts(plans: any[], drugs: DrugInput[]): any[] {
+  return plans.map((plan: any) => {
+    const isPreferred = plan.planName?.toLowerCase().includes('preferred') || false;
+    const drugDetails = drugs.map(d => {
+      const key = d.name.toLowerCase().trim();
+      const profile = DRUG_DB[key];
+      if (!profile) return { name: d.name, dosage: d.dosage, covered: false, tier: null, monthlyCost: null, annualCost: null };
+      const copay = TIER_COPAYS[profile.tier];
+      const monthly = isPreferred ? copay.preferred : copay.standard;
+      return { name: d.name, dosage: d.dosage, covered: true, tier: profile.tier, monthlyCost: monthly, annualCost: monthly * 12 };
+    });
+    const totalAnnualDrugCost = drugDetails.reduce((sum, d) => sum + (d.annualCost || 0), 0);
+    return { ...plan, drugCoverage: { drugs: drugDetails, totalAnnualDrugCost, drugsChecked: drugs.length, drugsCovered: drugDetails.filter(d => d.covered).length } };
+  });
+}
 // CDN URLs for pre-processed per-state plan JSON files
 const CDN_BASE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663319810046/5TY7JcF275WMujMHZWWJT8';
 
