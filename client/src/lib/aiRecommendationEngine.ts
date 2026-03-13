@@ -43,9 +43,11 @@ export interface ScoringModel {
 export interface PlanScore {
   planId: string;
   score: number;
+    totalScore: number;
   rank: number;
   isTopPick: boolean;
   reasons: string[];
+    plan: MedicarePlan;
   breakdown: { factor: string; weight: number; contribution: number }[];
 }
 
@@ -143,7 +145,7 @@ function calcExtraBenefitsScore(
   weights: ExtraBenefitWeights
 ): number {
   let score = 0;
-  const eb = plan.extraBenefits;
+  const eb = plan.extraBenefits || {};
   if (eb.dental?.covered) score += weights.dental;
   if (eb.vision?.covered) score += weights.vision;
   if (eb.otc?.covered) score += weights.otc;
@@ -241,7 +243,7 @@ export function scoreAllPlansInternal(
     if (plan.starRating.overall >= 4.0) {
       reasons.push(`${plan.starRating.overall}-star CMS quality rating`);
     }
-    const benefitCount = Object.values(plan.extraBenefits).filter(b => b?.covered).length;
+    const benefitCount = Object.values(plan.extraBenefits || {}).filter(b => b?.covered).length;
     if (benefitCount >= 7) {
       reasons.push(`${benefitCount}/8 extra benefits included (dental, vision, OTC & more)`);
     }
@@ -258,8 +260,8 @@ export function scoreAllPlansInternal(
     ];
 
     return {
-      planId: plan.id,
-      score: Math.round(score * 100) / 100,
+      planId: plan.id,         plan,
+      score: Math.round(score * 100) / 100, totalScore: Math.round(score * 100) / 100,
       rank: 0,
       isTopPick: false,
       reasons: reasons.slice(0, 4),
@@ -289,4 +291,35 @@ export function getTopPick(
   const topPlan = plans.find(p => p.id === topScore.planId);
   if (!topPlan) return null;
   return { plan: topPlan, score: topScore };
+}
+
+// Type alias used by AdminAIModels
+export type ScoringModelType = 'A' | 'B';
+
+// Aliases expected by AdminAIModels component
+export const MODEL_A_CONFIG = MODEL_A;
+export const MODEL_B_CONFIG = MODEL_B;
+
+// Public wrapper: supports both call signatures
+// 1) scoreAllPlans(plans, model, doctors) - used by Plans.tsx
+// 2) scoreAllPlans(plans, { rxDrugs, doctors }, 'A'|'B') - used by AdminAIModels
+export function scoreAllPlans(
+  plans: MedicarePlan[],
+  modelOrOpts: ScoringModel | { rxDrugs?: any[]; doctors?: Doctor[] },
+  doctorsOrModelType?: Doctor[] | ScoringModelType
+): PlanScore[] {
+  let model: ScoringModel;
+  let doctors: Doctor[];
+  if (typeof doctorsOrModelType === 'string') {
+    model = doctorsOrModelType === 'A' ? MODEL_A : MODEL_B;
+    const opts = modelOrOpts as { rxDrugs?: any[]; doctors?: Doctor[] };
+    doctors = opts.doctors || [];
+  } else if (Array.isArray(doctorsOrModelType)) {
+    model = modelOrOpts as ScoringModel;
+    doctors = doctorsOrModelType;
+  } else {
+    model = modelOrOpts as ScoringModel;
+    doctors = [];
+  }
+  return scoreAllPlansInternal(plans, model, doctors);
 }
