@@ -191,7 +191,7 @@ export function scoreAllPlansInternal(
     const p = plan as MedicarePlan & { estimatedAnnualDrugCost?: number; doctorNetworkStatus?: { inNetworkCount: number } };
 
     // Doctor score
-    let doctorRaw = 0.5; // neutral when no doctors
+    let doctorRaw = 0; // no doctors = no doctor score contribution
     if (totalDoctors > 0) {
       const inNet = p.doctorNetworkStatus?.inNetworkCount ?? 0;
       doctorRaw = inNet / totalDoctors;
@@ -209,7 +209,7 @@ export function scoreAllPlansInternal(
     const drugDedRaw = 1 - drugDed / maxDrugDed;
 
     const score =
-      doctorRaw * w.doctorMatch +
+      doctorRaw * (totalDoctors > 0 ? w.doctorMatch : 0) +
       drugCostRaw * w.drugCost +
       premiumRaw * w.premium +
       moopRaw * w.moop +
@@ -243,7 +243,7 @@ export function scoreAllPlansInternal(
     }
 
     const breakdown = [
-      { factor: 'Doctor Network', weight: w.doctorMatch, contribution: doctorRaw * w.doctorMatch },
+      { factor: 'Doctor Network', weight: totalDoctors > 0 ? w.doctorMatch : 0, contribution: doctorRaw * (totalDoctors > 0 ? w.doctorMatch : 0) },
       { factor: 'Drug Cost', weight: w.drugCost, contribution: drugCostRaw * w.drugCost },
       { factor: 'Premium', weight: w.premium, contribution: premiumRaw * w.premium },
       { factor: 'Max Out-of-Pocket', weight: w.moop, contribution: moopRaw * w.moop },
@@ -270,21 +270,6 @@ export function scoreAllPlansInternal(
   });
 
   return results;
-}
-
-export function getTopPick(
-  plans: MedicarePlan[],
-  scores: PlanScore[]
-): { plan: MedicarePlan; score: PlanScore } | null {
-  // Only pick from non-SNP MA plans as the primary recommendation
-  const nonSnpPlans = plans.filter(p => !p.snpCategory);
-  if (nonSnpPlans.length === 0) return null;
-  const nonSnpIds = new Set(nonSnpPlans.map(p => p.id));
-  const topScore = scores.find(s => nonSnpIds.has(s.planId));
-  if (!topScore) return null;
-  const topPlan = plans.find(p => p.id === topScore.planId);
-  if (!topPlan) return null;
-  return { plan: topPlan, score: topScore };
 }
 
 // Type alias used by AdminAIModels
