@@ -14,8 +14,6 @@ import {
   Video,
   UtensilsCrossed,
   Pill,
-  Building2,
-  AlertCircle,
   CheckCircle2,
   XCircle,
   Info,
