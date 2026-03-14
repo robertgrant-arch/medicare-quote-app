@@ -134,12 +134,6 @@ function parseCopay(str: string): number {
   return isNaN(n) ? 0 : n;
 }
 
-function parseDrugDeductible(str: string): number {
-  if (!str) return 0;
-  const n = parseFloat(str.replace(/[^0-9.]/g, ''));
-  return isNaN(n) ? 0 : n;
-}
-
 function calcExtraBenefitsScore(
   plan: MedicarePlan,
   weights: ExtraBenefitWeights
@@ -183,7 +177,7 @@ export function scoreAllPlansInternal(
     1
   );
   const maxDrugDed = Math.max(
-    ...plans.map(p => parseDrugDeductible(p.rxDrugs?.deductible || '')),
+    ...plans.map(p => parseCopay(p.rxDrugs?.deductible || '')),
     1
   );
 
@@ -211,7 +205,7 @@ export function scoreAllPlansInternal(
     const extraRaw = w.extraBenefits > 0 ? calcExtraBenefitsScore(plan, model.extraBenefitWeights) : 0;
     const copay = parseCopay(plan.copays?.primaryCare || '') * 4 + parseCopay(plan.copays?.specialist || '') * 2;
     const copayRaw = 1 - copay / maxCopay;
-    const drugDed = parseDrugDeductible(plan.rxDrugs?.deductible || '');
+    const drugDed = parseCopay(plan.rxDrugs?.deductible || '');
     const drugDedRaw = 1 - drugDed / maxDrugDed;
 
     const score =
