@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { enrichPlansWithDrugCosts as enrichWithFormulary } from './formularyCalculator';
+import { enrichPlansWithDrugCosts as enrichWithFormulary } from './formularyCalculator.js';
 interface DrugInput { name: string; dosage?: string; }
 
 // CDN URLs for pre-processed per-state plan JSON files
