@@ -179,11 +179,11 @@ export function scoreAllPlansInternal(
   const maxDrugCost = Math.max(...plans.map(p => getEstAnnualDrugCost(p)), 1);
   const maxMOOP = Math.max(...plans.map(p => p.maxOutOfPocket), 1);
   const maxCopay = Math.max(
-    ...plans.map(p => parseCopay(p.copays.primaryCare) * 4 + parseCopay(p.copays.specialist) * 2),
+    ...plans.map(p => parseCopay(p.copays?.primaryCare || '') * 4 + parseCopay(p.copays?.specialist || '') * 2),
     1
   );
   const maxDrugDed = Math.max(
-    ...plans.map(p => parseDrugDeductible(p.rxDrugs.deductible)),
+    ...plans.map(p => parseDrugDeductible(p.rxDrugs?.deductible || '')),
     1
   );
 
@@ -207,11 +207,11 @@ export function scoreAllPlansInternal(
     const drugCostRaw = 1 - drugCost / maxDrugCost;
     const premiumRaw = 1 - (plan.premium * 12) / maxPremium;
     const moopRaw = 1 - plan.maxOutOfPocket / maxMOOP;
-    const starRaw = Math.max(0, (plan.starRating.overall - 1) / 4);
+    const starRaw = Math.max(0, ((plan.starRating?.overall ?? 0) - 1) / 4);
     const extraRaw = w.extraBenefits > 0 ? calcExtraBenefitsScore(plan, model.extraBenefitWeights) : 0;
-    const copay = parseCopay(plan.copays.primaryCare) * 4 + parseCopay(plan.copays.specialist) * 2;
+    const copay = parseCopay(plan.copays?.primaryCare || '') * 4 + parseCopay(plan.copays?.specialist || '') * 2;
     const copayRaw = 1 - copay / maxCopay;
-    const drugDed = parseDrugDeductible(plan.rxDrugs.deductible);
+    const drugDed = parseDrugDeductible(plan.rxDrugs?.deductible || '');
     const drugDedRaw = 1 - drugDed / maxDrugDed;
 
     const score =
@@ -240,8 +240,8 @@ export function scoreAllPlansInternal(
     if (plan.maxOutOfPocket < avgMOOP * 0.75) {
       reasons.push(`Low max out-of-pocket ($${plan.maxOutOfPocket.toLocaleString()}) limits your risk`);
     }
-    if (plan.starRating.overall >= 4.0) {
-      reasons.push(`${plan.starRating.overall}-star CMS quality rating`);
+    if ((plan.starRating?.overall ?? 0) >= 4.0) {
+      reasons.push(`${plan.starRating?.overall ?? 0}-star CMS quality rating`);
     }
     const benefitCount = Object.values(plan.extraBenefits || {}).filter(b => b?.covered).length;
     if (benefitCount >= 7) {
