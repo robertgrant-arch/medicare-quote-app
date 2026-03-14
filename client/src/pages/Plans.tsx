@@ -632,7 +632,7 @@ export default function Plans() {
               </div>
             )}
 
-            {/* AI Recommendation Banner */}           {topPlan && (             <AITop3Cards               scores={aiScores}                             model={aiModel}               onEnroll={handleEnroll}             />           )}           {/* Personalization banner */}
+            {/* AI Recommendation Banner */}           {topPlan && (             <AITop3Cards               scores={aiScores}                             model={aiModel === 'A' ? MODEL_A : MODEL_B} doctorNetworkMap={doctorNetworkMap} doctors={doctors}               onEnroll={handleEnroll}             />           )}           {/* Personalization banner */}
             {(rxDrugs.length > 0 || doctors.length > 0) && (
               <div
                 className="rounded-xl p-3 mb-4 flex items-center gap-3 border"
