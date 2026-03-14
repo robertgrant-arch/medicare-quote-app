@@ -111,11 +111,18 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
         return b.starRating.overall - a.starRating.overall;
       });
       break;
-    default:
+      case "total-cost":
+        result.sort((a, b) => {
+          const aCost = a.premium * 12 + ((a as any).estimatedAnnualDrugCost ?? 0);
+          const bCost = b.premium * 12 + ((b as any).estimatedAnnualDrugCost ?? 0);
+          return aCost - bCost;
+        });
+        break;
+      default:
       // Default: lowest expected out-of-pocket cost (MOOP)
       result.sort((a, b) => a.maxOutOfPocket - b.maxOutOfPocket);
   }
-
+      
   return result;
 }
 
