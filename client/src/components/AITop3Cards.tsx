@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Star, CheckCircle2, XCircle, ChevronDown, ChevronUp, X, DollarSign, Shield, UserRound, Pill, Info } from 'lucide-react';
+import { Sparkles, Star, CheckCircle2, XCircle, ChevronDown, ChevronUp, X, DollarSign, UserRound, Info } from 'lucide-react';
 import type { MedicarePlan, PlanDoctorNetworkStatus } from '@/lib/types';
 import type { PlanScore, ScoringModel } from '@/lib/aiRecommendationEngine';
 
@@ -33,9 +33,9 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0', background: '#f0f4f8', borderRadius: '0 0 16px 16px', border: '2px solid #1B365D', borderTop: 'none', overflow: 'hidden', marginBottom: '24px' }}>
         {top3.map((s, idx) => {
           const plan = s.plan;
-          const eb = plan.extraBenefits || ({} as any);
+          const eb = plan.extraBenefits || ({} as Record<string, { covered?: boolean }>);
           const benefitCount = Object.values(eb).filter((b: any) => b?.covered).length;
-          const drugCost = (plan as any).estimatedAnnualDrugCost ?? 0;
+          const drugCost = plan.estimatedAnnualDrugCost ?? 0;
           const net = doctorNetworkMap[plan.planId];
           const stars = plan.starRating.overall;
           const initials = plan.carrier.split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
@@ -99,7 +99,7 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                             {/* Buttons */}
               <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
                 <button onClick={() => onEnroll(plan)} style={{ flex: 1, background: '#C41E3A', color: 'white', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>Enroll Now</button>
-                <button onClick={() => setDetailPlan(detailPlan?.plan.id === plan.id ? null : s)} style={{ flex: 1, background: 'white', color: '#1B365D', border: '1px solid #1B365D', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Details</button>
+                <button onClick={() => setDetailPlan(detailPlan?.plan.planId === plan.planId ? null : s)} style={{ flex: 1, background: 'white', color: '#1B365D', border: '1px solid #1B365D', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Details</button>
               </div>
               <button onClick={() => setExpandedIdx(isExpanded ? null : idx)} style={{ width: '100%', background: 'none', border: 'none', color: '#6B7280', fontSize: '10px', cursor: 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -154,7 +154,7 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                   { label: 'Monthly Premium', val: detailPlan.plan.premium === 0 ? '$0' : `$${detailPlan.plan.premium}/mo` },
                   { label: 'Deductible', val: `$${detailPlan.plan.deductible}` },
                   { label: 'Max Out-of-Pocket', val: `$${detailPlan.plan.maxOutOfPocket.toLocaleString()}` },
-                  { label: 'Est. Drug Cost', val: ((detailPlan.plan as any).estimatedAnnualDrugCost ?? 0) === 0 ? 'N/A' : `$${((detailPlan.plan as any).estimatedAnnualDrugCost).toLocaleString()}/yr` },
+                  { label: 'Est. Drug Cost', val: (detailPlan.plan.estimatedAnnualDrugCost ?? 0) === 0 ? 'N/A' : `$${(detailPlan.plan.estimatedAnnualDrugCost).toLocaleString()}/yr` },
                   { label: 'Drug Deductible', val: detailPlan.plan.rxDrugs?.deductible || '$0' },
                   { label: 'Extra Benefits', val: `${Object.values(detailPlan.plan.extraBenefits || {}).filter((b: any) => b?.covered).length}/8` },
                 ].map(({ label, val }) => (
@@ -182,7 +182,7 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                     {(['tier1', 'tier2', 'tier3', 'tier4'] as const).map((t, i) => (
                       <div key={t} style={{ background: '#f8fafc', borderRadius: '6px', padding: '8px', textAlign: 'center' as const }}>
                         <div style={{ fontSize: '9px', color: '#6B7280' }}>Tier {i + 1}</div>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#1B365D' }}>{(detailPlan.plan.rxDrugs as any)?.[t] || 'N/A'}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#1B365D' }}>{detailPlan.plan.rxDrugs[t] || 'N/A'}</div>
                       </div>
                     ))}
                   </div>
