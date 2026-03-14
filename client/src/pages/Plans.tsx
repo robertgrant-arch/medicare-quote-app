@@ -74,7 +74,7 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
   if (filters.benefits.length > 0) {
     result = result.filter((p) =>
       filters.benefits.every(
-        (b) => (p.extraBenefits || {} as any)[b as keyof typeof p.extraBenefits]?.covered
+        (b) => p.extraBenefits?.[b as keyof typeof p.extraBenefits]?.covered
       )
     );
   }
@@ -330,6 +330,7 @@ export default function Plans() {
   const activeFilterCount =
     filters.planType.length +
     filters.carriers.length +
+        (filters.snpCategories?.length ?? 0) +
     filters.benefits.length +
     (filters.premiumRange[1] < 200 ? 1 : 0);
 
