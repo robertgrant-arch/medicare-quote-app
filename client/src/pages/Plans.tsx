@@ -516,11 +516,11 @@ export default function Plans() {
           {topPlan && (
             <AITop3Cards
               scores={aiScores}
-              allPlans={filteredPlans}
+              model={aiModel}
               onEnroll={handleEnroll}
-              onFavorite={toggleFavorite}
-              favorites={favorites}
-              onDetails={(plans, index) => {
+              doctors={doctors}
+              doctorNetworkMap={doctorNetworkMap}
+              onOpenDetails={(plans, index) => {
                 setDetailPlans(plans);
                 setDetailIndex(index);
                 setDetailIsAi(true);
@@ -660,10 +660,10 @@ export default function Plans() {
       <EnrollModal open={enrollModalOpen} onClose={() => setEnrollModalOpen(false)} plan={enrollPlan} />
       <PlanDetailsModal
         plans={detailPlans}
-        currentIndex={detailIndex}
-        isAi={detailIsAi}
+        selectedIndex={detailIndex}
+        isOpen={detailIndex !== null}     isAiContext={detailIsAi}
         onClose={() => { setDetailIndex(null); setDetailPlans([]); setDetailIsAi(false); }}
-        onIndexChange={setDetailIndex}
+        onChangeIndex={setDetailIndex}
         onEnroll={handleEnroll}
       />
     </div>
