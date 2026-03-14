@@ -286,7 +286,7 @@ export default function Plans() {
 
   // Memoize available carriers to avoid re-creating on every render
   
-  const aiScores = useMemo(() => scoreAllPlans(filteredPlans, { rxDrugs, doctors }, aiModel), [filteredPlans, rxDrugs, doctors, aiModel]);   const topPlan = aiScores.length > 0 ? aiScores[0] : null;   const availableCarriers = useMemo(
+  const aiScores = useMemo(() => { const ep = filteredPlans.map(p => ({...p, doctorNetworkStatus: doctorNetworkMap[p.planId]})); return scoreAllPlans(ep as any, { rxDrugs, doctors }, aiModel); }, [filteredPlans, rxDrugs, doctors, aiModel]);   const topPlan = aiScores.length > 0 ? aiScores[0] : null;   const availableCarriers = useMemo(
     () => Array.from(new Set(plans.map((p) => p.carrier))).sort(),
     [plans]
   );
