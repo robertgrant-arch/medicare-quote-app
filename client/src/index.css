@@ -140,10 +140,6 @@
     padding-right: 1rem;
   }
 
-  .flex {
-    min-height: 0;
-    min-width: 0;
-  }
 
   @media (min-width: 640px) {
     .container {
@@ -152,18 +148,18 @@
     }
   }
 
+    @media (min-width: 768px) {
+    .container {
+      padding-left: 1.75rem;
+      padding-right: 1.75rem;
+    }
+  }
+
   @media (min-width: 1024px) {
     .container {
       padding-left: 2rem;
       padding-right: 2rem;
       max-width: 1280px;
-    }
-  }
-
-    @media (min-width: 768px) {
-    .container {
-      padding-left: 1.75rem;
-      padding-right: 1.75rem;
     }
   }
 
