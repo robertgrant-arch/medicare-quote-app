@@ -29,7 +29,7 @@ import PlanCard from "@/components/PlanCard";
 import FilterSidebar from "@/components/FilterSidebar";
 import RxDrugsModal from "@/components/RxDrugsModal";
 import DoctorsModal from "@/components/DoctorsModal";
-import EnrollModal from "@/components/EnrollModal"; import AITop3Cards from "@/components/AITop3Cards"; import { scoreAllPlans, MODEL_A, MODEL_B } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
+import EnrollModal from "@/components/EnrollModal"; import PlanDetailsModal from "@/components/PlanDetailsModal"; import PlanDetailsModal from "@/components/PlanDetailsModal"; import PlanDetailsModal from "@/components/PlanDetailsModal"; import AITop3Cards from "@/components/AITop3Cards"; import { scoreAllPlans, MODEL_A, MODEL_B } from "@/lib/aiRecommendationEngine"; import type { ScoringModel } from "@/lib/aiRecommendationEngine";
 import type { FilterState, MedicarePlan, RxDrug, Doctor, PlanDoctorNetworkStatus } from "@/lib/types";
 import type { MBIVerifyResult } from "@/components/MBIVerifyModal"; import { useSessionState } from "@/hooks/useSessionState";
 
@@ -141,8 +141,8 @@ export default function Plans() {
   const [doctors, setDoctors] = useSessionState<Doctor[]>("mqe_doctors", []);
   const [rxModalOpen, setRxModalOpen] = useState(false);
   const [doctorsModalOpen, setDoctorsModalOpen] = useState(false);
-  const [enrollModalOpen, setEnrollModalOpen] = useState(false);
-  const [enrollPlan, setEnrollPlan] = useState<MedicarePlan | null>(null);
+  const [enrollModalOpen, setEnrollModalOpen] = useState(false);  const [detailPlans, setDetailPlans] = useState<any[]>([]); const [detailIndex, setDetailIndex] = useState<number | null>(null); const [detailIsAi, setDetailIsAi] = useState(false);
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [zipInput, setZipInput] = useState(zip);
