@@ -541,7 +541,7 @@ export default function Home() {
                 ))}
               </ul>
               <button
-                onClick={() => navigate("/plans?zip=64106")}
+                onClick={() => navigate(`/plans?zip=${zip || "64106"}`)}
                 className="btn-cta inline-flex items-center gap-2 px-7 py-4 text-base font-bold"
                 style={{ backgroundColor: "#C41E3A", color: "white", borderRadius: "10px" }}
               >
@@ -730,7 +730,7 @@ export default function Home() {
                   { label: "Medicare 101", href: "/resources/medicare-101" },
                   { label: "Enrollment Periods", href: "/resources/enrollment-periods" },
                   { label: "Star Ratings Guide", href: "/resources/star-ratings" },
-                  { label: "Compare Plans", href: "/plans?zip=64106" },
+                  { label: "Compare Plans", href: `/plans?zip=${zip || "64106"}` },
                 ],
               },
               {
