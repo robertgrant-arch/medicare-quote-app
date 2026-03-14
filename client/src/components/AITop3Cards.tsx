@@ -35,7 +35,7 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
           const plan = s.plan;
           const eb = plan.extraBenefits || ({} as any);
           const benefitCount = Object.values(eb).filter((b: any) => b?.covered).length;
-          const drugCost = (plan as any).estAnnualDrugCost ?? 0;
+          const drugCost = (plan as any).estimatedAnnualDrugCost ?? 0;
           const net = doctorNetworkMap[plan.planId];
           const stars = plan.starRating.overall;
           const initials = plan.carrier.split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase();
@@ -154,7 +154,7 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                   { label: 'Monthly Premium', val: detailPlan.plan.premium === 0 ? '$0' : `$${detailPlan.plan.premium}/mo` },
                   { label: 'Deductible', val: `$${detailPlan.plan.deductible}` },
                   { label: 'Max Out-of-Pocket', val: `$${detailPlan.plan.maxOutOfPocket.toLocaleString()}` },
-                  { label: 'Est. Drug Cost', val: ((detailPlan.plan as any).estAnnualDrugCost ?? 0) === 0 ? 'N/A' : `$${((detailPlan.plan as any).estAnnualDrugCost).toLocaleString()}/yr` },
+                  { label: 'Est. Drug Cost', val: ((detailPlan.plan as any).estimatedAnnualDrugCost ?? 0) === 0 ? 'N/A' : `$${((detailPlan.plan as any).estimatedAnnualDrugCost).toLocaleString()}/yr` },
                   { label: 'Drug Deductible', val: detailPlan.plan.rxDrugs?.deductible || '$0' },
                   { label: 'Extra Benefits', val: `${Object.values(detailPlan.plan.extraBenefits || {}).filter((b: any) => b?.covered).length}/8` },
                 ].map(({ label, val }) => (

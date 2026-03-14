@@ -157,11 +157,11 @@ function calcExtraBenefitsScore(
   return score; // 0.0-1.0
 }
 
-function getEstAnnualDrugCost(plan: MedicarePlan): number {
+function getEstimatedAnnualDrugCost(plan: MedicarePlan): number {
   // Try to read the estimated annual drug cost from the plan
   // It may be stored as a custom field added by the API
-  const p = plan as MedicarePlan & { estAnnualDrugCost?: number };
-  return typeof p.estAnnualDrugCost === 'number' ? p.estAnnualDrugCost : 0;
+  const p = plan as MedicarePlan & { estimatedAnnualDrugCost?: number };
+  return typeof p.estimatedAnnualDrugCost === 'number' ? p.estimatedAnnualDrugCost : 0;
 }
 
 export function scoreAllPlansInternal(
@@ -176,7 +176,7 @@ export function scoreAllPlansInternal(
 
   // Pre-compute normalization max values
   const maxPremium = Math.max(...plans.map(p => p.premium * 12), 1);
-  const maxDrugCost = Math.max(...plans.map(p => getEstAnnualDrugCost(p)), 1);
+  const maxDrugCost = Math.max(...plans.map(p => getEstimatedAnnualDrugCost(p)), 1);
   const maxMOOP = Math.max(...plans.map(p => p.maxOutOfPocket), 1);
   const maxCopay = Math.max(
     ...plans.map(p => parseCopay(p.copays?.primaryCare || '') * 4 + parseCopay(p.copays?.specialist || '') * 2),
@@ -188,13 +188,13 @@ export function scoreAllPlansInternal(
   );
 
   const avgTotalCost = plans.reduce(
-    (s, p) => s + (p.premium * 12) + getEstAnnualDrugCost(p), 0
+    (s, p) => s + (p.premium * 12) + getEstimatedAnnualDrugCost(p), 0
   ) / plans.length;
 
   const avgMOOP = plans.reduce((s, p) => s + p.maxOutOfPocket, 0) / plans.length;
 
   const results: PlanScore[] = plans.map(plan => {
-    const p = plan as MedicarePlan & { estAnnualDrugCost?: number; doctorNetworkStatus?: { inNetworkCount: number } };
+    const p = plan as MedicarePlan & { estimatedAnnualDrugCost?: number; doctorNetworkStatus?: { inNetworkCount: number } };
 
     // Doctor score
     let doctorRaw = 0.5; // neutral when no doctors
@@ -203,7 +203,7 @@ export function scoreAllPlansInternal(
       doctorRaw = inNet / totalDoctors;
     }
 
-    const drugCost = getEstAnnualDrugCost(plan);
+    const drugCost = getEstimatedAnnualDrugCost(plan);
     const drugCostRaw = 1 - drugCost / maxDrugCost;
     const premiumRaw = 1 - (plan.premium * 12) / maxPremium;
     const moopRaw = 1 - plan.maxOutOfPocket / maxMOOP;
