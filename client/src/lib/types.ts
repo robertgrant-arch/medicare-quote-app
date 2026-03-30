@@ -77,6 +77,9 @@ export interface MedicarePlan {
   snpCategory?: SnpCategory; // Normalized SNP category for grouping
   carrierLogoColor: string; // Brand color for carrier
   carrierLogoTextColor: string;
+  // Drug plan structure
+  hasDrugCoverage?: boolean; // true = MAPD (with Part D), false = MA-Only (no Part D)
+  estimatedAnnualDrugCost?: number; // Pre-calculated annual drug cost for user's Rx list
 }
 
 export interface FilterState {
@@ -84,9 +87,22 @@ export interface FilterState {
   carriers: string[];
   premiumRange: [number, number];
   benefits: string[];
-  snpCategories: SnpCategory[]; // SNP sub-type filters
+  snpCategories: SnpCategory[]; // SNP sub-type filters (DSNP | CSNP | ISNP)
   quickFilter: "all" | "ppo" | "zero-premium" | "hmo";
-  sortBy: "best-match" | "premium-low" | "premium-high" | "star-rating" | "moop-low" | "total-cost" | "doctors-network";
+  sortBy:
+    | "best-match"
+    | "premium-low"
+    | "premium-high"
+    | "star-rating"
+    | "moop-low"
+    | "total-cost"
+    | "doctors-network"
+    | "drug-cost"      // NEW — Sort by estimated annual drug cost (lowest first)
+    | "benefits-max"   // NEW — Sort by extra benefits count (most first)
+    | "deductible-low"; // NEW — Sort by drug deductible (lowest first)
+  // NEW filter fields
+  planStructure: string[]; // "MAPD" | "MA-Only"
+  drugCostRange: [number, number]; // Estimated annual drug cost range in dollars
 }
 
 export interface SavedPlan {
