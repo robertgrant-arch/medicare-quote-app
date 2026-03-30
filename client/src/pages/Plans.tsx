@@ -46,7 +46,16 @@ const DEFAULT_FILTERS: FilterState = {
   quickFilter: "all",
   sortBy: "moop-low",
   snpCategories: [],
+  planStructure: [],
+  drugCostRange: [0, 5000],
 };
+
+// Helper: parse a dollar-string like "$545" → 545, "$0" → 0
+function parseDollarString(val: string): number {
+  if (!val) return 0;
+  const num = parseFloat(val.replace(/[^0-9.]/g, ""));
+  return isNaN(num) ? 0 : num;
+}
 
 function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan[] {
   let result = [...plans];
@@ -87,11 +96,32 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
     );
   }
 
-  // SNP Categories
+  // SNP Categories (D-SNP, C-SNP, I-SNP individually)
   if (filters.snpCategories && filters.snpCategories.length > 0) {
     result = result.filter((p) => {
       const cat = p.snpCategory || null;
       return filters.snpCategories.includes(cat as any);
+    });
+  }
+
+  // Plan Structure: MAPD (with drug coverage) vs MA-Only (without)
+  if (filters.planStructure && filters.planStructure.length > 0) {
+    result = result.filter((p) => {
+      // hasDrugCoverage: explicit flag if present; otherwise infer from rxDrugs
+      const hasRx =
+        p.hasDrugCoverage ??
+        (p.rxDrugs?.tier1 != null && p.rxDrugs.tier1 !== "" && p.rxDrugs.tier1 !== "N/A");
+      if (filters.planStructure.includes("MAPD") && hasRx) return true;
+      if (filters.planStructure.includes("MA-Only") && !hasRx) return true;
+      return false;
+    });
+  }
+
+  // Drug cost range
+  if (filters.drugCostRange && (filters.drugCostRange[0] > 0 || filters.drugCostRange[1] < 5000)) {
+    result = result.filter((p) => {
+      const cost = (p as any).estimatedAnnualDrugCost ?? 0;
+      return cost >= filters.drugCostRange[0] && cost <= filters.drugCostRange[1];
     });
   }
 
@@ -123,6 +153,28 @@ function applyFilters(plans: MedicarePlan[], filters: FilterState): MedicarePlan
         const aCost = a.premium * 12 + ((a as any).estimatedAnnualDrugCost ?? 0);
         const bCost = b.premium * 12 + ((b as any).estimatedAnnualDrugCost ?? 0);
         return aCost - bCost;
+      });
+      break;
+    // NEW sort options
+    case "drug-cost":
+      result.sort((a, b) => {
+        const aCost = (a as any).estimatedAnnualDrugCost ?? 0;
+        const bCost = (b as any).estimatedAnnualDrugCost ?? 0;
+        return aCost - bCost;
+      });
+      break;
+    case "benefits-max":
+      result.sort((a, b) => {
+        const countCovered = (p: MedicarePlan) =>
+          Object.values(p.extraBenefits).filter((eb) => eb?.covered).length;
+        return countCovered(b) - countCovered(a);
+      });
+      break;
+    case "deductible-low":
+      result.sort((a, b) => {
+        const aDeduct = parseDollarString(a.rxDrugs?.deductible ?? "$0");
+        const bDeduct = parseDollarString(b.rxDrugs?.deductible ?? "$0");
+        return aDeduct - bDeduct;
       });
       break;
     default:
@@ -341,7 +393,9 @@ export default function Plans() {
     filters.carriers.length +
     (filters.snpCategories?.length ?? 0) +
     filters.benefits.length +
-    (filters.premiumRange[1] < 200 ? 1 : 0);
+    (filters.premiumRange[1] < 200 ? 1 : 0) +
+    (filters.planStructure?.length ?? 0) +
+    (filters.drugCostRange && (filters.drugCostRange[0] > 0 || filters.drugCostRange[1] < 5000) ? 1 : 0);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#F8FAFC", fontFamily: "'DM Sans', sans-serif" }}>
