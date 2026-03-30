@@ -14,7 +14,21 @@ interface Props {
 
 export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, onEnroll, onOpenDetails }: Props) {
   const top3 = scores.slice(0, 3);
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  // All 3 "Why this plan?" breakdowns start expanded by default
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set([0, 1, 2]));
+
+  const toggleCard = (idx: number) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
 
   const RANK_LABELS = ['#1 Best Match', '#2 Runner Up', '#3 Top Pick'];
   const RANK_COLORS = ['#FCD34D', '#C0C0C0', '#CD7F32'];
@@ -36,10 +50,10 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
           const plan = s.plan;
           const eb = plan.extraBenefits || ({} as Record<string, { covered?: boolean }>);
           const benefitCount = Object.values(eb).filter((b: any) => b?.covered).length;
-          const drugCost = plan.estimatedAnnualDrugCost ?? 0;
+          const drugCost = (plan as any).estimatedAnnualDrugCost ?? 0;
           const net = doctorNetworkMap[plan.planId];
           const stars = plan.starRating.overall;
-          const isExpanded = expandedIdx === idx;
+          const isExpanded = expandedCards.has(idx);
 
           return (
             <div key={plan.id} style={{ padding: '16px', borderRight: idx < 2 ? '1px solid #d1d9e6' : 'none', background: idx === 0 ? '#fffff5' : 'white', position: 'relative' }}>
@@ -98,8 +112,8 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                 </div>
               )}
 
-              {/* AI Reasons */}
-              {s.reasons.slice(0, 2).map((r, ri) => (
+              {/* AI Reasons — always shown in collapsed state as a teaser */}
+              {!isExpanded && s.reasons.slice(0, 2).map((r, ri) => (
                 <div key={ri} style={{ fontSize: '10px', color: '#374151', marginBottom: '4px', paddingLeft: '8px', borderLeft: '2px solid #1B365D' }}>{r}</div>
               ))}
 
@@ -112,28 +126,49 @@ export default function AITop3Cards({ scores, model, doctorNetworkMap, doctors, 
                 >Details</button>
               </div>
 
-              <button onClick={() => setExpandedIdx(isExpanded ? null : idx)} style={{ width: '100%', background: 'none', border: 'none', color: '#6B7280', fontSize: '10px', cursor: 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />} {isExpanded ? 'Hide score' : 'Why this plan?'}
+              {/* "Why this plan?" toggle — starts expanded for all 3 */}
+              <button
+                onClick={() => toggleCard(idx)}
+                style={{ width: '100%', background: 'none', border: 'none', color: '#6B7280', fontSize: '10px', cursor: 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+              >
+                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {isExpanded ? 'Hide breakdown' : 'Why this plan?'}
               </button>
 
-              {/* Expanded score breakdown */}
+              {/* Expanded AI Score Breakdown — all 3 open by default */}
               {isExpanded && (
                 <div style={{ marginTop: '8px', background: '#F8FAFC', borderRadius: '8px', padding: '10px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#1B365D', marginBottom: '8px' }}>AI Score Breakdown</div>
-                  {(s.breakdown || []).filter(b => b.weight > 0).map(b => {
-                    const pct = b.weight > 0 ? (b.contribution / b.weight) * 100 : 0;
-                    return (
-                      <div key={b.factor} style={{ marginBottom: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '2px' }}>
-                          <span style={{ color: '#374151' }}>{b.factor}</span>
-                          <span style={{ color: '#6B7280' }}>{b.weight}%</span>
-                        </div>
-                        <div style={{ height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', background: pct >= 70 ? '#34D399' : pct >= 40 ? '#FCD34D' : '#F87171', borderRadius: '2px', width: `${Math.min(100, pct)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#1B365D', marginBottom: '8px' }}>Why This Plan?</div>
+
+                  {/* All AI reasons */}
+                  {s.reasons.length > 0 && (
+                    <div style={{ marginBottom: '10px' }}>
+                      {s.reasons.map((r, ri) => (
+                        <div key={ri} style={{ fontSize: '10px', color: '#374151', marginBottom: '5px', paddingLeft: '8px', borderLeft: '2px solid #1B365D', lineHeight: 1.4 }}>{r}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Score factor bars */}
+                  {(s.breakdown || []).filter(b => b.weight > 0).length > 0 && (
+                    <>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#6B7280', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>Score Breakdown</div>
+                      {(s.breakdown || []).filter(b => b.weight > 0).map(b => {
+                        const pct = b.weight > 0 ? (b.contribution / b.weight) * 100 : 0;
+                        return (
+                          <div key={b.factor} style={{ marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '2px' }}>
+                              <span style={{ color: '#374151' }}>{b.factor}</span>
+                              <span style={{ color: '#6B7280' }}>{b.weight}%</span>
+                            </div>
+                            <div style={{ height: '4px', background: '#E5E7EB', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: pct >= 70 ? '#34D399' : pct >= 40 ? '#FCD34D' : '#F87171', borderRadius: '2px', width: `${Math.min(100, pct)}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               )}
             </div>
