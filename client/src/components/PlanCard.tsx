@@ -20,6 +20,9 @@ import {
   UserRound,
   X,
   DollarSign,
+  AlertCircle,
+  Building2,
+  Hash,
 } from "lucide-react";
 import type { MedicarePlan, PlanDoctorNetworkStatus, RxDrug } from "@/lib/types";
 import StarRating from "./StarRating";
@@ -60,6 +63,9 @@ const BENEFIT_LABELS: Record<string, string> = {
   telehealth: "Telehealth",
   meals: "Meals",
 };
+
+// Benefits that show allowance amounts when available
+const ALLOWANCE_BENEFITS = new Set(["dental", "vision", "hearing"]);
 
 export default function PlanCard({
   plan,
@@ -117,7 +123,20 @@ export default function PlanCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{plan.carrier}</p>
-            <h3 className="text-sm font-bold leading-tight mt-0.5" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>{plan.planName}</h3>
+            <div className="flex items-start justify-between gap-2 mt-0.5">
+              <h3 className="text-sm font-bold leading-tight" style={{ color: "#1B365D", fontFamily: "'Inter', sans-serif" }}>{plan.planName}</h3>
+              {/* Contract ID — shown next to plan name */}
+              {plan.contractId && (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                  style={{ backgroundColor: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0" }}
+                  title={`Contract ID: ${plan.contractId} / Plan ID: ${plan.planId}`}
+                >
+                  <Hash size={8} />
+                  {plan.contractId}/{plan.planId}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E8F0FE", color: "#1B365D" }}>{plan.planType}</span>
               {plan.snpType && (() => {
@@ -295,9 +314,22 @@ export default function PlanCard({
             {benefitKeys.map((key) => {
               const benefit = plan.extraBenefits[key];
               const Icon = BENEFIT_ICONS[key];
+              const showAllowance =
+                ALLOWANCE_BENEFITS.has(key) &&
+                benefit.covered &&
+                benefit.annualLimit;
               return (
-                <span key={key} className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${benefit.covered ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400 line-through'}`}>
-                  <Icon size={10} />{BENEFIT_LABELS[key]}
+                <span
+                  key={key}
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${benefit.covered ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400 line-through'}`}
+                  title={showAllowance ? `${BENEFIT_LABELS[key]}: ${benefit.annualLimit}` : undefined}
+                >
+                  <Icon size={10} />
+                  {BENEFIT_LABELS[key]}
+                  {/* Show allowance for dental, vision, hearing if available */}
+                  {showAllowance && (
+                    <span className="font-normal opacity-80 ml-0.5">{benefit.annualLimit}</span>
+                  )}
                 </span>
               );
             })}
