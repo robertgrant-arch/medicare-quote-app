@@ -3,18 +3,22 @@
 
 import { useState } from "react";
 import { SlidersHorizontal, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
-import type { FilterState, PlanType, Carrier } from "@/lib/types";
+import type { FilterState, PlanType, SnpCategory } from "@/lib/types";
 
 export interface FilterSidebarProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
   totalCount: number;
   filteredCount: number;
-  plans?: any[]; // Plans array for dynamic counts   availableCarriers?: string[]; // Dynamic carriers from real plan data
+  plans?: any[]; // Plans array for dynamic counts
+  availableCarriers?: string[]; // Dynamic carriers from real plan data
 }
 
-const PLAN_TYPES: PlanType[] = ["HMO", "PPO", "PFFS", "SNP"];
+// SNP removed — now broken out into D-SNP / C-SNP / I-SNP in its own section
+const PLAN_TYPES: PlanType[] = ["HMO", "PPO", "PFFS"];
+
 const DEFAULT_CARRIERS: string[] = ["UnitedHealthcare", "Humana", "Aetna", "Cigna", "WellCare", "Blue KC"];
+
 const BENEFITS_LIST = [
   { key: "dental", label: "Dental Coverage" },
   { key: "vision", label: "Vision Coverage" },
@@ -24,6 +28,12 @@ const BENEFITS_LIST = [
   { key: "transportation", label: "Transportation" },
   { key: "telehealth", label: "Telehealth" },
   { key: "meals", label: "Meals Benefit" },
+];
+
+const SNP_TYPES: { key: SnpCategory; label: string; description: string; color: string; bg: string }[] = [
+  { key: "DSNP", label: "D-SNP", description: "Dual Eligible (Medicare + Medicaid)", color: "#7C3AED", bg: "#F3E8FF" },
+  { key: "CSNP", label: "C-SNP", description: "Chronic Condition Special Needs", color: "#C2410C", bg: "#FFF7ED" },
+  { key: "ISNP", label: "I-SNP", description: "Institutional Special Needs", color: "#15803D", bg: "#F0FDF4" },
 ];
 
 function FilterSection({
@@ -59,9 +69,11 @@ export default function FilterSidebar({
   onChange,
   totalCount,
   filteredCount,
-  plans = [], availableCarriers,
+  plans = [],
+  availableCarriers,
 }: FilterSidebarProps) {
   const CARRIERS = availableCarriers && availableCarriers.length > 0 ? availableCarriers : DEFAULT_CARRIERS;
+
   const togglePlanType = (type: PlanType) => {
     const current = filters.planType;
     const updated = current.includes(type)
@@ -86,6 +98,23 @@ export default function FilterSidebar({
     onChange({ ...filters, benefits: updated });
   };
 
+  const toggleSnpCategory = (cat: SnpCategory) => {
+    if (!cat) return;
+    const current = filters.snpCategories ?? [];
+    const updated = current.includes(cat)
+      ? current.filter((c) => c !== cat)
+      : [...current, cat];
+    onChange({ ...filters, snpCategories: updated });
+  };
+
+  const togglePlanStructure = (structure: string) => {
+    const current = filters.planStructure ?? [];
+    const updated = current.includes(structure)
+      ? current.filter((s) => s !== structure)
+      : [...current, structure];
+    onChange({ ...filters, planStructure: updated });
+  };
+
   const resetFilters = () => {
     onChange({
       planType: [],
@@ -94,6 +123,9 @@ export default function FilterSidebar({
       benefits: [],
       quickFilter: "all",
       sortBy: "moop-low",
+      snpCategories: [],
+      planStructure: [],
+      drugCostRange: [0, 5000],
     });
   };
 
@@ -101,8 +133,17 @@ export default function FilterSidebar({
     filters.planType.length > 0 ||
     filters.carriers.length > 0 ||
     filters.benefits.length > 0 ||
+    (filters.snpCategories?.length ?? 0) > 0 ||
+    (filters.planStructure?.length ?? 0) > 0 ||
     filters.premiumRange[0] > 0 ||
-    filters.premiumRange[1] < 200;
+    filters.premiumRange[1] < 200 ||
+    (filters.drugCostRange && (filters.drugCostRange[0] > 0 || filters.drugCostRange[1] < 5000));
+
+  // Dynamic plan counts
+  const mapdCount = plans.filter((p: any) =>
+    p.hasDrugCoverage === true || (p.rxDrugs?.tier1 && p.rxDrugs.tier1 !== "N/A" && p.rxDrugs.tier1 !== "")
+  ).length;
+  const maOnlyCount = plans.length - mapdCount;
 
   return (
     <div className="bg-white rounded-xl p-5 sticky top-20" style={{ border: "1px solid #E8F0FE", boxShadow: "0 2px 12px rgba(27,54,93,0.07)" }}>
@@ -142,15 +183,56 @@ export default function FilterSidebar({
           }
           className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none"
           style={{ fontFamily: "'Inter', sans-serif" }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }} // v2
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#1B365D"; }}
           onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E7EB"; }}
         >
           <option value="moop-low">Lowest Out-of-Pocket Cost</option>
           <option value="premium-low">Premium: Low to High</option>
-          <option value="star-rating">Star Rating</option>
-          <option value="best-match">Best Match</option>
           <option value="premium-high">Premium: High to Low</option>
+          <option value="star-rating">Star Rating (Highest First)</option>
+          <option value="best-match">Best Match</option>
+          <option value="total-cost">Total Annual Cost (Premium + Drugs)</option>
+          <option value="drug-cost">Est. Drug Cost (Lowest First)</option>
+          <option value="benefits-max">Most Extra Benefits</option>
+          <option value="deductible-low">Drug Deductible (Lowest First)</option>
         </select>
+      </FilterSection>
+
+      {/* Plan Structure: MAPD vs MA-Only */}
+      <FilterSection title="Plan Structure">
+        <div className="space-y-2">
+          {[
+            {
+              key: "MAPD",
+              label: "MAPD",
+              description: "Includes Part D drug coverage",
+              count: mapdCount,
+            },
+            {
+              key: "MA-Only",
+              label: "MA-Only",
+              description: "No Part D drug coverage",
+              count: maOnlyCount,
+            },
+          ].map((item) => (
+            <label key={item.key} className="flex items-start gap-2.5 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={(filters.planStructure ?? []).includes(item.key)}
+                onChange={() => togglePlanStructure(item.key)}
+                className="w-4 h-4 rounded border-gray-300 mt-0.5 shrink-0"
+                style={{ accentColor: "#1B365D" }}
+              />
+              <span className="flex-1">
+                <span className="text-sm text-gray-700 font-semibold transition-colors group-hover:text-[#1B365D] block">
+                  {item.label}
+                </span>
+                <span className="text-[10px] text-gray-400">{item.description}</span>
+              </span>
+              <span className="text-xs text-gray-400 shrink-0">{item.count}</span>
+            </label>
+          ))}
+        </div>
       </FilterSection>
 
       {/* Plan Type */}
@@ -162,21 +244,66 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.planType.includes(type)}
                 onChange={() => togglePlanType(type)}
-                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
+                className="w-4 h-4 rounded border-gray-300"
+                style={{ accentColor: "#1B365D" }}
               />
               <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {type}
               </span>
               <span className="ml-auto text-xs text-gray-400">
-                {type === "SNP" ? plans.filter((p: any) => p.snpCategory).length : plans.filter((p: any) => !p.snpCategory && p.planType === type).length}
+                {plans.filter((p: any) => !p.snpCategory && p.planType === type).length}
               </span>
             </label>
           ))}
         </div>
       </FilterSection>
 
+      {/* Special Needs Plans (SNP) — broken out by sub-type */}
+      <FilterSection title="Special Needs Plans (SNP)" defaultOpen={false}>
+        <p className="text-[10px] text-gray-400 mb-3">
+          SNPs are specialized plans for beneficiaries with specific needs. Select one or more to filter.
+        </p>
+        <div className="space-y-2">
+          {SNP_TYPES.map((snp) => {
+            const count = plans.filter((p: any) => p.snpCategory === snp.key).length;
+            const isChecked = (filters.snpCategories ?? []).includes(snp.key);
+            return (
+              <label key={snp.key} className="flex items-start gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleSnpCategory(snp.key)}
+                  className="w-4 h-4 rounded border-gray-300 mt-0.5 shrink-0"
+                  style={{ accentColor: snp.color }}
+                />
+                <span className="flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: snp.bg, color: snp.color }}
+                    >
+                      {snp.label}
+                    </span>
+                    <span className="text-xs text-gray-400">{count} plans</span>
+                  </span>
+                  <span className="text-[10px] text-gray-400 block mt-0.5">{snp.description}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        {(filters.snpCategories?.length ?? 0) > 0 && (
+          <button
+            onClick={() => onChange({ ...filters, snpCategories: [] })}
+            className="mt-2 text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+          >
+            Clear SNP filters
+          </button>
+        )}
+      </FilterSection>
+
       {/* Insurance Company */}
-      <FilterSection title="Insurance Company">
+      <FilterSection title="Insurance Company" defaultOpen={false}>
         <div className="space-y-2">
           {CARRIERS.map((carrier) => (
             <label key={carrier} className="flex items-center gap-2.5 cursor-pointer group">
@@ -184,7 +311,8 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.carriers.includes(carrier)}
                 onChange={() => toggleCarrier(carrier)}
-                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
+                className="w-4 h-4 rounded border-gray-300"
+                style={{ accentColor: "#1B365D" }}
               />
               <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {carrier}
@@ -210,7 +338,8 @@ export default function FilterSidebar({
             onChange={(e) =>
               onChange({ ...filters, premiumRange: [filters.premiumRange[0], Number(e.target.value)] })
             }
-            className="w-full" style={{ accentColor: "#1B365D" }}
+            className="w-full"
+            style={{ accentColor: "#1B365D" }}
           />
           <div className="flex gap-2">
             {[0, 25, 50, 100].map((val) => (
@@ -219,15 +348,121 @@ export default function FilterSidebar({
                 onClick={() => onChange({ ...filters, premiumRange: [0, val === 0 ? 0 : val] })}
                 className="flex-1 text-xs py-1 rounded border transition-colors font-medium"
                 style={{
-                  borderColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#1B365D" : "#E5E7EB",
-                  color: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#1B365D" : "#6B7280",
-                  backgroundColor: filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0) ? "#E8F0FE" : "transparent",
+                  borderColor:
+                    filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0)
+                      ? "#1B365D"
+                      : "#E5E7EB",
+                  color:
+                    filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0)
+                      ? "#1B365D"
+                      : "#6B7280",
+                  backgroundColor:
+                    filters.premiumRange[1] <= val || (val === 0 && filters.premiumRange[1] === 0)
+                      ? "#E8F0FE"
+                      : "transparent",
                 }}
               >
                 {val === 0 ? "$0" : `$${val}`}
               </button>
             ))}
           </div>
+        </div>
+      </FilterSection>
+
+      {/* Estimated Annual Drug Cost */}
+      <FilterSection title="Est. Annual Drug Cost" defaultOpen={false}>
+        <div className="space-y-3">
+          <p className="text-[10px] text-gray-400">
+            Filter by estimated annual out-of-pocket drug cost based on your medications.
+          </p>
+          <div className="flex justify-between text-xs text-gray-500 font-medium">
+            <span>${(filters.drugCostRange?.[0] ?? 0).toLocaleString()}/yr</span>
+            <span>
+              {(filters.drugCostRange?.[1] ?? 5000) >= 5000
+                ? "$5,000+/yr"
+                : `$${(filters.drugCostRange?.[1] ?? 5000).toLocaleString()}/yr`}
+            </span>
+          </div>
+          {/* Min slider */}
+          <div className="space-y-1">
+            <label className="text-[10px] text-gray-400">Minimum</label>
+            <input
+              type="range"
+              min={0}
+              max={5000}
+              step={100}
+              value={filters.drugCostRange?.[0] ?? 0}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  drugCostRange: [
+                    Number(e.target.value),
+                    Math.max(Number(e.target.value), filters.drugCostRange?.[1] ?? 5000),
+                  ],
+                })
+              }
+              className="w-full"
+              style={{ accentColor: "#1B365D" }}
+            />
+          </div>
+          {/* Max slider */}
+          <div className="space-y-1">
+            <label className="text-[10px] text-gray-400">Maximum</label>
+            <input
+              type="range"
+              min={0}
+              max={5000}
+              step={100}
+              value={filters.drugCostRange?.[1] ?? 5000}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  drugCostRange: [
+                    Math.min(filters.drugCostRange?.[0] ?? 0, Number(e.target.value)),
+                    Number(e.target.value),
+                  ],
+                })
+              }
+              className="w-full"
+              style={{ accentColor: "#1B365D" }}
+            />
+          </div>
+          {/* Quick presets */}
+          <div className="flex gap-1.5 flex-wrap">
+            {[
+              { label: "Under $500", min: 0, max: 500 },
+              { label: "Under $1K", min: 0, max: 1000 },
+              { label: "Under $2K", min: 0, max: 2000 },
+            ].map((preset) => {
+              const isActive =
+                (filters.drugCostRange?.[0] ?? 0) === preset.min &&
+                (filters.drugCostRange?.[1] ?? 5000) === preset.max;
+              return (
+                <button
+                  key={preset.label}
+                  onClick={() =>
+                    onChange({ ...filters, drugCostRange: [preset.min, preset.max] })
+                  }
+                  className="text-[10px] px-2 py-1 rounded border font-medium transition-colors"
+                  style={{
+                    borderColor: isActive ? "#1B365D" : "#E5E7EB",
+                    color: isActive ? "#1B365D" : "#6B7280",
+                    backgroundColor: isActive ? "#E8F0FE" : "transparent",
+                  }}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+          {(filters.drugCostRange?.[0] ?? 0) > 0 || (filters.drugCostRange?.[1] ?? 5000) < 5000 ? (
+            <button
+              onClick={() => onChange({ ...filters, drugCostRange: [0, 5000] })}
+              className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Clear range
+            </button>
+          ) : null}
         </div>
       </FilterSection>
 
@@ -240,7 +475,8 @@ export default function FilterSidebar({
                 type="checkbox"
                 checked={filters.benefits.includes(b.key)}
                 onChange={() => toggleBenefit(b.key)}
-                className="w-4 h-4 rounded border-gray-300" style={{ accentColor: "#1B365D" }}
+                className="w-4 h-4 rounded border-gray-300"
+                style={{ accentColor: "#1B365D" }}
               />
               <span className="text-sm text-gray-700 font-medium transition-colors group-hover:text-[#1B365D]">
                 {b.label}
