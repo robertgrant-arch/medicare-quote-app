@@ -61,6 +61,7 @@ export default function ChatWidget() {
       const decoder = new TextDecoder();
       let buffer = '';
       let accumulated = '';
+      let currentEventType = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -72,22 +73,28 @@ export default function ChatWidget() {
 
         for (const line of lines) {
           if (line.startsWith('event: ')) {
-            const eventType = line.slice(7).trim();
+            currentEventType = line.slice(7).trim();
             continue;
           }
           if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
-            try {
-              const data = JSON.parse(dataStr);
-              if (data && typeof data === 'string') {
-                accumulated += data;
-                setMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', content: accumulated };
-                  return updated;
-                });
-              }
-            } catch { /* skip */ }
+            if (currentEventType === 'error') {
+              throw new Error(dataStr);
+            }
+            if (currentEventType === 'delta') {
+              try {
+                const data = JSON.parse(dataStr);
+                if (data && typeof data === 'string') {
+                  accumulated += data;
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role: 'assistant', content: accumulated };
+                    return updated;
+                  });
+                }
+              } catch { /* skip parse errors */ }
+            }
+            currentEventType = '';
           }
         }
       }
