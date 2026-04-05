@@ -94,10 +94,10 @@ export default function ChatWidget() {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
+    if (isOpen && !isLoading && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, isLoading]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
