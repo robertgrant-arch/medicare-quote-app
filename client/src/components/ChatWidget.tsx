@@ -114,10 +114,13 @@ export default function ChatWidget() {
     setMessages(prev => [...prev, assistantMsg]);
 
     try {
+      // Only send messages AFTER the initial greeting to the API
+      const apiMessages = updatedMessages.slice(1);
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: updatedMessages }),
+        body: JSON.stringify({ messages: apiMessages }),
       });
 
       if (!res.ok) throw new Error('Chat request failed');
@@ -145,9 +148,11 @@ export default function ChatWidget() {
           }
           if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
+
             if (currentEventType === 'error') {
               throw new Error(dataStr);
             }
+
             if (currentEventType === 'delta') {
               try {
                 const data = JSON.parse(dataStr);
@@ -215,54 +220,47 @@ export default function ChatWidget() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '400px',
-            height: '600px',
-            maxHeight: '80vh',
-            borderRadius: '16px',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            zIndex: 9999,
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-          }}
-        >
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: '400px',
+          height: '600px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          zIndex: 9999,
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+        }}>
           {/* Header */}
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#fff',
-              padding: '16px 20px',
+          <div style={{
+            background: 'linear-gradient(135deg, #1e40af, #2563eb)',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.2)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                }}
-              >
-                🏥
+              justifyContent: 'center',
+              fontSize: '20px',
+            }}>
+              🏥
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: '#fff', fontWeight: 600, fontSize: '16px' }}>
+                Medicare Guide
               </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>Medicare Guide</div>
-                <div style={{ fontSize: '11px', opacity: 0.85 }}>by SelectQuote</div>
+              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px' }}>
+                by SelectQuote
               </div>
             </div>
             <button
@@ -287,17 +285,15 @@ export default function ChatWidget() {
           </div>
 
           {/* Messages */}
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              background: '#f8fafc',
-            }}
-          >
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            background: '#f8fafc',
+          }}>
             {messages.map((msg, i) => (
               <div
                 key={i}
@@ -329,10 +325,33 @@ export default function ChatWidget() {
               </div>
             ))}
             {isLoading && messages[messages.length - 1]?.content === '' && (
-              <div style={{ display: 'flex', gap: '4px', padding: '8px 16px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0s' }} />
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }} />
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#94a3b8', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }} />
+              <div style={{ textAlign: 'center', padding: '8px' }}>
+                <div style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  animation: 'pulse 1s infinite',
+                  marginRight: '4px',
+                }} />
+                <div style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  animation: 'pulse 1s infinite 0.2s',
+                  marginRight: '4px',
+                }} />
+                <div style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#2563eb',
+                  animation: 'pulse 1s infinite 0.4s',
+                }} />
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -342,14 +361,14 @@ export default function ChatWidget() {
           <form
             onSubmit={sendMessage}
             style={{
+              padding: '12px 16px',
+              borderTop: '1px solid #e2e8f0',
               display: 'flex',
               gap: '8px',
-              padding: '12px 16px',
               background: '#fff',
-              borderTop: '1px solid #e2e8f0',
-              flexShrink: 0,
             }}
           >
+ 
             <input
               ref={inputRef}
               type="text"
@@ -374,14 +393,14 @@ export default function ChatWidget() {
                 width: '40px',
                 height: '40px',
                 borderRadius: '50%',
-                background: input.trim() ? '#2563eb' : '#cbd5e1',
+                background: input.trim() ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1',
                 color: '#fff',
                 border: 'none',
                 cursor: input.trim() ? 'pointer' : 'default',
-                fontSize: '18px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                fontSize: '18px',
               }}
             >
               ▲
@@ -389,18 +408,15 @@ export default function ChatWidget() {
           </form>
 
           {/* Footer */}
-          <div
-            style={{
-              textAlign: 'center',
-              fontSize: '11px',
-              color: '#94a3b8',
-              padding: '6px',
-              background: '#fff',
-              borderTop: '1px solid #f1f5f9',
-              flexShrink: 0,
-            }}
-          >
-            AI assistant · Not a licensed agent · <a href="tel:1-800-555-0100" style={{ color: '#2563eb', textDecoration: 'none' }}>1-800-555-0100</a>
+          <div style={{
+            padding: '8px 16px',
+            textAlign: 'center',
+            fontSize: '11px',
+            color: '#94a3b8',
+            background: '#fff',
+            borderTop: '1px solid #f1f5f9',
+          }}>
+            AI assistant · Not a licensed agent · <a href="tel:1-800-555-0100" style={{ color: '#2563eb' }}>1-800-555-0100</a>
           </div>
         </div>
       )}
