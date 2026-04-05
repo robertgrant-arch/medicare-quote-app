@@ -7,7 +7,7 @@ interface Message {
 
 const INITIAL_MESSAGE: Message = {
   role: 'assistant',
-  content: "Hi, I'm Medicare Guide, SelectQuote's AI assistant \u2014 not a human or licensed agent. I can help you compare Medicare Advantage plans and narrow down options based on what matters most to you.\n\nTo start, what's most important to you in a plan \u2014 keeping your doctors, lowering costs, better drug coverage, or extra benefits like dental, vision, or fitness?"
+  content: "Hi there! I'm Medicare Guide, a high-powered AI assistant built by SelectQuote. I'm not a licensed agent or a human \u2014 I'm here to help guide you through your Medicare Advantage options and find the best plan for your needs.\n\nWhat's most important to you in a plan \u2014 keeping your doctors, lowering costs, better drug coverage, or extra benefits like dental, vision, or fitness?"
 };
 
 function renderMarkdown(text: string): ReactNode[] {
