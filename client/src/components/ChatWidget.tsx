@@ -89,7 +89,7 @@ function parseActionTags(text: string): { cleanText: string; actions: any[] } {
 }
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
