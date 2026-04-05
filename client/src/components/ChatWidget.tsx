@@ -77,6 +77,17 @@ function renderMarkdown(text: string): ReactNode[] {
   return nodes;
 }
 
+function parseActionTags(text: string): { cleanText: string; actions: any[] } {
+  const actionRegex = /\[ACTION:(\{[^}]+\})\]/g;
+  const actions: any[] = [];
+  let match;
+  while ((match = actionRegex.exec(text)) !== null) {
+    try { actions.push(JSON.parse(match[1])); } catch {}
+  }
+  const cleanText = text.replace(actionRegex, '').trim();
+  return { cleanText, actions };
+}
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
@@ -182,6 +193,28 @@ export default function ChatWidget() {
     } finally {
       setIsLoading(false);
             setTimeout(() => inputRef.current?.focus(), 50);
+            // Process action tags from the last assistant message
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg?.role === 'assistant' && lastMsg.content) {
+          const { cleanText, actions } = parseActionTags(lastMsg.content);
+          if (actions.length > 0) {
+            actions.forEach(action => {
+              if (action.type === 'OPEN_DRUGS_DOCTORS_MODAL') {
+                window.dispatchEvent(new CustomEvent('openDrugsDoctorsModal'));
+              } else if (action.type === 'COLLECT_PHONE') {
+                window.dispatchEvent(new CustomEvent('collectPhone'));
+              } else if (action.type === 'COLLECT_NAME') {
+                window.dispatchEvent(new CustomEvent('collectName'));
+              }
+            });
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', content: cleanText };
+            return updated;
+          }
+        }
+        return prev;
+      });
     }
   };
 
