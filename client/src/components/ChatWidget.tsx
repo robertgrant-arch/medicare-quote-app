@@ -176,6 +176,7 @@ export default function ChatWidget() {
       });
     } finally {
       setIsLoading(false);
+            setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
