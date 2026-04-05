@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,6 +9,73 @@ const INITIAL_MESSAGE: Message = {
   role: 'assistant',
   content: "Hi, I'm Medicare Guide, SelectQuote's AI assistant \u2014 not a human or licensed agent. I can help you compare Medicare Advantage plans and narrow down options based on what matters most to you.\n\nTo start, what's most important to you in a plan \u2014 keeping your doctors, lowering costs, better drug coverage, or extra benefits like dental, vision, or fitness?"
 };
+
+function renderMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  // Split by tokens: markdown links [text](url), bold **text**, bare paths /foo/bar
+  const tokenRegex = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\/[a-z][-a-z0-9/]*(?:\?[a-z0-9=&%_-]+)?)/gi;
+  const parts = text.split(tokenRegex);
+
+  parts.forEach((part, i) => {
+    if (!part) return;
+
+    // Markdown link: [text](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      nodes.push(
+        <a
+          key={i}
+          href={linkMatch[2]}
+          style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 500 }}
+          target={linkMatch[2].startsWith('http') ? '_blank' : '_self'}
+          rel="noopener noreferrer"
+        >
+          {linkMatch[1]}
+        </a>
+      );
+      return;
+    }
+
+    // Bold: **text** — if inner text is a path, make it a link
+    const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+    if (boldMatch) {
+      const inner = boldMatch[1];
+      if (inner.startsWith('/')) {
+        nodes.push(
+          <a
+            key={i}
+            href={inner}
+            style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 600 }}
+          >
+            {inner}
+          </a>
+        );
+      } else {
+        nodes.push(<strong key={i} style={{ fontWeight: 600 }}>{inner}</strong>);
+      }
+      return;
+    }
+
+    // Bare path: /plans?zip=66208, /part-d/formulary-search, etc.
+    if (/^\/[a-z][-a-z0-9/]*(?:\?[a-z0-9=&%_-]+)?$/i.test(part)) {
+      nodes.push(
+        <a
+          key={i}
+          href={part}
+          style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 500 }}
+        >
+          {part}
+        </a>
+      );
+      return;
+    }
+
+    // Plain text
+    nodes.push(<span key={i}>{part}</span>);
+  });
+
+  return nodes;
+}
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,27 +177,6 @@ export default function ChatWidget() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatContent = (content: string) => {
-    const parts = content.split(/(\[.*?\]\(.*?\))/g);
-    return parts.map((part, i) => {
-      const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
-      if (linkMatch) {
-        return (
-          <a
-            key={i}
-            href={linkMatch[2]}
-            style={{ color: '#2563eb', textDecoration: 'underline' }}
-            target={linkMatch[2].startsWith('http') ? '_blank' : '_self'}
-            rel="noopener noreferrer"
-          >
-            {linkMatch[1]}
-          </a>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
   };
 
   return (
@@ -275,7 +321,7 @@ export default function ChatWidget() {
                     wordBreak: 'break-word',
                   }}
                 >
-                  {msg.content ? formatContent(msg.content) : (
+                  {msg.content ? renderMarkdown(msg.content) : (
                     <span style={{ color: '#94a3b8' }}>Thinking...</span>
                   )}
                 </div>
