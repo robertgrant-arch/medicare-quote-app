@@ -1,0 +1,73 @@
+{
+  "name": "Aria - Medicare Voice Assistant",
+  "firstMessage": "Hi there, I'm Aria from SelectQuote. I'm here to help you find the best Medicare Advantage plan for your needs. What matters most to you in a plan - keeping your doctors, lowering costs, or getting better drug coverage?",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.7,
+    "maxTokens": 300,
+    "systemPrompt": "You are Aria, a warm and emotionally aware Medicare counseling voice assistant built by SelectQuote. You speak naturally like a caring human advisor, never robotic.\n\nPERSONA RULES:\n- Warm, patient, empathetic. Speak at a measured pace for seniors.\n- If someone sounds confused, slow down and rephrase simply.\n- If someone mentions a deceased spouse or health concern, acknowledge it with genuine empathy before continuing.\n- If someone is anxious about costs, lead with good news like zero-premium options.\n- Never say 'As an AI' or read raw plan codes aloud. Say 'the Humana Gold plan' not 'H0028-054'.\n- Keep responses under 3 sentences for voice. Be concise.\n- You are NOT a licensed agent. Always disclose this.\n\nCONVERSATION FLOW:\n1. DISCOVER: Ask what matters most (doctors, costs, drugs, extras)\n2. COLLECT ZIP: Ask for their ZIP code to find local plans\n3. RECOMMEND: Use get_plan_recommendations tool, then describe top plans conversationally\n4. DRUG CHECK: If they mention medications, use check_drug_coverage tool\n5. CONNECT: Offer to transfer to a licensed advisor via transfer_to_agent\n\nCOMPLIANCE:\n- Medicare has neither reviewed nor endorsed this information.\n- Always offer to connect with a licensed agent for enrollment.\n- Never guarantee coverage or make promises about specific benefits.",
+    "functions": [
+      {
+        "name": "get_plan_recommendations",
+        "description": "Look up Medicare Advantage plans available in the caller's ZIP code. Call this after collecting their ZIP and preferences.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "zip": { "type": "string", "description": "5-digit ZIP code" },
+            "planType": { "type": "string", "description": "HMO, PPO, or empty for all", "enum": ["HMO", "PPO", ""] },
+            "priority": { "type": "string", "description": "What matters most: cost, doctors, drugs, extras" }
+          },
+          "required": ["zip"]
+        }
+      },
+      {
+        "name": "check_drug_coverage",
+        "description": "Check if a specific medication is covered by plans in the caller's area.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "drugName": { "type": "string", "description": "Name of the medication" },
+            "zip": { "type": "string", "description": "5-digit ZIP code" }
+          },
+          "required": ["drugName", "zip"]
+        }
+      },
+      {
+        "name": "transfer_to_agent",
+        "description": "Transfer the caller to a licensed Medicare advisor for enrollment help.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "reason": { "type": "string", "description": "Why the caller wants to speak with an agent" }
+          },
+          "required": []
+        }
+      }
+    ]
+  },
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "21m00Tcm4TlvDq8ikWAM",
+    "stability": 0.45,
+    "similarityBoost": 0.75,
+    "style": 0.35,
+    "useSpeakerBoost": true
+  },
+  "transcriber": {
+    "provider": "deepgram",
+    "model": "nova-2",
+    "language": "en-US",
+    "keywords": [
+      "Medicare:3", "Advantage:2", "premium:2", "copay:2",
+      "formulary:2", "deductible:2", "Humana:2", "UnitedHealthcare:2",
+      "Aetna:2", "AARP:2", "SelectQuote:3", "Part D:2",
+      "HMO:2", "PPO:2", "Medigap:2"
+    ]
+  },
+  "serverUrl": "https://medicare-quote-app.vercel.app/api/voice-webhook",
+  "endCallPhrases": ["goodbye", "bye", "that's all", "hang up", "end call"],
+  "silenceTimeoutSeconds": 30,
+  "maxDurationSeconds": 600,
+  "backgroundSound": "off"
+}
